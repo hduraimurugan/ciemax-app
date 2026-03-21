@@ -10,21 +10,46 @@ Each feature in `src/features/` is a self-contained domain module. It owns its c
 
 | File | Purpose |
 |---|---|
-| `screens/MoviesScreen.tsx` | Home tab — now showing / coming soon grid |
-| `screens/MovieDetailScreen.tsx` | Full detail view + "Book Tickets" CTA |
-| `components/MovieCard.tsx` | Poster card used in the grid |
-| `components/MovieFilter.tsx` | Now Showing / Coming Soon tab toggle |
-| `types.ts` | `MovieTab`, `MovieFilterState` |
+| `screens/MoviesScreen.tsx` | Home tab — sticky header, ad banner, horizontal now-showing / coming-soon sections |
+| `screens/MovieDetailScreen.tsx` | Full detail view + date selector + "Book Tickets" CTA |
+| `components/MovieCard.tsx` | Fixed-width (160px) vertical poster card for horizontal lists |
+| `components/MovieFilter.tsx` | Secondary underline-tab row: Movies / Theatres / Offers / Bookings |
 
 **Data flow:**
 ```
 useMovies hook
     → moviesService.getNowShowingMovies()
     → moviesService.getComingSoonMovies()
-        → MoviesScreen renders two lists
+        → MoviesScreen renders two horizontal sections
 ```
 
-**MovieCard** displays: poster image, rating pill (top-right), format badges (bottom-left), title, genre, duration + language.
+### MoviesScreen layout
+
+```
+┌─────────────────────────────────────────┐
+│ CINEBOOK [logo]    [Search] [Mumbai ▾] [●] │  ← sticky header (surface bg)
+├─────────────────────────────────────────┤
+│ Movies  Theatres  Offers  Bookings       │  ← secondary underline tab bar
+├─────────────────────────────────────────┤
+│ ┌─────────────────────────────────────┐ │
+│ │  Ad Banner (auto-play carousel)     │ │  ← AdBanner, aspect-[5:1]
+│ └─────────────────────────────────────┘ │
+│ Now Showing                    See all   │
+│ ┌──────┐ ┌──────┐ ┌──────┐ ┌──────┐   │  ← horizontal ScrollView
+│ │MovieCard│ │     │ │     │ │     │   │
+│ └──────┘ └──────┘ └──────┘ └──────┘   │
+│ Coming Soon                    See all   │
+│ ┌──────┐ ┌──────┐ ...                   │
+└─────────────────────────────────────────┘
+```
+
+The avatar button in the header navigates to the `Profile` stack screen.
+
+**MovieCard** (160×240px, aspect-[2:3]):
+- Poster image fills the card
+- Rating pill: top-right, semi-transparent background
+- Genre chips: small `Badge` with semi-transparent black background at bottom
+- `onPress` navigates to `MovieDetail`
 
 ---
 
@@ -34,17 +59,23 @@ useMovies hook
 
 | File | Purpose |
 |---|---|
-| `screens/TheatresScreen.tsx` | Theatres showing a specific movie |
+| `screens/TheatresScreen.tsx` | Theatres showing a specific movie, with 7-day date selector |
 | `screens/AllTheatresScreen.tsx` | All theatres (Theatres tab) |
 | `screens/ShowSelectionScreen.tsx` | Show times at selected theatre |
-| `components/TheatreCard.tsx` | Theatre name, address, amenities, rating |
+| `components/TheatreCard.tsx` | Theatre name, address, amenities, rating, inline showtime buttons, heart toggle |
 | `components/ShowTimeChip.tsx` | Time pill with format dot, availability text |
 | `types.ts` | `ShowGroup`, `FormatFilter` |
 
 **ShowTimeChip states:**
 - Default: dark surface, white time text
-- Selected: accent border + accentLight background, red time text
+- Selected: `Colors.success` border + `Colors.emeraldDim` background, green time text
 - Housefull: 40% opacity, `disabled` prop — not tappable
+
+**TheatreCard features:**
+- Heart toggle (top-right): filled `Colors.accent` when favourite, `Colors.textMuted` outline when not
+- Rating row: `<Star size={12} fill={Colors.star} />` + rating text
+- Distance row: `<MapPin size={11} color={Colors.info} />` + distance text
+- Inline showtime buttons: horizontal `ScrollView` at card bottom, green border (`Colors.success`), navigate to `SeatSelection` on press
 
 **Availability colouring** uses `getAvailabilityColor()` from `shared/utils/formatters`:
 - Housefull → `Colors.error` red
@@ -60,7 +91,7 @@ useMovies hook
 
 | File | Purpose |
 |---|---|
-| `screens/SeatSelectionScreen.tsx` | Screen wrapping the grid + selection summary bar |
+| `screens/SeatSelectionScreen.tsx` | Sticky header + grid + emerald selection bar |
 | `components/SeatGrid.tsx` | Pure grid renderer — no toggle logic |
 | `components/SeatItem.tsx` | Single seat circle (30×30px) |
 | `components/SeatLegend.tsx` | Available / Selected / Booked colour key |
@@ -90,28 +121,33 @@ This means:
 - Toggle logic lives entirely in `useBookingStore.toggleSeat`
 - The component can be tested in isolation with any `layout` + `selectedSeatIds`
 
-### Layout Structure
+### Seat States
+
+| State | Visual |
+|---|---|
+| Available | Transparent fill, `Colors.border` hairline border |
+| Selected | `Colors.emerald` fill (bright green) |
+| Booked | `Colors.surfaceHighlight` fill (medium gray) — not tappable |
+
+### SeatSelectionScreen layout
 
 ```
-SCREEN bar
-─────────────────
-SeatLegend
-
-── PREMIUM ─ ₹400 ──
-A  [1][2][3]...[12]  A
-B  [1][2][3]...[12]  B
-C  [1][2][3]...[12]  C
-
-── GOLD ─── ₹250 ──
-D  [1][2][3]...[14]  D
-...
-
-── SILVER ── ₹150 ──
-H  [1][2][3]...[16]  H
-...
+┌─────────────────────────────────────────┐
+│ [← Back]  [Poster 40×60]  Movie / Show  │  ← sticky header
+├─────────────────────────────────────────┤
+│           ── SCREEN ──                  │  ← blue info bar (Colors.info)
+│        SeatLegend                       │
+│                                         │
+│  A  [1][2][3]...[12]  A   PREMIUM       │
+│  ...                                    │
+│  D  [1][2][3]...[14]  D   GOLD          │
+│  ...                                    │
+│  H  [1][2][3]...[16]  H   SILVER        │
+├─────────────────────────────────────────┤
+│ Seats: [A3] [A4] [A5]   (zinc pills)    │  ← seat pills (if any selected)
+│ Total: ₹1,200          [Proceed] emerald│  ← bottom bar
+└─────────────────────────────────────────┘
 ```
-
-Row labels appear on both left and right sides. The grid is horizontally scrollable (to fit all columns on narrow screens) and vertically scrollable (nested `ScrollView`).
 
 ### Seat Generation
 
@@ -128,24 +164,62 @@ Row labels appear on both left and right sides. The grid is horizontally scrolla
 
 | File | Purpose |
 |---|---|
-| `screens/OrderSummaryScreen.tsx` | Review movie, show details, seats, price |
-| `screens/PaymentScreen.tsx` | Payment method selection + mock payment |
-| `screens/BookingSuccessScreen.tsx` | Animated confirmation + ticket display |
-| `components/PriceBreakdown.tsx` | Subtotal / fee / discount / total rows |
+| `screens/OrderSummaryScreen.tsx` | Review details, apply offers, countdown timer |
+| `screens/PaymentScreen.tsx` | Payment method selection (UPI / Card / Net Banking / Wallet) |
+| `screens/BookingSuccessScreen.tsx` | Ticket card with QR code, download/share/home actions |
+| `screens/BookingFailureScreen.tsx` | Error screen with try-again and home actions |
+| `components/PriceBreakdown.tsx` | Subtotal / fee / GST / discount / grand total rows |
+
+### OrderSummaryScreen
+
+- Sticky header includes a `CountdownTimer` (10-minute session). On expiry, resets to `MainTabs`.
+- Offers panel: horizontal `ScrollView` of mini offer cards (width 180px, violet top bar); applying an offer shows a green `Badge` + dismiss
+- Price rows: subtotal → convenience fee (₹15/seat) → GST (18% of fee) → discount (green, if offer applied) → **Grand Total**
 
 ### PaymentScreen
 
-- 4 payment methods: UPI, Card, Net Banking, Wallet
-- Selected method gets accent border + accentLight background
-- Tapping "Pay" calls `bookingService.createBooking()` (mock 1-second delay)
+- 4 payment methods: UPI (`Smartphone` icon), Card (`CreditCard`), Net Banking (`Landmark`), Wallet (`Wallet`)
+- Selected method: `borderLeftWidth: 3, borderLeftColor: Colors.accent` + `accentLight` background + radio button with filled dot
+- Bottom bar: two-line total (`Caption "Grand Total"` + `Heading2 price` + GST breakdown `Caption`)
 - On success: `setBookingDetails(booking)` → `navigate('BookingSuccess')`
+- On error: `navigate('BookingFailure', { error: e.message })`
 
 ### BookingSuccessScreen
 
-- Entry animation: `Animated.spring` scale + `Animated.timing` opacity on the ✓ circle
-- Displays a "ticket" card: movie, theatre, date/time, seat list, amount paid
-- Two CTAs: "Back to Home" and "My Bookings" both call `navigation.reset()`
-- `resetBookingFlow()` is called after 3 seconds to clean up store state
+Displays a styled ticket card:
+
+```
+┌─────────────────────────────────────────┐
+│  CINEBOOK            [Red gradient header]│
+│  Movie Title                             │
+│  Date · Time                             │
+├ · · · · · · · · · · · · · · · · · · · · ┤  ← perforated divider
+│  Booking ID    #BK1JKXZ4AB              │
+│  Theatre       PVR Phoenix              │
+│  Date          Sat, 21 Mar 2026         │
+│  Time          01:00 PM                 │
+│  Seats         [A3] [A4] [A5]           │
+│  Amount        ₹1,308                   │
+│                                         │
+│           ┌─────────┐                   │
+│           │  QR Code │                  │
+│           └─────────┘                   │
+│        Scan at theatre entrance         │
+└─────────────────────────────────────────┘
+   [↓ Download]  [⤴ Share]  [Home →]
+```
+
+- Entry animation: `Animated.spring` scale + `Animated.timing` opacity on the check icon circle
+- `resetBookingFlow()` called after 3 seconds to clean up store state
+- Action icons from `lucide-react-native`: `Download`, `Share2`, `Check`
+
+### BookingFailureScreen
+
+- Entry animation: same spring + fade as success screen
+- `X` icon (`lucide-react-native`) in a red circle (`Colors.errorDim` bg, `Colors.error` border)
+- Error message from `route.params?.error` with fallback generic text
+- "No amount has been charged. Please try again." hint
+- Two CTAs: "Try Again" (secondary, `navigation.goBack()`) and "Back to Home" (`navigation.reset`)
 
 ---
 
@@ -155,10 +229,18 @@ Row labels appear on both left and right sides. The grid is horizontally scrolla
 
 | File | Purpose |
 |---|---|
-| `screens/LoginScreen.tsx` | Email + password form |
-| `screens/RegisterScreen.tsx` | Name, email, phone, password form |
+| `screens/LoginScreen.tsx` | Email + password form, tab header to switch to Register |
+| `screens/RegisterScreen.tsx` | Name, email, phone, password form + OTP verification step |
 
-Both screens use `Input` from `shared/ui` and navigate to each other via `navigation.navigate('Register')` / `navigation.navigate('Login')`. Form submission currently calls `navigation.goBack()` as a placeholder.
+Both screens have a **tab header** at the top:
+- Active tab: `borderBottomWidth: 2, borderBottomColor: Colors.accent`
+- Inactive tab: `color: Colors.textMuted`, pressing navigates to the other screen
+
+`RegisterScreen` has a **two-step flow**:
+1. **Form step** — name, email, phone, password fields. "Create Account" advances to OTP step.
+2. **OTP step** — `Heading2 "Verify Phone"` + 6 individual `TextInput` boxes (44×54px each), auto-focuses next box on input. "Resend OTP" link with 60-second countdown.
+
+Form submission currently calls `navigation.goBack()` as a placeholder (no real auth backend).
 
 ---
 
@@ -168,16 +250,38 @@ Both screens use `Input` from `shared/ui` and navigate to each other via `naviga
 
 | File | Purpose |
 |---|---|
-| `screens/ProfileScreen.tsx` | Avatar, menu items (Bookings, Offers, Settings…) |
-| `screens/MyBookingsScreen.tsx` | List of past bookings from `bookingService.getUserBookings()` |
+| `screens/ProfileScreen.tsx` | Avatar, user info, menu items with Lucide icons |
+| `screens/MyBookingsScreen.tsx` | Upcoming / Past tabs, booking cards with QR modal |
 
-`MyBookingsScreen` shows an empty state ("No bookings yet") when `mockBookings` is empty (i.e. the user hasn't booked in the current session).
+### ProfileScreen
 
-Each booking card shows:
-- Movie title + status badge (confirmed / cancelled / pending)
-- Theatre name, date, time
-- Seat list
-- Booking ID + total amount
+- Avatar: `LinearGradient` (`react-native-linear-gradient`) from `Colors.accent` to `Colors.accentDim`, 80×80px circle with initials
+- User info: name (`Heading2`), email (`Body`), phone (`Body`), "Edit Profile" secondary button
+- Menu items — each in a `Card` with a 40×40 icon container (`Colors.surfaceElevated`) and `ChevronRight` icon:
+  - My Bookings — `Ticket` icon, `Colors.accent`
+  - Offers & Coupons — `Tag` icon, `Colors.violet`
+  - Saved Theatres — `MapPin` icon, `Colors.info`
+  - Notifications — `Bell` icon, `Colors.warning`
+  - Settings — `Settings` icon, `Colors.textSecondary`
+  - Help & Support — `HelpCircle` icon, `Colors.textSecondary`
+- "Sign Out" text in `Colors.error` at bottom
+
+### MyBookingsScreen
+
+- **Tab switcher**: Upcoming / Past tabs with count badges, active tab has `borderBottomWidth: 2, borderBottomColor: Colors.accent`
+- Filter logic:
+  - Upcoming: `status === 'confirmed'` AND `showDate >= today`
+  - Past: all others
+
+Each **booking card** shows:
+- Poster thumbnail (48×72px) on the left, or `Film` icon placeholder
+- `borderLeftWidth: 3` accent: confirmed → `Colors.success`, cancelled → `Colors.error`, pending → `Colors.info`
+- Metadata rows with icons: `MapPin` (theatre), `Calendar` (date), `Clock` (time), `Monitor` (format)
+- Seat pills as `Badge variant="default"`
+- Status badge + booking ID + amount
+- "View QR" ghost button
+
+**QR modal**: tapping "View QR" opens a `Modal` with `<QRCode value={booking.id} size={150} />` + Caption + close button.
 
 ---
 
@@ -187,9 +291,15 @@ Each booking card shows:
 
 | File | Purpose |
 |---|---|
-| `screens/OffersScreen.tsx` | List of active offers with copy-to-clipboard coupon codes |
+| `screens/OffersScreen.tsx` | 2-column grid of offer cards |
 
-Tapping a coupon code shows a "✓ COPIED" state for 2 seconds (no real clipboard — UI demo). Offers include: `FIRST50`, `IMAX100`, `WEEKEND20`, `FDFS200`.
+Each **offer card**:
+- Violet top accent bar: `height: 4, backgroundColor: Colors.violet`
+- Offer code: `Heading3`, letter-spaced, with `Badge variant="accent"` for discount amount (top-right)
+- Status badge: `Badge label="ACTIVE" variant="success"` or `label="EXPIRED" variant="error"`
+- "Copy" ghost button — shows "✓ COPIED" for 2 seconds on press
+
+Offers include: `FIRST50`, `IMAX100`, `WEEKEND20`, `FDFS200`.
 
 ---
 
