@@ -1,6 +1,6 @@
 # Design System
 
-The design system is a **custom, hand-crafted layer** that replaces shadcn/ui + Tailwind from the web reference app. All tokens and components are tailored to the cinema booking domain and React Native's styling constraints.
+The design system is a **custom, hand-crafted layer** that mirrors the visual identity of the `cinema-hall-users` web app (Tailwind CSS v4 + oklch color tokens), adapted for React Native's styling constraints. All tokens and components are tailored to the cinema booking domain.
 
 Source: [`src/constants/theme.ts`](../src/constants/theme.ts) and [`src/shared/ui/`](../src/shared/ui/)
 
@@ -8,33 +8,46 @@ Source: [`src/constants/theme.ts`](../src/constants/theme.ts) and [`src/shared/u
 
 ## Design Principles
 
-1. **Dark-first** — the app is cinema-native: dark environments, high contrast, accent-forward
+1. **Dark-first** — cinema-native: dark environments, high contrast, accent-forward
 2. **Token-only styling** — no hardcoded hex values in components; everything references `Colors.*`, `Spacing.*`, etc.
-3. **Primitive composition** — complex UI is built by composing small primitives (Typography + Card + Badge), never by writing monolithic styled blobs
-4. **Consistent spacing scale** — all padding/margin uses `Spacing.*` multiples of 4px
+3. **Web parity** — color palette, radius scale, font, and utility effects directly mirror `cinema-hall-users/src/index.css`
+4. **Primitive composition** — complex UI is built by composing small primitives (Typography + Card + Badge), never by writing monolithic styled blobs
+5. **Consistent spacing scale** — all padding/margin uses `Spacing.*` multiples of 4px
 
 ---
 
 ## Color Tokens
 
-All defined in `Colors` in `src/constants/theme.ts`.
+All defined in `Colors` in `src/constants/theme.ts`. The palette is derived from the web app's `oklch` dark-mode tokens converted to hex.
 
 ### Backgrounds
 
-| Token | Hex | Usage |
-|---|---|---|
-| `Colors.background` | `#0D0D0D` | Screen root background |
-| `Colors.surface` | `#1A1A2E` | Cards, tab bar, bottom sheets |
-| `Colors.surfaceElevated` | `#252540` | Inputs, raised cards |
-| `Colors.surfaceHighlight` | `#2E2E50` | Hover/pressed elevated state |
+| Token | Hex | Web source (`oklch` dark) | Usage |
+|---|---|---|---|
+| `Colors.background` | `#141A21` | `oklch(0.14 0.01 240)` | Screen root background |
+| `Colors.surface` | `#1C2330` | `oklch(0.18 0.01 240)` | Cards, tab bar, bottom sheets |
+| `Colors.surfaceElevated` | `#242D3A` | `oklch(0.22 0.01 240)` | Inputs, raised cards |
+| `Colors.surfaceHighlight` | `#303D4F` | `oklch(0.30 0.01 250)` | Pressed / hover elevated state |
+| `Colors.secondary` | `#343E4E` | `oklch(0.30 0.02 240)` | Cool gray-blue secondary surface |
+
+> All backgrounds carry a subtle navy/blue tint (hue 240–250) — this is the defining characteristic of the cinema-hall-users dark theme vs. a pure black palette.
 
 ### Brand
 
 | Token | Hex | Usage |
 |---|---|---|
-| `Colors.accent` | `#E50914` | Primary CTA, selected seats, active tab |
+| `Colors.accent` | `#E50914` | Primary CTA, selected seats, active tab (`--primary` cinema red) |
 | `Colors.accentDim` | `#B20710` | Pressed state of accent |
 | `Colors.accentLight` | `rgba(229,9,20,0.15)` | Badge background, selected chip bg |
+
+### Glass Surfaces
+
+Web equivalent of `.glass-effect { backdrop-filter: blur(12px); background: card/80% }`.
+
+| Token | Value | Usage |
+|---|---|---|
+| `Colors.glassSurface` | `rgba(28,35,48,0.80)` | Semi-transparent card overlay |
+| `Colors.glassBorder` | `rgba(255,255,255,0.08)` | Glass border stroke |
 
 ### Seat Sections
 
@@ -47,41 +60,51 @@ All defined in `Colors` in `src/constants/theme.ts`.
 
 ### Text
 
-| Token | Hex | Usage |
-|---|---|---|
-| `Colors.textPrimary` | `#FFFFFF` | Headings, values, active labels |
-| `Colors.textSecondary` | `#A0A0A0` | Body text, descriptions |
-| `Colors.textMuted` | `#666666` | Captions, placeholders |
-| `Colors.textInverse` | `#0D0D0D` | Text on light backgrounds |
+| Token | Hex | Web source (`oklch` dark) | Usage |
+|---|---|---|---|
+| `Colors.textPrimary` | `#F4F6F9` | `oklch(0.98 0.01 240)` | Headings, values — cool off-white |
+| `Colors.textSecondary` | `#8895A6` | `oklch(0.68 0.02 250)` | Body text, descriptions |
+| `Colors.textMuted` | `#636D7A` | `oklch(0.55 0.02 250)` | Captions, placeholders |
+| `Colors.textInverse` | `#141A21` | — | Text on light backgrounds |
 
 ### Semantic
 
 | Token | Hex | Usage |
 |---|---|---|
-| `Colors.success` | `#22C55E` | Confirmed booking, available seats |
-| `Colors.error` | `#EF4444` | Errors, housefull seats |
-| `Colors.warning` | `#F59E0B` | Fast filling seats |
-| `Colors.info` | `#3B82F6` | Theatre distance, info text |
+| `Colors.success` | `#22C55E` | Confirmed booking, available |
+| `Colors.error` | `#EF4444` | Errors, destructive (`oklch(0.7 0.21 27)`) |
+| `Colors.warning` | `#F59E0B` | Fast filling |
+| `Colors.info` | `#3B82F6` | Distance, info text |
+
+### UI Chrome
+
+| Token | Value | Web source | Usage |
+|---|---|---|---|
+| `Colors.border` | `rgba(255,255,255,0.10)` | `oklch(1 0 0 / 10%)` | All borders — white hairline |
+| `Colors.borderFocus` | `#E50914` | `--ring: --primary` | Input focus ring |
+| `Colors.divider` | `rgba(255,255,255,0.08)` | — | Section dividers |
+| `Colors.overlay` | `rgba(0,0,0,0.7)` | — | Modal scrim |
 
 ### Seat States
 
 | Token | Hex | Usage |
 |---|---|---|
-| `Colors.seatAvailable` | `#374151` | Default seat colour |
-| `Colors.seatSelected` | `#E50914` | User-selected seat (same as accent) |
-| `Colors.seatBooked` | `#1F2937` | Pre-booked (not tappable) |
+| `Colors.seatAvailable` | `#2D3748` | Default seat colour |
+| `Colors.seatSelected` | `#E50914` | User-selected seat |
+| `Colors.seatBooked` | `#1A2332` | Pre-booked (not tappable) |
+| `Colors.seatBookedBorder` | `#2D3748` | Border around booked seat |
 
 ---
 
 ## Spacing Scale
 
 ```ts
-Spacing.xs  = 4
-Spacing.sm  = 8
-Spacing.md  = 16
-Spacing.lg  = 24
-Spacing.xl  = 32
-Spacing.xxl = 48
+Spacing.xs   = 4
+Spacing.sm   = 8
+Spacing.md   = 16
+Spacing.lg   = 24
+Spacing.xl   = 32
+Spacing.xxl  = 48
 Spacing.xxxl = 64
 ```
 
@@ -91,33 +114,57 @@ All component padding/margin uses these values. Never use raw numbers in compone
 
 ## Border Radius Scale
 
+Aligned to the web app's `--radius: 0.625rem` (10px) base:
+
 ```ts
-Radius.xs   = 2    // Very subtle rounding (seat items)
-Radius.sm   = 4    // Small tags
-Radius.md   = 8    // Default (buttons, inputs)
-Radius.lg   = 12   // Cards
-Radius.xl   = 16   // Large cards
-Radius.xxl  = 24   // Bottom sheet top corners
+Radius.xs   = 6    // --radius-sm  (base - 4px)
+Radius.sm   = 8    // --radius-md  (base - 2px)
+Radius.md   = 10   // --radius     (base = 10px)
+Radius.lg   = 14   // --radius-xl  (base + 4px)
+Radius.xl   = 18   // --radius-2xl (base + 8px)
+Radius.xxl  = 22   // --radius-3xl (base + 12px)
 Radius.full = 9999 // Pill / circle
 ```
 
 ---
 
-## Typography Scale
+## Typography
 
-Defined in `FontSize` (px) and exposed as semantic components via `src/shared/ui/Typography.tsx`.
+### Font Family — JetBrains Mono
 
-| Component | Size | Weight | Usage |
-|---|---|---|---|
-| `DisplayText` | 36 | 800 | Hero numbers, booking confirmation |
-| `Heading1` | 28 | 700 | Screen titles |
-| `Heading2` | 22 | 700 | Section headings |
-| `Heading3` | 18 | 600 | Card titles, item names |
-| `BodyLarge` | 15 | 500 | Prominent descriptions |
-| `Body` | 13 | 400 | Standard body copy |
-| `BodySmall` | 12 | 400 | Supporting details |
-| `Caption` | 11 | 400 | Metadata, timestamps |
-| `Label` | 11 | 600 | UPPERCASE section labels |
+Matches the web app's `--font-sans: 'JetBrains Mono Variable', monospace`. Defined in `FontFamily` and applied in all `Typography` components.
+
+```ts
+FontFamily.regular   = 'JetBrainsMono-Regular'
+FontFamily.medium    = 'JetBrainsMono-Medium'
+FontFamily.semibold  = 'JetBrainsMono-SemiBold'
+FontFamily.bold      = 'JetBrainsMono-Bold'
+FontFamily.extrabold = 'JetBrainsMono-ExtraBold'
+```
+
+**Font setup (one-time):**
+1. Download static TTF files from [JetBrains/JetBrainsMono releases](https://github.com/JetBrains/JetBrainsMono/releases)
+2. Place in `src/assets/fonts/`
+3. Run `npx react-native-asset` to link to Android/iOS
+4. Rebuild the app
+
+Until the font files are added, React Native falls back to the system font — all other tokens are active immediately.
+
+### Type Scale
+
+Defined in `FontSize` (px) and exposed as semantic components via [`src/shared/ui/Typography.tsx`](../src/shared/ui/Typography.tsx).
+
+| Component | Size | Weight | Font | Usage |
+|---|---|---|---|---|
+| `DisplayText` | 36 | 800 | ExtraBold | Hero numbers, booking confirmation |
+| `Heading1` | 28 | 700 | Bold | Screen titles |
+| `Heading2` | 22 | 700 | Bold | Section headings |
+| `Heading3` | 18 | 600 | SemiBold | Card titles, item names |
+| `BodyLarge` | 15 | 500 | Medium | Prominent descriptions |
+| `Body` | 13 | 400 | Regular | Standard body copy |
+| `BodySmall` | 12 | 400 | Regular | Supporting details |
+| `Caption` | 11 | 400 | Regular | Metadata, timestamps |
+| `Label` | 11 | 600 | SemiBold | UPPERCASE section labels |
 
 **Usage:**
 ```tsx
@@ -218,8 +265,9 @@ import { Input } from '@shared/ui';
 ```
 
 - Shows a red border + error text when `error` prop is set
-- Accent border on focus
+- Accent border on focus (`Colors.borderFocus`)
 - Supports `leftIcon` and `rightIcon` nodes
+- Background: `Colors.surfaceElevated`
 
 ---
 
@@ -278,12 +326,18 @@ import { Loader } from '@shared/ui';
 ## Shadow Tokens
 
 ```ts
-Shadow.sm   // elevation: 2   — subtle (labels, chips)
-Shadow.md   // elevation: 5   — default (elevated cards)
-Shadow.lg   // elevation: 10  — strong (modals, sheets)
+Shadow.sm   // elevation: 2  — subtle (chips, labels)
+Shadow.md   // elevation: 5  — default (elevated cards)
+Shadow.lg   // elevation: 10 — strong (modals, sheets)
+Shadow.neon // cinema red glow — web .neon-glow equivalent
 ```
 
-Apply to any `ViewStyle`:
+**Neon glow** — apply to primary action elements (confirm buttons, selected state indicators):
+```tsx
+<View style={[styles.confirmBtn, Shadow.neon]}>
+```
+
+Apply any shadow to a `ViewStyle`:
 ```tsx
 <View style={[styles.card, Shadow.md]}>
 ```
@@ -299,5 +353,32 @@ Edit `src/constants/theme.ts` only. Never add one-off values inside component fi
 <View style={{ backgroundColor: Colors.surface }} />
 
 // ❌ Bad
-<View style={{ backgroundColor: '#1A1A2E' }} />
+<View style={{ backgroundColor: '#1C2330' }} />
 ```
+
+---
+
+## Web ↔ Native Token Mapping
+
+For reference when porting UI from `cinema-hall-users`:
+
+| Web CSS variable | React Native token |
+|---|---|
+| `--background` | `Colors.background` |
+| `--card` | `Colors.surface` |
+| `--input` | `Colors.surfaceElevated` |
+| `--muted` | `Colors.surfaceHighlight` |
+| `--secondary` | `Colors.secondary` |
+| `--primary` | `Colors.accent` |
+| `--foreground` | `Colors.textPrimary` |
+| `--muted-foreground` | `Colors.textSecondary` |
+| `--border` | `Colors.border` |
+| `--destructive` | `Colors.error` |
+| `.glass-effect` | `Colors.glassSurface` + `Colors.glassBorder` |
+| `.neon-glow` | `Shadow.neon` |
+| `--radius` (10px base) | `Radius.md` |
+| `--font-sans` (JetBrains Mono) | `FontFamily.*` |
+
+---
+
+*Last updated: March 21, 2026 — palette migrated to cinema-hall-users oklch dark tokens; radius realigned to 10px base; FontFamily (JetBrains Mono) and Shadow.neon added.*
