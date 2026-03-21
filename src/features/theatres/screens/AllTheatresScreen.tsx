@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import {
   FlatList,
-  SafeAreaView,
   StyleSheet,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Theatre } from '@ctypes/models';
 import { Colors, Spacing } from '@constants/theme';
 import { Heading2, Loader } from '@shared/ui';

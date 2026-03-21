@@ -3,11 +3,11 @@ import {
   FlatList,
   Image,
   Pressable,
-  SafeAreaView,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Calendar, Clock, MapPin, Monitor, Film, Ticket } from 'lucide-react-native';
 import { Booking } from '@ctypes/models';
 import { Colors, FontFamily, FontSize, FontWeight, Radius, Spacing } from '@constants/theme';

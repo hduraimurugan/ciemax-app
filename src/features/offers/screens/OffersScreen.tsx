@@ -3,11 +3,11 @@ import {
   Dimensions,
   FlatList,
   Pressable,
-  SafeAreaView,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Offer } from '@ctypes/models';
 import { Colors, FontFamily, FontSize, FontWeight, Radius, Spacing } from '@constants/theme';
 import { Badge, Loader } from '@shared/ui';
