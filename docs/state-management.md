@@ -27,7 +27,7 @@ interface BookingState {
   selectedTheatre: Theatre | null;
   selectedShow:    Show | null;
   selectedSeats:   Seat[];
-  appliedCoupon:   string | null;
+  appliedOffer:    Offer | null;     // Full offer object (replaces appliedCoupon string)
   bookingDetails:  Booking | null;   // Set after successful payment
 
   // Actions
@@ -36,14 +36,16 @@ interface BookingState {
   setSelectedShow:    (show: Show) => void;
   toggleSeat:         (seat: Seat) => void;
   clearSeatSelection: () => void;
-  setAppliedCoupon:   (code: string | null) => void;
+  setAppliedOffer:    (offer: Offer | null) => void;
   setBookingDetails:  (booking: Booking) => void;
   resetBookingFlow:   () => void;
 
   // Computed getters (called like functions)
-  getTotalAmount:     () => number;   // Sum of selected seat prices
-  getConvenienceFee:  () => number;   // 5% of total
-  getGrandTotal:      () => number;   // total + fee
+  getTotalAmount:      () => number;   // Sum of selected seat prices
+  getConvenienceFee:   () => number;   // ₹15 per seat
+  getGST:              () => number;   // 18% of convenience fee
+  getAppliedDiscount:  () => number;   // Discount from appliedOffer (flat or % with cap)
+  getGrandTotal:       () => number;   // total + fee + GST − discount
 }
 ```
 
@@ -70,12 +72,13 @@ interface BookingState {
 
 5. OrderSummaryScreen
        reads: selectedMovie, selectedTheatre, selectedShow, selectedSeats
+       setAppliedOffer(offer)      ← user optionally applies an offer from the panel
        navigate → Payment
 
 6. PaymentScreen
        calls: createBooking(...)   ← service call
-       setBookingDetails(booking)
-       navigate → BookingSuccess
+       on success: setBookingDetails(booking) → navigate → BookingSuccess
+       on failure: navigate → BookingFailure  ← with error message param
 
 7. BookingSuccessScreen
        reads: bookingDetails
@@ -173,7 +176,7 @@ resetBookingFlow: () => set({
   selectedTheatre: null,
   selectedShow: null,
   selectedSeats: [],
-  appliedCoupon: null,
+  appliedOffer: null,
   bookingDetails: null,
 }),
 ```

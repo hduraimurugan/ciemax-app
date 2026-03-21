@@ -162,8 +162,10 @@ interface Booking {
   showFormat: ShowFormat;
   seats: Seat[];           // Snapshot of selected seats at booking time
   subtotal: number;        // Sum of seat prices
-  convenienceFee: number;  // 5% of subtotal
-  totalAmount: number;     // subtotal + convenienceFee
+  convenienceFee: number;  // ₹15 per seat (flat)
+  gst: number;             // 18% of convenienceFee
+  discount: number;        // Discount applied from an offer (0 if none)
+  totalAmount: number;     // subtotal + convenienceFee + gst − discount
   bookingDate: string;     // ISO datetime of when booking was created
   status: BookingStatus;
   paymentMethod?: PaymentMethod;

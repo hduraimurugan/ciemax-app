@@ -47,13 +47,16 @@ src/
 ├── shared/
 │   ├── ui/
 │   │   ├── Typography.tsx         # DisplayText, Heading1-3, Body, BodySmall, Caption, Label
-│   │   ├── Button.tsx
-│   │   ├── Card.tsx
-│   │   ├── Badge.tsx
+│   │   ├── Button.tsx             # primary / secondary / ghost / danger / emerald, 3 sizes
+│   │   ├── Card.tsx               # variant: default | glass | neon
+│   │   ├── Badge.tsx              # default / accent / success / error / warning / info / violet / zinc
 │   │   ├── Input.tsx
 │   │   ├── Modal.tsx
 │   │   ├── BottomSheet.tsx
 │   │   ├── Loader.tsx
+│   │   ├── AdBanner.tsx           # Auto-playing carousel (aspect-[5/1], dot indicators)
+│   │   ├── CountdownTimer.tsx     # Amber→red pulsing countdown (used in OrderSummary)
+│   │   ├── QRCode.tsx             # Wraps react-native-qrcode-svg
 │   │   └── index.ts
 │   └── utils/
 │       ├── formatters.ts
@@ -98,7 +101,8 @@ src/
     │   ├── screens/
     │   │   ├── OrderSummaryScreen.tsx
     │   │   ├── PaymentScreen.tsx
-    │   │   └── BookingSuccessScreen.tsx
+    │   │   ├── BookingSuccessScreen.tsx
+    │   │   └── BookingFailureScreen.tsx
     │   └── index.ts
     │
     ├── auth/

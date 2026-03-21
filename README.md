@@ -17,6 +17,8 @@ A production-grade **React Native** mobile application for cinema ticket booking
 | Animations | React Native Reanimated v3 |
 | Gestures | React Native Gesture Handler v2 |
 | Storage | @react-native-async-storage/async-storage |
+| Gradients | react-native-linear-gradient |
+| QR Codes | react-native-qrcode-svg + react-native-svg |
 | Runtime | Hermes JS Engine |
 
 ---
@@ -25,6 +27,7 @@ A production-grade **React Native** mobile application for cinema ticket booking
 
 ```
 Movies → Movie Details → Theatres → Show Selection → Seat Selection → Order Summary → Payment → Booking Confirmed
+                                                                                                       └─ (on failure) → Booking Failed
 ```
 
 ---
@@ -98,21 +101,24 @@ MyApp/
 │   ├── shared/
 │   │   ├── ui/                    # Design system components
 │   │   │   ├── Typography.tsx     # Heading1-3, Body, BodySmall, Caption, Label
-│   │   │   ├── Button.tsx         # primary / secondary / ghost / danger, 3 sizes
-│   │   │   ├── Card.tsx           # Surface card with optional press + shadow
-│   │   │   ├── Badge.tsx          # 8 colour variants
+│   │   │   ├── Button.tsx         # primary / secondary / ghost / danger / emerald, 3 sizes
+│   │   │   ├── Card.tsx           # variant: default | glass | neon
+│   │   │   ├── Badge.tsx          # default / accent / success / error / warning / info / violet / zinc
 │   │   │   ├── Input.tsx          # Controlled input with label, error, icons
 │   │   │   ├── Modal.tsx          # Fade overlay modal
 │   │   │   ├── BottomSheet.tsx    # Spring-animated slide-up panel
-│   │   │   └── Loader.tsx         # Full-screen or inline activity indicator
+│   │   │   ├── Loader.tsx         # Full-screen or inline activity indicator
+│   │   │   ├── AdBanner.tsx       # Auto-playing carousel (aspect-[5/1], dot indicators)
+│   │   │   ├── CountdownTimer.tsx # Amber→red pulsing countdown
+│   │   │   └── QRCode.tsx         # Wraps react-native-qrcode-svg
 │   │   └── utils/
 │   │       └── formatters.ts      # formatPrice, formatDuration, formatDate, formatSeatList…
 │   └── features/                  # Domain-based feature modules (self-contained)
 │       ├── movies/                # MovieCard, MoviesScreen, MovieDetailScreen
 │       ├── theatres/              # TheatreCard, ShowTimeChip, TheatresScreen, ShowSelectionScreen
 │       ├── seats/                 # SeatGrid, SeatItem, SeatLegend, SeatSelectionScreen
-│       ├── booking/               # OrderSummaryScreen, PaymentScreen, BookingSuccessScreen
-│       ├── auth/                  # LoginScreen, RegisterScreen
+│       ├── booking/               # OrderSummaryScreen, PaymentScreen, BookingSuccessScreen, BookingFailureScreen
+│       ├── auth/                  # LoginScreen (+ OTP step), RegisterScreen
 │       ├── profile/               # ProfileScreen, MyBookingsScreen
 │       └── offers/                # OffersScreen
 ```
@@ -143,15 +149,17 @@ Cinema-inspired dark theme. All values live in `src/constants/theme.ts`.
 
 | Token | Value | Usage |
 |---|---|---|
-| `Colors.background` | `#0D0D0D` | Screen backgrounds |
-| `Colors.surface` | `#1A1A2E` | Cards, bottom sheets |
-| `Colors.surfaceElevated` | `#252540` | Inputs, raised surfaces |
-| `Colors.accent` | `#E50914` | CTAs, selected seats, active states |
+| `Colors.background` | `#141A21` | Screen backgrounds |
+| `Colors.surface` | `#1C2330` | Cards, bottom sheets |
+| `Colors.surfaceElevated` | `#242D3A` | Inputs, raised surfaces |
+| `Colors.accent` | `#E50914` | CTAs, active tab, booking success header |
+| `Colors.emerald` | `#10B981` | Selected seats, seat CTA button |
+| `Colors.violet` | `#8B5CF6` | Offer card accents |
 | `Colors.gold` | `#FFD700` | Gold seat section |
 | `Colors.silver` | `#C0C0C0` | Silver seat section |
-| `Colors.textPrimary` | `#FFFFFF` | Primary text |
-| `Colors.textSecondary` | `#A0A0A0` | Supporting text |
-| `Colors.border` | `#2A2A3E` | Dividers, card borders |
+| `Colors.textPrimary` | `#F4F6F9` | Primary text |
+| `Colors.textSecondary` | `#8895A6` | Supporting text |
+| `Colors.border` | `rgba(255,255,255,0.10)` | Dividers, card borders |
 
 ---
 
@@ -188,3 +196,6 @@ npx tsc --noEmit       # TypeScript type check (0 errors)
 - **Dumb seat grid** — `SeatGrid` is a pure renderer; all selection logic lives in Zustand's `toggleSeat`, keeping the component reusable and testable in isolation
 - **`useNavigation` hook for tab screens** — tab screens use `useNavigation<NativeStackNavigationProp>()` instead of prop-drilling, allowing them to navigate to stack routes without type conflicts
 - **`@ctypes` alias** — the types path alias uses `@ctypes` (not `@types`) to avoid conflict with TypeScript's reserved `@types` namespace for `node_modules/@types/`
+- **Profile as stack screen** — Profile was moved out of the bottom tab bar (Movies | Theatres | Offers | Bookings) and into the root stack, accessed via the avatar button in the Movies screen header
+- **Flat pricing for convenience fee** — convenience fee is ₹15 per seat (not a percentage) with 18% GST on top; offer discounts are applied after the fee+GST sum
+- **Perforated ticket card** — `BookingSuccessScreen` simulates a dashed divider using a `FlatList` of small dash `View` elements rather than `borderStyle:'dashed'` which is unreliable on Android

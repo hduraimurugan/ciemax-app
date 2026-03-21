@@ -8,16 +8,18 @@ NavigationContainer           (App.tsx)
     ├── MainTabs              (TabNavigator — BottomTabNavigator)
     │   ├── Home              → MoviesScreen
     │   ├── TheatresTab       → AllTheatresScreen
-    │   ├── Bookings          → MyBookingsScreen
-    │   └── Profile           → ProfileScreen
+    │   ├── OffersTab         → OffersScreen
+    │   └── Bookings          → MyBookingsScreen
     │
     ├── MovieDetail           → MovieDetailScreen
     ├── Theatres              → TheatresScreen
     ├── ShowSelection         → ShowSelectionScreen
     ├── SeatSelection         → SeatSelectionScreen
     ├── OrderSummary          → OrderSummaryScreen
-    ├── Payment               → PaymentScreen       (slide_from_bottom)
-    ├── BookingSuccess        → BookingSuccessScreen (fade, no back gesture)
+    ├── Payment               → PaymentScreen        (slide_from_bottom)
+    ├── BookingSuccess        → BookingSuccessScreen  (fade, no back gesture)
+    ├── BookingFailure        → BookingFailureScreen  (fade, no back gesture)
+    ├── Profile               → ProfileScreen
     ├── Login                 → LoginScreen
     └── Register              → RegisterScreen
 ```
@@ -28,7 +30,7 @@ NavigationContainer           (App.tsx)
 
 ```
 [Home Tab]
-    MoviesScreen
+    MoviesScreen  ── avatar icon ──▶  ProfileScreen (stack)
         │  user taps a movie card
         ▼
     MovieDetailScreen  ───── "Book Tickets" ─────▶  TheatresScreen
@@ -41,15 +43,19 @@ NavigationContainer           (App.tsx)
                                                           │  user selects seats, taps Continue
                                                           ▼
                                                      OrderSummaryScreen
+                                                          │  user applies offer (optional)
                                                           │  user taps "Proceed to Pay"
                                                           ▼
                                                      PaymentScreen  (slides up from bottom)
-                                                          │  mock payment succeeds
+                                                          │  mock payment succeeds ──▶  BookingSuccessScreen (fade, no back)
+                                                          │                                    │  user taps "Back to Home"
+                                                          │                                    ▼
+                                                          │                              navigation.reset → MainTabs
+                                                          │  mock payment fails
                                                           ▼
-                                                     BookingSuccessScreen (fade, no back)
-                                                          │  user taps "Back to Home"
-                                                          ▼
-                                                     navigation.reset → MainTabs
+                                                     BookingFailureScreen (fade, no back)
+                                                          │  "Try Again" → goBack to Payment
+                                                          │  "Back to Home" → reset → MainTabs
 ```
 
 ---
@@ -68,6 +74,8 @@ export type RootStackParamList = {
   OrderSummary: undefined;
   Payment: undefined;
   BookingSuccess: { bookingId: string };
+  BookingFailure: { error?: string };  // New — navigated to on payment error
+  Profile: undefined;                  // New — stack screen, accessed via header avatar
   Login: undefined;
   Register: undefined;
 };
@@ -75,8 +83,8 @@ export type RootStackParamList = {
 export type TabParamList = {
   Home: undefined;
   TheatresTab: undefined;
+  OffersTab: undefined;   // Replaced Profile tab
   Bookings: undefined;
-  Profile: undefined;
 };
 ```
 
@@ -139,6 +147,8 @@ This clears the entire booking flow from the history so the user cannot navigate
 | `Payment` | `slide_from_bottom` | Modal-style payment sheet feel |
 | `BookingSuccess` | `fade` | Celebration moment, not a drill-down |
 | `BookingSuccess` | `gestureEnabled: false` | Prevent swipe-back to Payment |
+| `BookingFailure` | `fade` | Mirror of BookingSuccess |
+| `BookingFailure` | `gestureEnabled: false` | Prevent swipe-back to Payment |
 
 ---
 
