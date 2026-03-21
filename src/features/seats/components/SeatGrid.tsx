@@ -138,9 +138,12 @@ const styles = StyleSheet.create({
   screenBar: {
     width: '70%',
     height: 4,
-    backgroundColor: Colors.accent,
+    backgroundColor: Colors.info,
     borderRadius: 2,
-    opacity: 0.6,
+    shadowColor: Colors.info,
+    shadowOpacity: 0.8,
+    shadowRadius: 8,
+    elevation: 4,
   },
   screenLabel: {
     color: Colors.textMuted,

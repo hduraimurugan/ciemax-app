@@ -8,6 +8,7 @@ interface CardProps {
   onPress?: () => void;
   elevated?: boolean;
   padding?: 'none' | 'sm' | 'md' | 'lg';
+  variant?: 'default' | 'glass' | 'neon';
 }
 
 export function Card({
@@ -16,10 +17,13 @@ export function Card({
   onPress,
   elevated = false,
   padding = 'md',
+  variant = 'default',
 }: CardProps) {
   const containerStyle = [
     styles.card,
     elevated && styles.elevated,
+    variant === 'glass' && styles.glass,
+    variant === 'neon' && styles.neon,
     padding !== 'none' && styles[`pad_${padding}`],
     style,
   ];
@@ -48,6 +52,13 @@ const styles = StyleSheet.create({
   elevated: {
     ...Shadow.md,
     borderColor: Colors.surfaceElevated,
+  },
+  glass: {
+    backgroundColor: Colors.glassSurface,
+    borderColor: Colors.glassBorder,
+  },
+  neon: {
+    ...Shadow.neon,
   },
   pressed: {
     opacity: 0.85,

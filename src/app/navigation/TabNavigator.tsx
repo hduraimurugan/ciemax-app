@@ -1,14 +1,14 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { StyleSheet, Text, View } from 'react-native';
-import { Colors, FontSize, Spacing } from '@constants/theme';
+import { Colors, FontFamily, FontSize, Spacing } from '@constants/theme';
 import { TabParamList } from '@ctypes/navigation';
 
 // Screens
 import { MoviesScreen } from '@features/movies';
 import { AllTheatresScreen } from '@features/theatres';
 import { MyBookingsScreen } from '@features/profile';
-import { ProfileScreen } from '@features/profile';
+import { OffersScreen } from '@features/offers';
 
 const Tab = createBottomTabNavigator<TabParamList>();
 
@@ -47,19 +47,19 @@ export function TabNavigator() {
         }}
       />
       <Tab.Screen
+        name="OffersTab"
+        component={OffersScreen}
+        options={{
+          tabBarLabel: 'Offers',
+          tabBarIcon: ({ focused }) => <TabIcon icon="🏷" focused={focused} />,
+        }}
+      />
+      <Tab.Screen
         name="Bookings"
         component={MyBookingsScreen}
         options={{
           tabBarLabel: 'Bookings',
           tabBarIcon: ({ focused }) => <TabIcon icon="🎟" focused={focused} />,
-        }}
-      />
-      <Tab.Screen
-        name="Profile"
-        component={ProfileScreen}
-        options={{
-          tabBarLabel: 'Profile',
-          tabBarIcon: ({ focused }) => <TabIcon icon="👤" focused={focused} />,
         }}
       />
     </Tab.Navigator>
@@ -73,11 +73,12 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     paddingTop: Spacing.xs,
     paddingBottom: Spacing.xs,
-    height: 60,
+    height: Spacing.tabBarHeight,
   },
   tabLabel: {
     fontSize: FontSize.xs,
     fontWeight: '500',
+    fontFamily: FontFamily.medium,
   },
   iconWrapper: {
     alignItems: 'center',

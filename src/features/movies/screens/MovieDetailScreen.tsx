@@ -1,36 +1,57 @@
 import React, { useEffect, useState } from 'react';
 import {
+  Dimensions,
   Image,
   Pressable,
   SafeAreaView,
   ScrollView,
   StyleSheet,
+  Text,
   View,
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '@ctypes/navigation';
 import { Movie } from '@ctypes/models';
-import { Colors, FontSize, FontWeight, Radius, Spacing } from '@constants/theme';
+import { Colors, FontFamily, FontSize, FontWeight, Radius, Spacing } from '@constants/theme';
 import { Badge, Button, Loader } from '@shared/ui';
 import {
   Heading1,
-  Heading3,
   Body,
   BodySmall,
   Caption,
   Label,
 } from '@shared/ui';
-import { formatDuration, formatRating, formatDate } from '@shared/utils';
+import { formatDuration, formatRating } from '@shared/utils';
 import { getMovieById } from '@services/moviesService';
 import { useBookingStore } from '@store/bookingStore';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'MovieDetail'>;
 
+const SCREEN_WIDTH = Dimensions.get('window').width;
+
+function getNext7Days() {
+  const days = [];
+  const dayNames = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
+  for (let i = 0; i < 7; i++) {
+    const d = new Date();
+    d.setDate(d.getDate() + i);
+    days.push({
+      key: d.toISOString().split('T')[0],
+      day: dayNames[d.getDay()],
+      date: d.getDate(),
+    });
+  }
+  return days;
+}
+
 export function MovieDetailScreen({ navigation, route }: Props) {
   const { movieId } = route.params;
   const [movie, setMovie] = useState<Movie | null>(null);
   const [loading, setLoading] = useState(true);
+  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const setSelectedMovie = useBookingStore(s => s.setSelectedMovie);
+
+  const dateDays = getNext7Days();
 
   useEffect(() => {
     getMovieById(movieId).then(m => {
@@ -50,42 +71,70 @@ export function MovieDetailScreen({ navigation, route }: Props) {
 
   return (
     <SafeAreaView style={styles.screen}>
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.content}>
-        {/* Back button */}
-        <Pressable style={styles.backButton} onPress={() => navigation.goBack()}>
-          <Body style={styles.backText}>← Back</Body>
-        </Pressable>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
+        {/* Blurred backdrop hero */}
+        <View style={styles.heroContainer}>
+          <Image
+            source={{ uri: movie.backdropUrl || movie.posterUrl }}
+            style={[StyleSheet.absoluteFill, styles.blurredBg]}
+            blurRadius={20}
+            resizeMode="cover"
+          />
+          <View style={[StyleSheet.absoluteFill, styles.heroOverlay]} />
 
-        {/* Backdrop */}
-        <Image source={{ uri: movie.backdropUrl }} style={styles.backdrop} />
+          {/* Back button */}
+          <Pressable style={styles.backButton} onPress={() => navigation.goBack()}>
+            <Text style={styles.backText}>← Back</Text>
+          </Pressable>
 
-        <View style={styles.body}>
-          {/* Poster + title row */}
+          {/* Poster + title */}
           <View style={styles.heroRow}>
-            <Image source={{ uri: movie.posterUrl }} style={styles.poster} />
+            <Image source={{ uri: movie.posterUrl }} style={styles.poster} resizeMode="cover" />
             <View style={styles.titleBlock}>
               <Heading1 style={styles.title}>{movie.title}</Heading1>
-              <View style={styles.genreRow}>
-                {movie.genre.map(g => (
-                  <Badge key={g} label={g} variant="default" />
+              <View style={styles.pillRow}>
+                {movie.genre.slice(0, 2).map(g => (
+                  <Badge key={g} label={g} variant="accent" />
                 ))}
+                <Badge label={movie.language} variant="default" />
+                <Badge label={formatDuration(movie.duration)} variant="default" />
               </View>
-              <View style={styles.metaRow}>
-                <Caption>⭐ {formatRating(movie.rating)}/10</Caption>
-                <Caption> · </Caption>
-                <Caption>{formatDuration(movie.duration)}</Caption>
-                <Caption> · </Caption>
-                <Caption>{movie.language}</Caption>
-              </View>
-              <Caption style={styles.releaseDate}>
-                {formatDate(movie.releaseDate)}
-              </Caption>
+              <Badge label={`⭐ ${formatRating(movie.rating)}/10`} variant="warning" />
             </View>
           </View>
+        </View>
 
-          {/* Formats */}
+        {/* Date selector */}
+        <View style={styles.dateSectionWrapper}>
+          <Label style={styles.dateSectionLabel}>Select Date</Label>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.dateList}>
+            {dateDays.map(d => (
+              <Pressable
+                key={d.key}
+                style={[styles.dateBtn, selectedDate === d.key && styles.dateBtnActive]}
+                onPress={() => setSelectedDate(d.key)}>
+                <Caption style={[styles.dateBtnDay, selectedDate === d.key && styles.dateBtnTextActive]}>
+                  {d.day}
+                </Caption>
+                <Text style={[styles.dateBtnDate, selectedDate === d.key && styles.dateBtnTextActive]}>
+                  {d.date}
+                </Text>
+              </Pressable>
+            ))}
+          </ScrollView>
+        </View>
+
+        <View style={styles.body}>
+          {/* Synopsis */}
+          <View style={styles.section}>
+            <Label>Synopsis</Label>
+            <Body>{movie.synopsis}</Body>
+          </View>
+
+          {/* Available formats */}
           <View style={styles.section}>
             <Label>Available in</Label>
             <View style={styles.formatRow}>
@@ -93,12 +142,6 @@ export function MovieDetailScreen({ navigation, route }: Props) {
                 <Badge key={f} label={f} variant="accent" />
               ))}
             </View>
-          </View>
-
-          {/* Synopsis */}
-          <View style={styles.section}>
-            <Label>Synopsis</Label>
-            <Body>{movie.synopsis}</Body>
           </View>
 
           {/* Director */}
@@ -117,12 +160,7 @@ export function MovieDetailScreen({ navigation, route }: Props) {
 
       {/* Sticky CTA */}
       <View style={styles.cta}>
-        <Button
-          label="Book Tickets"
-          onPress={handleBookNow}
-          fullWidth
-          size="lg"
-        />
+        <Button label="Book Tickets" onPress={handleBookNow} fullWidth size="lg" />
       </View>
     </SafeAreaView>
   );
@@ -131,6 +169,21 @@ export function MovieDetailScreen({ navigation, route }: Props) {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: Colors.background },
   content: { paddingBottom: 100 },
+
+  // Hero
+  heroContainer: {
+    width: SCREEN_WIDTH,
+    height: 260,
+    position: 'relative',
+    overflow: 'hidden',
+  },
+  blurredBg: {
+    width: '100%',
+    height: '100%',
+  },
+  heroOverlay: {
+    backgroundColor: 'rgba(20, 26, 33, 0.75)',
+  },
   backButton: {
     position: 'absolute',
     top: Spacing.md,
@@ -141,27 +194,29 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.xs,
   },
-  backText: { color: Colors.textPrimary, fontWeight: FontWeight.medium },
-  backdrop: {
-    width: '100%',
-    height: 220,
+  backText: {
+    color: Colors.textPrimary,
+    fontWeight: FontWeight.medium,
+    fontSize: FontSize.sm,
+    fontFamily: FontFamily.medium,
   },
-  body: { padding: Spacing.md, gap: Spacing.lg },
   heroRow: {
     flexDirection: 'row',
     gap: Spacing.md,
-    marginTop: -60,
+    padding: Spacing.md,
+    paddingTop: Spacing.xl + Spacing.md,
+    flex: 1,
+    alignItems: 'flex-end',
   },
   poster: {
-    width: 100,
-    height: 150,
+    width: 90,
+    height: 135,
     borderRadius: Radius.md,
     borderWidth: 2,
     borderColor: Colors.border,
   },
   titleBlock: {
     flex: 1,
-    paddingTop: Spacing.xl,
     gap: Spacing.sm,
   },
   title: {
@@ -169,9 +224,52 @@ const styles = StyleSheet.create({
     fontWeight: FontWeight.bold,
     color: Colors.textPrimary,
   },
-  genreRow: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.xs },
-  metaRow: { flexDirection: 'row', flexWrap: 'wrap' },
-  releaseDate: { color: Colors.textMuted },
+  pillRow: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.xs },
+
+  // Date selector
+  dateSectionWrapper: {
+    paddingTop: Spacing.md,
+    gap: Spacing.sm,
+  },
+  dateSectionLabel: {
+    paddingHorizontal: Spacing.md,
+  },
+  dateList: {
+    paddingHorizontal: Spacing.md,
+    gap: Spacing.sm,
+  },
+  dateBtn: {
+    width: 56,
+    height: 64,
+    borderRadius: Radius.lg,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Colors.surface,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    gap: 2,
+  },
+  dateBtnActive: {
+    backgroundColor: Colors.accent,
+    borderColor: Colors.accent,
+  },
+  dateBtnDay: {
+    color: Colors.textMuted,
+    fontSize: FontSize.xs,
+    fontFamily: FontFamily.medium,
+  },
+  dateBtnDate: {
+    color: Colors.textPrimary,
+    fontSize: FontSize.md,
+    fontFamily: FontFamily.bold,
+    fontWeight: FontWeight.bold,
+  },
+  dateBtnTextActive: {
+    color: Colors.textPrimary,
+  },
+
+  // Body
+  body: { padding: Spacing.md, gap: Spacing.lg },
   section: { gap: Spacing.sm },
   formatRow: { flexDirection: 'row', gap: Spacing.sm, flexWrap: 'wrap' },
   value: { color: Colors.textPrimary },

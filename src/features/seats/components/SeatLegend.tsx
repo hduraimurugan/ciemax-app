@@ -3,26 +3,21 @@ import { StyleSheet, View } from 'react-native';
 import { Colors, Radius, Spacing } from '@constants/theme';
 import { Caption } from '@shared/ui';
 
-interface LegendItem {
-  color: string;
-  label: string;
-}
-
-const LEGEND_ITEMS: LegendItem[] = [
-  { color: Colors.seatAvailable, label: 'Available' },
-  { color: Colors.seatSelected, label: 'Selected' },
-  { color: Colors.seatBooked, label: 'Booked' },
-];
-
 export function SeatLegend() {
   return (
     <View style={styles.container}>
-      {LEGEND_ITEMS.map(item => (
-        <View key={item.label} style={styles.item}>
-          <View style={[styles.dot, { backgroundColor: item.color }]} />
-          <Caption>{item.label}</Caption>
-        </View>
-      ))}
+      <View style={styles.item}>
+        <View style={[styles.dot, styles.dotAvailable]} />
+        <Caption>Available</Caption>
+      </View>
+      <View style={styles.item}>
+        <View style={[styles.dot, styles.dotSelected]} />
+        <Caption>Selected</Caption>
+      </View>
+      <View style={styles.item}>
+        <View style={[styles.dot, styles.dotBooked]} />
+        <Caption>Booked</Caption>
+      </View>
     </View>
   );
 }
@@ -43,5 +38,16 @@ const styles = StyleSheet.create({
     width: 14,
     height: 14,
     borderRadius: Radius.xs,
+  },
+  dotAvailable: {
+    backgroundColor: Colors.transparent,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  dotSelected: {
+    backgroundColor: Colors.emerald,
+  },
+  dotBooked: {
+    backgroundColor: Colors.surfaceHighlight,
   },
 });

@@ -13,7 +13,9 @@ import {
   OrderSummaryScreen,
   PaymentScreen,
   BookingSuccessScreen,
+  BookingFailureScreen,
 } from '@features/booking';
+import { ProfileScreen } from '@features/profile';
 import { LoginScreen, RegisterScreen } from '@features/auth';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -45,6 +47,14 @@ export function RootNavigator() {
         component={BookingSuccessScreen}
         options={{ animation: 'fade', gestureEnabled: false }}
       />
+      <Stack.Screen
+        name="BookingFailure"
+        component={BookingFailureScreen}
+        options={{ animation: 'fade', gestureEnabled: false }}
+      />
+
+      {/* Profile */}
+      <Stack.Screen name="Profile" component={ProfileScreen} />
 
       {/* Auth */}
       <Stack.Screen name="Login" component={LoginScreen} />

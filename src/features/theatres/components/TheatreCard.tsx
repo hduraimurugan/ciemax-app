@@ -1,6 +1,6 @@
-import React from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
-import { Theatre } from '@ctypes/models';
+import React, { useState } from 'react';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Show, Theatre } from '@ctypes/models';
 import { Colors, FontSize, FontWeight, Radius, Spacing } from '@constants/theme';
 import { Heading3, Body, BodySmall, Caption } from '@shared/ui';
 import { Badge } from '@shared/ui';
@@ -8,9 +8,13 @@ import { Badge } from '@shared/ui';
 interface TheatreCardProps {
   theatre: Theatre;
   onPress: (theatre: Theatre) => void;
+  shows?: Show[];
+  onShowPress?: (show: Show) => void;
 }
 
-export function TheatreCard({ theatre, onPress }: TheatreCardProps) {
+export function TheatreCard({ theatre, onPress, shows, onShowPress }: TheatreCardProps) {
+  const [isFav, setIsFav] = useState(false);
+
   return (
     <Pressable
       style={({ pressed }) => [styles.card, pressed && styles.pressed]}
@@ -18,20 +22,52 @@ export function TheatreCard({ theatre, onPress }: TheatreCardProps) {
       <View style={styles.header}>
         <View style={styles.titleBlock}>
           <Heading3 numberOfLines={1}>{theatre.name}</Heading3>
-          <Body numberOfLines={1}>{theatre.address}</Body>
+          <Body numberOfLines={1} style={styles.address}>{theatre.address}</Body>
+          {theatre.distance ? (
+            <Caption style={styles.distance}>📍 {theatre.distance}</Caption>
+          ) : null}
         </View>
         <View style={styles.right}>
-          {theatre.distance ? (
-            <Caption style={styles.distance}>{theatre.distance}</Caption>
-          ) : null}
+          <Pressable
+            style={styles.favBtn}
+            onPress={e => {
+              e.stopPropagation?.();
+              setIsFav(f => !f);
+            }}>
+            <Text style={[styles.heart, isFav && styles.heartActive]}>
+              {isFav ? '♥' : '♡'}
+            </Text>
+          </Pressable>
           <BodySmall style={styles.rating}>⭐ {theatre.rating}</BodySmall>
         </View>
       </View>
+
       <View style={styles.amenities}>
         {theatre.amenities.map(a => (
           <Badge key={a} label={a} variant="default" style={styles.badge} />
         ))}
       </View>
+
+      {/* Showtime buttons */}
+      {shows && shows.length > 0 ? (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.showTimes}>
+          {shows.map(show => (
+            <Pressable
+              key={show.id}
+              style={styles.showBtn}
+              onPress={e => {
+                e.stopPropagation?.();
+                onShowPress?.(show);
+              }}>
+              <BodySmall style={styles.showTime}>{show.time}</BodySmall>
+              <Caption style={styles.showFormat}>{show.format}</Caption>
+            </Pressable>
+          ))}
+        </ScrollView>
+      ) : null}
     </Pressable>
   );
 }
@@ -54,7 +90,18 @@ const styles = StyleSheet.create({
     gap: Spacing.sm,
   },
   titleBlock: { flex: 1, gap: 2 },
+  address: { color: Colors.textSecondary, fontSize: FontSize.sm },
   right: { alignItems: 'flex-end', gap: 4 },
+  favBtn: {
+    padding: 4,
+  },
+  heart: {
+    fontSize: FontSize.lg,
+    color: Colors.textMuted,
+  },
+  heartActive: {
+    color: Colors.accent,
+  },
   distance: {
     color: Colors.info,
     fontSize: FontSize.xs,
@@ -70,4 +117,27 @@ const styles = StyleSheet.create({
     gap: Spacing.xs,
   },
   badge: {},
+  // Showtimes
+  showTimes: {
+    gap: Spacing.sm,
+    paddingTop: Spacing.xs,
+  },
+  showBtn: {
+    borderWidth: 1,
+    borderColor: Colors.success,
+    borderRadius: Radius.sm,
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: Spacing.xs,
+    alignItems: 'center',
+    minWidth: 80,
+  },
+  showTime: {
+    color: Colors.success,
+    fontWeight: FontWeight.semibold,
+    fontSize: FontSize.sm,
+  },
+  showFormat: {
+    color: Colors.textMuted,
+    fontSize: FontSize.xs - 1,
+  },
 });

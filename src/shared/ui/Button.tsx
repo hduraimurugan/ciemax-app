@@ -8,7 +8,7 @@ import {
 } from 'react-native';
 import { Colors, FontSize, FontWeight, Radius, Spacing } from '@constants/theme';
 
-type Variant = 'primary' | 'secondary' | 'ghost' | 'danger';
+type Variant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'emerald';
 type Size = 'sm' | 'md' | 'lg';
 
 interface ButtonProps {
@@ -52,7 +52,7 @@ export function Button({
       {loading ? (
         <ActivityIndicator
           size="small"
-          color={variant === 'primary' || variant === 'danger' ? Colors.textPrimary : Colors.accent}
+          color={variant === 'primary' || variant === 'danger' || variant === 'emerald' ? Colors.textPrimary : Colors.accent}
         />
       ) : (
         <>
@@ -106,6 +106,9 @@ const styles = StyleSheet.create({
   danger: {
     backgroundColor: Colors.error,
   },
+  emerald: {
+    backgroundColor: Colors.emerald,
+  },
 
   // Sizes
   size_sm: {
@@ -132,6 +135,7 @@ const styles = StyleSheet.create({
   label_secondary: { color: Colors.accent },
   label_ghost: { color: Colors.textSecondary },
   label_danger: { color: Colors.textPrimary },
+  label_emerald: { color: Colors.textPrimary },
 
   // Label sizes
   labelSize_sm: { fontSize: FontSize.xs + 1 },

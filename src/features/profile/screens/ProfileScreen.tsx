@@ -4,11 +4,18 @@ import {
   SafeAreaView,
   ScrollView,
   StyleSheet,
+  Text,
   View,
 } from 'react-native';
-import { Colors, Radius, Spacing } from '@constants/theme';
-import { Card } from '@shared/ui';
+import LinearGradient from 'react-native-linear-gradient';
+import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { RootStackParamList } from '@ctypes/navigation';
+import { Colors, FontFamily, FontSize, FontWeight, Radius, Spacing } from '@constants/theme';
+import { Button, Card } from '@shared/ui';
 import { Heading2, Heading3, Body, BodySmall, Caption } from '@shared/ui';
+
+type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
 interface ProfileMenuItem {
   icon: string;
@@ -18,8 +25,15 @@ interface ProfileMenuItem {
 }
 
 export function ProfileScreen() {
+  const navigation = useNavigation<NavigationProp>();
+
   const menuItems: ProfileMenuItem[] = [
-    { icon: '🎟', label: 'My Bookings', description: 'View your booking history', onPress: () => {} },
+    {
+      icon: '🎟',
+      label: 'My Bookings',
+      description: 'View your booking history',
+      onPress: () => navigation.navigate('MainTabs'),
+    },
     { icon: '🏷️', label: 'Offers & Coupons', description: 'View available offers', onPress: () => {} },
     { icon: '📍', label: 'Saved Theatres', description: 'Your favourite theatres', onPress: () => {} },
     { icon: '🔔', label: 'Notifications', description: 'Manage alerts', onPress: () => {} },
@@ -29,19 +43,35 @@ export function ProfileScreen() {
 
   return (
     <SafeAreaView style={styles.screen}>
+      <View style={styles.pageHeader}>
+        <Pressable style={styles.backBtn} onPress={() => navigation.goBack()}>
+          <Text style={styles.backText}>←</Text>
+        </Pressable>
+        <Heading2>Profile</Heading2>
+      </View>
+
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.content}>
         {/* Avatar section */}
         <View style={styles.avatarSection}>
-          <View style={styles.avatar}>
-            <Heading2 style={styles.avatarText}>👤</Heading2>
-          </View>
-          <Heading2>Hello, Cinephile!</Heading2>
-          <Body>user@example.com</Body>
-          <Pressable style={styles.editButton}>
-            <Caption style={styles.editText}>Edit Profile</Caption>
-          </Pressable>
+          <LinearGradient
+            colors={[Colors.accent, Colors.accentDim]}
+            style={styles.avatar}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}>
+            <Text style={styles.avatarInitials}>DH</Text>
+          </LinearGradient>
+          <Heading2 style={styles.userName}>Hello, Cinephile!</Heading2>
+          <Body style={styles.userEmail}>user@example.com</Body>
+          <Body style={styles.userPhone}>+91 98765 43210</Body>
+          <Button
+            label="Edit Profile"
+            variant="secondary"
+            size="sm"
+            onPress={() => {}}
+            style={styles.editBtn}
+          />
         </View>
 
         {/* Menu */}
@@ -49,12 +79,14 @@ export function ProfileScreen() {
           {menuItems.map(item => (
             <Card key={item.label} onPress={item.onPress} padding="md">
               <View style={styles.menuRow}>
-                <Body style={styles.menuIcon}>{item.icon}</Body>
+                <View style={styles.menuIconWrapper}>
+                  <Text style={styles.menuIcon}>{item.icon}</Text>
+                </View>
                 <View style={styles.menuText}>
                   <Heading3 style={styles.menuLabel}>{item.label}</Heading3>
                   <BodySmall>{item.description}</BodySmall>
                 </View>
-                <Caption style={styles.chevron}>›</Caption>
+                <Text style={styles.chevron}>›</Text>
               </View>
             </Card>
           ))}
@@ -71,6 +103,27 @@ export function ProfileScreen() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: Colors.background },
+  pageHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: Spacing.md,
+    gap: Spacing.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+  },
+  backBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: Radius.sm,
+    backgroundColor: Colors.surfaceElevated,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  backText: {
+    color: Colors.textPrimary,
+    fontSize: FontSize.md,
+    fontFamily: FontFamily.medium,
+  },
   content: { padding: Spacing.md, gap: Spacing.lg, paddingBottom: Spacing.xxl },
   avatarSection: {
     alignItems: 'center',
@@ -81,31 +134,50 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: Radius.full,
-    backgroundColor: Colors.surface,
-    borderWidth: 2,
-    borderColor: Colors.accent,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  avatarText: { fontSize: 36 },
-  editButton: {
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.xs,
-    borderRadius: Radius.full,
-    borderWidth: 1,
-    borderColor: Colors.accent,
+  avatarInitials: {
+    color: Colors.textPrimary,
+    fontSize: FontSize.xl,
+    fontFamily: FontFamily.bold,
+    fontWeight: FontWeight.bold,
   },
-  editText: { color: Colors.accent },
+  userName: {
+    color: Colors.textPrimary,
+  },
+  userEmail: {
+    color: Colors.textSecondary,
+  },
+  userPhone: {
+    color: Colors.textMuted,
+    fontSize: FontSize.sm,
+  },
+  editBtn: {
+    marginTop: Spacing.xs,
+  },
   menu: { gap: Spacing.sm },
   menuRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.md,
   },
-  menuIcon: { fontSize: 22 },
+  menuIconWrapper: {
+    width: 40,
+    height: 40,
+    borderRadius: Radius.sm,
+    backgroundColor: Colors.surfaceElevated,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  menuIcon: { fontSize: 20 },
   menuText: { flex: 1, gap: 2 },
   menuLabel: { color: Colors.textPrimary },
-  chevron: { fontSize: 20, color: Colors.textMuted },
+  chevron: {
+    fontSize: 18,
+    color: Colors.textMuted,
+    fontFamily: FontFamily.regular,
+  },
   signOut: {
     alignItems: 'center',
     paddingVertical: Spacing.md,

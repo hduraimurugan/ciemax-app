@@ -2,7 +2,7 @@ import React from 'react';
 import { StyleSheet, Text, View, ViewStyle } from 'react-native';
 import { Colors, FontSize, FontWeight, Radius, Spacing } from '@constants/theme';
 
-type BadgeVariant = 'default' | 'accent' | 'success' | 'warning' | 'error' | 'gold' | 'silver' | 'premium';
+type BadgeVariant = 'default' | 'accent' | 'success' | 'warning' | 'error' | 'gold' | 'silver' | 'premium' | 'violet' | 'zinc' | 'info';
 
 interface BadgeProps {
   label: string;
@@ -39,6 +39,9 @@ const styles = StyleSheet.create({
   gold: { backgroundColor: Colors.goldDim },
   silver: { backgroundColor: Colors.silverDim },
   premium: { backgroundColor: Colors.accentLight },
+  violet: { backgroundColor: Colors.violetDim },
+  zinc: { backgroundColor: Colors.zincSurface },
+  info: { backgroundColor: 'rgba(59, 130, 246, 0.12)' },
 
   text_default: { color: Colors.textSecondary },
   text_accent: { color: Colors.accent },
@@ -48,4 +51,7 @@ const styles = StyleSheet.create({
   text_gold: { color: Colors.gold },
   text_silver: { color: Colors.silver },
   text_premium: { color: Colors.accent },
+  text_violet: { color: Colors.violet },
+  text_zinc: { color: Colors.textSecondary },
+  text_info: { color: Colors.info },
 });

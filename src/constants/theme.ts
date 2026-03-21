@@ -50,6 +50,21 @@ export const Colors = {
   // Stars / rating
   star: '#FFD700',
 
+  // Emerald — selected seats, seat CTA, booking success accents
+  emerald: '#10B981',
+  emeraldDim: 'rgba(16, 185, 129, 0.12)',
+
+  // Violet — offer card accents
+  violet: '#8B5CF6',
+  violetDim: 'rgba(139, 92, 246, 0.12)',
+
+  // Zinc — seat pills on ticket card
+  zinc: '#71717A',
+  zincSurface: '#27272A',
+
+  // Navbar border — slightly darker than border
+  navbarBorder: 'rgba(255, 255, 255, 0.06)',
+
   transparent: 'transparent',
 };
 
@@ -61,6 +76,7 @@ export const Spacing = {
   xl: 32,
   xxl: 48,
   xxxl: 64,
+  tabBarHeight: 64,
 };
 
 export const Radius = {

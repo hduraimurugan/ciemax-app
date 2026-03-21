@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { Booking, Movie, Seat, Show, Theatre } from '@ctypes/models';
+import { Booking, Movie, Offer, Seat, Show, Theatre } from '@ctypes/models';
 
 interface BookingState {
   // Flow state
@@ -8,6 +8,7 @@ interface BookingState {
   selectedShow: Show | null;
   selectedSeats: Seat[];
   appliedCoupon: string | null;
+  appliedOffer: Offer | null;
   bookingDetails: Booking | null;
 
   // Actions
@@ -17,12 +18,15 @@ interface BookingState {
   toggleSeat: (seat: Seat) => void;
   clearSeatSelection: () => void;
   setAppliedCoupon: (code: string | null) => void;
+  setAppliedOffer: (offer: Offer | null) => void;
   setBookingDetails: (booking: Booking) => void;
   resetBookingFlow: () => void;
 
   // Computed (via selector pattern)
   getTotalAmount: () => number;
   getConvenienceFee: () => number;
+  getGST: () => number;
+  getAppliedDiscount: () => number;
   getGrandTotal: () => number;
 }
 
@@ -32,6 +36,7 @@ export const useBookingStore = create<BookingState>((set, get) => ({
   selectedShow: null,
   selectedSeats: [],
   appliedCoupon: null,
+  appliedOffer: null,
   bookingDetails: null,
 
   setSelectedMovie: movie => set({ selectedMovie: movie }),
@@ -59,6 +64,8 @@ export const useBookingStore = create<BookingState>((set, get) => ({
 
   setAppliedCoupon: code => set({ appliedCoupon: code }),
 
+  setAppliedOffer: offer => set({ appliedOffer: offer, appliedCoupon: offer?.code ?? null }),
+
   setBookingDetails: booking => set({ bookingDetails: booking }),
 
   resetBookingFlow: () =>
@@ -68,16 +75,33 @@ export const useBookingStore = create<BookingState>((set, get) => ({
       selectedShow: null,
       selectedSeats: [],
       appliedCoupon: null,
+      appliedOffer: null,
       bookingDetails: null,
     }),
 
   getTotalAmount: () =>
     get().selectedSeats.reduce((sum, s) => sum + s.price, 0),
 
-  getConvenienceFee: () => {
-    const total = get().getTotalAmount();
-    return Math.round(total * 0.05); // 5% convenience fee
+  // ₹15 per seat (matches cinema-hall-users)
+  getConvenienceFee: () => get().selectedSeats.length * 15,
+
+  // 18% GST on convenience fee only
+  getGST: () => Math.round(get().getConvenienceFee() * 0.18),
+
+  getAppliedDiscount: () => {
+    const { appliedOffer, getTotalAmount } = get();
+    if (!appliedOffer) return 0;
+    const subtotal = getTotalAmount();
+    if (subtotal < appliedOffer.minOrderAmount) return 0;
+    if (appliedOffer.discountType === 'flat') {
+      return Math.min(appliedOffer.discountValue, appliedOffer.maxDiscount);
+    }
+    const pct = Math.round(subtotal * appliedOffer.discountValue / 100);
+    return Math.min(pct, appliedOffer.maxDiscount);
   },
 
-  getGrandTotal: () => get().getTotalAmount() + get().getConvenienceFee(),
+  getGrandTotal: () => {
+    const { getTotalAmount, getConvenienceFee, getGST, getAppliedDiscount } = get();
+    return getTotalAmount() + getConvenienceFee() + getGST() - getAppliedDiscount();
+  },
 }));

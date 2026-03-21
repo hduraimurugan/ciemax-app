@@ -7,6 +7,8 @@ export type RootStackParamList = {
   OrderSummary: undefined;
   Payment: undefined;
   BookingSuccess: { bookingId: string };
+  BookingFailure: { error?: string };
+  Profile: undefined;
   Login: undefined;
   Register: undefined;
 };
@@ -14,6 +16,6 @@ export type RootStackParamList = {
 export type TabParamList = {
   Home: undefined;
   TheatresTab: undefined;
+  OffersTab: undefined;
   Bookings: undefined;
-  Profile: undefined;
 };

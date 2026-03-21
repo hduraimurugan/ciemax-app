@@ -1,18 +1,12 @@
 import React from 'react';
-import {
-  Dimensions,
-  Image,
-  Pressable,
-  StyleSheet,
-  View,
-} from 'react-native';
+import { Image, Pressable, StyleSheet, View } from 'react-native';
 import { Movie } from '@ctypes/models';
 import { Colors, FontSize, FontWeight, Radius, Spacing } from '@constants/theme';
-import { Badge } from '@shared/ui';
 import { Heading3, BodySmall, Caption } from '@shared/ui';
-import { formatDuration, formatRating } from '@shared/utils';
+import { formatRating } from '@shared/utils';
 
-const CARD_WIDTH = (Dimensions.get('window').width - Spacing.md * 2 - Spacing.sm) / 2;
+const CARD_WIDTH = 160;
+const CARD_HEIGHT = 240; // aspect-[2/3]
 
 interface MovieCardProps {
   movie: Movie;
@@ -34,17 +28,18 @@ export function MovieCard({ movie, onPress }: MovieCardProps) {
         <View style={styles.ratingPill}>
           <Caption style={styles.ratingText}>⭐ {formatRating(movie.rating)}</Caption>
         </View>
-        {/* Format badges */}
-        <View style={styles.formatRow}>
-          {movie.format.slice(0, 2).map(f => (
-            <Badge key={f} label={f} variant="default" style={styles.formatBadge} />
+        {/* Genre chips at bottom */}
+        <View style={styles.genreRow}>
+          {movie.genre.slice(0, 2).map(g => (
+            <View key={g} style={styles.genreChip}>
+              <Caption style={styles.genreText}>{g}</Caption>
+            </View>
           ))}
         </View>
       </View>
       <View style={styles.info}>
         <Heading3 numberOfLines={2} style={styles.title}>{movie.title}</Heading3>
-        <BodySmall numberOfLines={1}>{movie.genre.slice(0, 2).join(' · ')}</BodySmall>
-        <BodySmall style={styles.meta}>{formatDuration(movie.duration)} · {movie.language}</BodySmall>
+        <BodySmall style={styles.meta} numberOfLines={1}>{movie.language}</BodySmall>
       </View>
     </Pressable>
   );
@@ -58,12 +53,12 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.border,
     overflow: 'hidden',
-    marginBottom: Spacing.md,
+    marginRight: Spacing.sm,
   },
   pressed: { opacity: 0.85, transform: [{ scale: 0.98 }] },
   posterWrapper: {
-    width: '100%',
-    height: CARD_WIDTH * 1.45,
+    width: CARD_WIDTH,
+    height: CARD_HEIGHT,
     position: 'relative',
   },
   poster: {
@@ -84,15 +79,23 @@ const styles = StyleSheet.create({
     fontWeight: FontWeight.semibold,
     fontSize: FontSize.xs,
   },
-  formatRow: {
+  genreRow: {
     position: 'absolute',
     bottom: Spacing.xs,
     left: Spacing.xs,
     flexDirection: 'row',
     gap: 4,
+    flexWrap: 'nowrap',
   },
-  formatBadge: {
-    backgroundColor: 'rgba(0,0,0,0.7)',
+  genreChip: {
+    backgroundColor: 'rgba(0,0,0,0.65)',
+    borderRadius: Radius.full,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+  },
+  genreText: {
+    color: Colors.textSecondary,
+    fontSize: FontSize.xs - 1,
   },
   info: {
     padding: Spacing.sm,
@@ -105,6 +108,6 @@ const styles = StyleSheet.create({
   },
   meta: {
     color: Colors.textMuted,
-    marginTop: 2,
+    fontSize: FontSize.xs,
   },
 });

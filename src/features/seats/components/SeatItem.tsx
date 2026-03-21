@@ -3,8 +3,8 @@ import { Pressable, StyleSheet, Text } from 'react-native';
 import { Seat } from '@ctypes/models';
 import { Colors, FontSize, FontWeight, Radius } from '@constants/theme';
 
-const SEAT_SIZE = 30;
-const SEAT_GAP = 5;
+const SEAT_SIZE = 28;
+const SEAT_GAP = 4;
 
 interface SeatItemProps {
   seat: Seat;
@@ -36,19 +36,21 @@ const styles = StyleSheet.create({
   seat: {
     width: SEAT_SIZE,
     height: SEAT_SIZE,
-    borderRadius: Radius.xs + 1,
-    backgroundColor: Colors.seatAvailable,
+    borderRadius: Radius.xs,
+    backgroundColor: Colors.transparent,
+    borderWidth: 1,
+    borderColor: Colors.border,
     alignItems: 'center',
     justifyContent: 'center',
     margin: SEAT_GAP / 2,
   },
   booked: {
-    backgroundColor: Colors.seatBooked,
-    borderWidth: 1,
-    borderColor: Colors.seatBookedBorder,
+    backgroundColor: Colors.surfaceHighlight,
+    borderColor: Colors.surfaceHighlight,
   },
   selected: {
-    backgroundColor: Colors.seatSelected,
+    backgroundColor: Colors.emerald,
+    borderColor: Colors.emerald,
   },
   label: {
     fontSize: FontSize.xs - 1,

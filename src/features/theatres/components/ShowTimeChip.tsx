@@ -62,8 +62,8 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.surface,
   },
   chipSelected: {
-    borderColor: Colors.accent,
-    backgroundColor: Colors.accentLight,
+    borderColor: Colors.success,
+    backgroundColor: Colors.emeraldDim,
   },
   chipDisabled: {
     opacity: 0.4,
@@ -78,7 +78,7 @@ const styles = StyleSheet.create({
     fontSize: FontSize.sm,
     color: Colors.textPrimary,
   },
-  timeSelected: { color: Colors.accent },
+  timeSelected: { color: Colors.success },
   format: { color: Colors.textMuted },
   avail: { fontSize: FontSize.xs - 1 },
 });
