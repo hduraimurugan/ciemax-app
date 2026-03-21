@@ -9,6 +9,10 @@ CineBook uses a **feature-sliced architecture** — code is organised by domain 
 ## Full Folder Tree
 
 ```
+MyApp/
+├── metro.config.js                # resolver.unstable_enablePackageExports: false
+│                                  # (forces CJS build of lucide-react-native)
+│
 src/
 ├── app/
 │   └── navigation/

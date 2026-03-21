@@ -17,6 +17,7 @@ A production-grade **React Native** mobile application for cinema ticket booking
 | Animations | React Native Reanimated v3 |
 | Gestures | React Native Gesture Handler v2 |
 | Storage | @react-native-async-storage/async-storage |
+| Icons | lucide-react-native + react-native-svg |
 | Gradients | react-native-linear-gradient |
 | QR Codes | react-native-qrcode-svg + react-native-svg |
 | Runtime | Hermes JS Engine |
@@ -63,11 +64,15 @@ npm run android
 npm run ios
 ```
 
-### Reset Metro cache (after changing babel.config.js or tsconfig.json)
+### Reset Metro cache
+
+Required after changing `babel.config.js`, `tsconfig.json`, `metro.config.js`, or adding native packages:
 
 ```bash
 npm start -- --reset-cache
 ```
+
+> `lucide-react-native` requires `metro.config.js` to set `resolver.unstable_enablePackageExports: false`. Without this, Metro picks up the ESM build which Hermes cannot process. See [`metro.config.js`](metro.config.js) and [`docs/design-system.md`](docs/design-system.md#icons) for details.
 
 ---
 
