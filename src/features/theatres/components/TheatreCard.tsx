@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Heart, Star, MapPin } from 'lucide-react-native';
 import { Show, Theatre } from '@ctypes/models';
 import { Colors, FontSize, FontWeight, Radius, Spacing } from '@constants/theme';
 import { Heading3, Body, BodySmall, Caption } from '@shared/ui';
@@ -24,7 +25,10 @@ export function TheatreCard({ theatre, onPress, shows, onShowPress }: TheatreCar
           <Heading3 numberOfLines={1}>{theatre.name}</Heading3>
           <Body numberOfLines={1} style={styles.address}>{theatre.address}</Body>
           {theatre.distance ? (
-            <Caption style={styles.distance}>📍 {theatre.distance}</Caption>
+            <View style={styles.distanceRow}>
+              <MapPin size={11} color={Colors.info} />
+              <Caption style={styles.distance}>{theatre.distance}</Caption>
+            </View>
           ) : null}
         </View>
         <View style={styles.right}>
@@ -34,11 +38,16 @@ export function TheatreCard({ theatre, onPress, shows, onShowPress }: TheatreCar
               e.stopPropagation?.();
               setIsFav(f => !f);
             }}>
-            <Text style={[styles.heart, isFav && styles.heartActive]}>
-              {isFav ? '♥' : '♡'}
-            </Text>
+            <Heart
+              size={20}
+              color={isFav ? Colors.accent : Colors.textMuted}
+              fill={isFav ? Colors.accent : 'none'}
+            />
           </Pressable>
-          <BodySmall style={styles.rating}>⭐ {theatre.rating}</BodySmall>
+          <View style={styles.ratingRow}>
+            <Star size={12} color={Colors.star} fill={Colors.star} />
+            <BodySmall style={styles.rating}>{theatre.rating}</BodySmall>
+          </View>
         </View>
       </View>
 
@@ -95,16 +104,19 @@ const styles = StyleSheet.create({
   favBtn: {
     padding: 4,
   },
-  heart: {
-    fontSize: FontSize.lg,
-    color: Colors.textMuted,
-  },
-  heartActive: {
-    color: Colors.accent,
+  distanceRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
   },
   distance: {
     color: Colors.info,
     fontSize: FontSize.xs,
+  },
+  ratingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
   },
   rating: {
     color: Colors.star,

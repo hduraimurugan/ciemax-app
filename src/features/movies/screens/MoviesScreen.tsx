@@ -8,6 +8,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import { Search, ChevronDown, User } from 'lucide-react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '@ctypes/navigation';
@@ -54,10 +55,13 @@ export function MoviesScreen() {
       <View style={styles.header}>
         <Text style={styles.logo}>CINEBOOK</Text>
         <View style={styles.headerRight}>
-          <Text style={styles.searchIcon}>⌕</Text>
-          <Caption style={styles.location}>Mumbai ▾</Caption>
+          <Search size={20} color={Colors.textSecondary} />
+          <View style={styles.locationRow}>
+            <Caption style={styles.location}>Mumbai</Caption>
+            <ChevronDown size={12} color={Colors.textMuted} />
+          </View>
           <Pressable style={styles.avatar} onPress={handleAvatarPress}>
-            <Text style={styles.avatarIcon}>👤</Text>
+            <User size={16} color={Colors.textSecondary} />
           </Pressable>
         </View>
       </View>
@@ -159,9 +163,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: Spacing.sm + 2,
   },
-  searchIcon: {
-    color: Colors.textSecondary,
-    fontSize: FontSize.lg,
+  locationRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
   },
   location: {
     color: Colors.textMuted,
@@ -173,9 +178,6 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.surfaceElevated,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  avatarIcon: {
-    fontSize: FontSize.sm,
   },
   // Secondary nav
   navBar: {

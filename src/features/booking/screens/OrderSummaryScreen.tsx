@@ -9,6 +9,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import { ArrowLeft } from 'lucide-react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '@ctypes/navigation';
 import { Offer } from '@ctypes/models';
@@ -78,7 +79,7 @@ export function OrderSummaryScreen({ navigation }: Props) {
       {/* Sticky header */}
       <View style={styles.header}>
         <Pressable style={styles.backBtn} onPress={() => navigation.goBack()}>
-          <Text style={styles.backText}>←</Text>
+          <ArrowLeft size={18} color={Colors.textPrimary} />
         </Pressable>
         <Body style={styles.headerTitle}>Order Summary</Body>
         <CountdownTimer initialSeconds={600} onExpire={handleSessionExpire} />
@@ -232,11 +233,6 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.surfaceElevated,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  backText: {
-    color: Colors.textPrimary,
-    fontSize: FontSize.md,
-    fontFamily: FontFamily.medium,
   },
   headerTitle: {
     flex: 1,

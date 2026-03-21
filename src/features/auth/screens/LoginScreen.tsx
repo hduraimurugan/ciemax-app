@@ -9,6 +9,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import { Lock } from 'lucide-react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '@ctypes/navigation';
 import { Colors, FontFamily, FontSize, FontWeight, Radius, Spacing } from '@constants/theme';
@@ -46,7 +47,7 @@ export function LoginScreen({ navigation }: Props) {
             <View style={styles.formBody}>
               <View style={styles.iconRow}>
                 <View style={styles.iconCircle}>
-                  <Text style={styles.iconEmoji}>🔒</Text>
+                  <Lock size={24} color={Colors.accent} />
                 </View>
                 <Heading2 style={styles.formTitle}>Welcome to CineBook</Heading2>
                 <Body style={styles.formSub}>Sign in to your account</Body>
@@ -149,9 +150,6 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.accentLight,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  iconEmoji: {
-    fontSize: 24,
   },
   formTitle: {
     textAlign: 'center',

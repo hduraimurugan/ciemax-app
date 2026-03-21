@@ -9,6 +9,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import { ArrowLeft } from 'lucide-react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '@ctypes/navigation';
 import { Movie } from '@ctypes/models';
@@ -84,7 +85,7 @@ export function MovieDetailScreen({ navigation, route }: Props) {
 
           {/* Back button */}
           <Pressable style={styles.backButton} onPress={() => navigation.goBack()}>
-            <Text style={styles.backText}>← Back</Text>
+            <ArrowLeft size={18} color={Colors.textPrimary} />
           </Pressable>
 
           {/* Poster + title */}
@@ -99,7 +100,7 @@ export function MovieDetailScreen({ navigation, route }: Props) {
                 <Badge label={movie.language} variant="default" />
                 <Badge label={formatDuration(movie.duration)} variant="default" />
               </View>
-              <Badge label={`⭐ ${formatRating(movie.rating)}/10`} variant="warning" />
+              <Badge label={`★ ${formatRating(movie.rating)}/10`} variant="warning" />
             </View>
           </View>
         </View>
@@ -191,14 +192,10 @@ const styles = StyleSheet.create({
     zIndex: 10,
     backgroundColor: 'rgba(0,0,0,0.5)',
     borderRadius: Radius.full,
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.xs,
-  },
-  backText: {
-    color: Colors.textPrimary,
-    fontWeight: FontWeight.medium,
-    fontSize: FontSize.sm,
-    fontFamily: FontFamily.medium,
+    width: 36,
+    height: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   heroRow: {
     flexDirection: 'row',

@@ -1,6 +1,7 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet } from 'react-native';
+import { Film, Building2, Tag, Ticket } from 'lucide-react-native';
 import { Colors, FontFamily, FontSize, Spacing } from '@constants/theme';
 import { TabParamList } from '@ctypes/navigation';
 
@@ -12,13 +13,11 @@ import { OffersScreen } from '@features/offers';
 
 const Tab = createBottomTabNavigator<TabParamList>();
 
-function TabIcon({ icon, focused }: { icon: string; focused: boolean }) {
-  return (
-    <View style={styles.iconWrapper}>
-      <Text style={[styles.icon, focused && styles.iconFocused]}>{icon}</Text>
-    </View>
-  );
-}
+type TabIconProps = { color: string; size: number };
+function FilmIcon({ color, size }: TabIconProps) { return <Film color={color} size={size} />; }
+function Building2Icon({ color, size }: TabIconProps) { return <Building2 color={color} size={size} />; }
+function TagIcon({ color, size }: TabIconProps) { return <Tag color={color} size={size} />; }
+function TicketIcon({ color, size }: TabIconProps) { return <Ticket color={color} size={size} />; }
 
 export function TabNavigator() {
   return (
@@ -33,34 +32,22 @@ export function TabNavigator() {
       <Tab.Screen
         name="Home"
         component={MoviesScreen}
-        options={{
-          tabBarLabel: 'Movies',
-          tabBarIcon: ({ focused }) => <TabIcon icon="🎬" focused={focused} />,
-        }}
+        options={{ tabBarLabel: 'Movies', tabBarIcon: FilmIcon }}
       />
       <Tab.Screen
         name="TheatresTab"
         component={AllTheatresScreen}
-        options={{
-          tabBarLabel: 'Theatres',
-          tabBarIcon: ({ focused }) => <TabIcon icon="🎭" focused={focused} />,
-        }}
+        options={{ tabBarLabel: 'Theatres', tabBarIcon: Building2Icon }}
       />
       <Tab.Screen
         name="OffersTab"
         component={OffersScreen}
-        options={{
-          tabBarLabel: 'Offers',
-          tabBarIcon: ({ focused }) => <TabIcon icon="🏷" focused={focused} />,
-        }}
+        options={{ tabBarLabel: 'Offers', tabBarIcon: TagIcon }}
       />
       <Tab.Screen
         name="Bookings"
         component={MyBookingsScreen}
-        options={{
-          tabBarLabel: 'Bookings',
-          tabBarIcon: ({ focused }) => <TabIcon icon="🎟" focused={focused} />,
-        }}
+        options={{ tabBarLabel: 'Bookings', tabBarIcon: TicketIcon }}
       />
     </Tab.Navigator>
   );
@@ -79,16 +66,5 @@ const styles = StyleSheet.create({
     fontSize: FontSize.xs,
     fontWeight: '500',
     fontFamily: FontFamily.medium,
-  },
-  iconWrapper: {
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  icon: {
-    fontSize: 20,
-    opacity: 0.5,
-  },
-  iconFocused: {
-    opacity: 1,
   },
 });

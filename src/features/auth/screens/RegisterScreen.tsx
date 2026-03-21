@@ -10,6 +10,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { User, ShieldCheck } from 'lucide-react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '@ctypes/navigation';
 import { Colors, FontFamily, FontSize, FontWeight, Radius, Spacing } from '@constants/theme';
@@ -76,7 +77,7 @@ export function RegisterScreen({ navigation }: Props) {
               <View style={styles.formBody}>
                 <View style={styles.iconRow}>
                   <View style={styles.iconCircle}>
-                    <Text style={styles.iconEmoji}>👤</Text>
+                    <User size={24} color={Colors.accent} />
                   </View>
                   <Heading2 style={styles.formTitle}>Create Account</Heading2>
                   <Body style={styles.formSub}>Join CineBook to start booking</Body>
@@ -117,7 +118,7 @@ export function RegisterScreen({ navigation }: Props) {
               <View style={styles.formBody}>
                 <View style={styles.iconRow}>
                   <View style={styles.iconCircleGray}>
-                    <Text style={styles.iconEmoji}>🛡</Text>
+                    <ShieldCheck size={24} color={Colors.textSecondary} />
                   </View>
                   <Heading2 style={styles.formTitle}>Verify Your Phone</Heading2>
                   <Body style={styles.formSub}>
@@ -242,7 +243,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  iconEmoji: { fontSize: 24 },
   formTitle: {
     textAlign: 'center',
     color: Colors.textPrimary,

@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { Animated, SafeAreaView, StyleSheet, View } from 'react-native';
+import { X } from 'lucide-react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '@ctypes/navigation';
 import { Colors, Radius, Spacing } from '@constants/theme';
@@ -31,7 +32,7 @@ export function BookingFailureScreen({ navigation, route }: Props) {
     <SafeAreaView style={styles.screen}>
       <View style={styles.content}>
         <Animated.View style={[styles.iconWrapper, { transform: [{ scale }], opacity }]}>
-          <Heading1 style={styles.xmark}>✕</Heading1>
+          <X size={36} color={Colors.error} strokeWidth={3} />
         </Animated.View>
 
         <Heading1 style={styles.title}>Booking Failed</Heading1>
@@ -71,7 +72,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginBottom: Spacing.sm,
   },
-  xmark: { color: Colors.error, fontSize: 36 },
   title: { textAlign: 'center', color: Colors.textPrimary },
   subtitle: { textAlign: 'center', color: Colors.textSecondary },
   hint: { textAlign: 'center', color: Colors.textMuted },

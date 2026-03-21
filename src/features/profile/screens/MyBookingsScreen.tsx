@@ -8,6 +8,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import { Calendar, Clock, MapPin, Monitor, Film, Ticket } from 'lucide-react-native';
 import { Booking } from '@ctypes/models';
 import { Colors, FontFamily, FontSize, FontWeight, Radius, Spacing } from '@constants/theme';
 import { Badge, Loader, Modal, QRCode } from '@shared/ui';
@@ -64,7 +65,7 @@ export function MyBookingsScreen() {
 
       {displayed.length === 0 ? (
         <View style={styles.empty}>
-          <Body style={styles.emptyIcon}>🎟</Body>
+          <Ticket size={48} color={Colors.textMuted} />
           <Body style={styles.emptyText}>
             {activeTab === 'upcoming' ? 'No upcoming bookings' : 'No past bookings'}
           </Body>
@@ -116,7 +117,7 @@ function BookingCard({ booking, onShowQR }: { booking: Booking; onShowQR: () => 
           <Image source={{ uri: booking.posterUrl }} style={styles.poster} resizeMode="cover" />
         ) : (
           <View style={styles.posterPlaceholder}>
-            <Text style={styles.posterIcon}>🎬</Text>
+            <Film size={20} color={Colors.textMuted} />
           </View>
         )}
 
@@ -126,9 +127,20 @@ function BookingCard({ booking, onShowQR }: { booking: Booking; onShowQR: () => 
             <Badge label={booking.status.toUpperCase()} variant={statusVariant} />
           </View>
           <View style={styles.meta}>
-            <Caption style={styles.metaRow}>🏛 {booking.theatreName}</Caption>
-            <Caption style={styles.metaRow}>📅 {formatShowDate(booking.showDate)} · {booking.showTime}</Caption>
-            <Caption style={styles.metaRow}>🎭 {booking.showFormat}</Caption>
+            <View style={styles.metaRow}>
+              <MapPin size={11} color={Colors.textMuted} />
+              <Caption style={styles.metaText}>{booking.theatreName}</Caption>
+            </View>
+            <View style={styles.metaRow}>
+              <Calendar size={11} color={Colors.textMuted} />
+              <Caption style={styles.metaText}>{formatShowDate(booking.showDate)}</Caption>
+              <Clock size={11} color={Colors.textMuted} />
+              <Caption style={styles.metaText}>{booking.showTime}</Caption>
+            </View>
+            <View style={styles.metaRow}>
+              <Monitor size={11} color={Colors.textMuted} />
+              <Caption style={styles.metaText}>{booking.showFormat}</Caption>
+            </View>
           </View>
           {/* Seat pills */}
           <View style={styles.seatPills}>
@@ -220,9 +232,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  posterIcon: {
-    fontSize: 20,
-  },
   cardContent: {
     flex: 1,
     gap: Spacing.xs,
@@ -240,8 +249,13 @@ const styles = StyleSheet.create({
     fontWeight: FontWeight.bold,
     color: Colors.textPrimary,
   },
-  meta: { gap: 2 },
+  meta: { gap: 3 },
   metaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  metaText: {
     color: Colors.textSecondary,
     fontSize: FontSize.xs,
   },
@@ -301,6 +315,5 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: Spacing.md,
   },
-  emptyIcon: { fontSize: 48 },
   emptyText: { color: Colors.textSecondary },
 });

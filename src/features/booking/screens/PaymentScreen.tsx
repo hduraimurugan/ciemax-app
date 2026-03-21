@@ -4,9 +4,9 @@ import {
   SafeAreaView,
   ScrollView,
   StyleSheet,
-  Text,
   View,
 } from 'react-native';
+import { ArrowLeft, Smartphone, CreditCard, Landmark, Wallet } from 'lucide-react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '@ctypes/navigation';
 import { PaymentMethod } from '@ctypes/models';
@@ -19,18 +19,20 @@ import { formatPrice } from '@shared/utils';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Payment'>;
 
+type PaymentIconComponent = React.ComponentType<{ size: number; color: string }>;
+
 interface PaymentOption {
   id: PaymentMethod;
   label: string;
-  icon: string;
+  Icon: PaymentIconComponent;
   description: string;
 }
 
 const PAYMENT_OPTIONS: PaymentOption[] = [
-  { id: 'upi', label: 'UPI', icon: '📲', description: 'Google Pay, PhonePe, Paytm' },
-  { id: 'card', label: 'Credit / Debit Card', icon: '💳', description: 'Visa, Mastercard, Rupay' },
-  { id: 'netbanking', label: 'Net Banking', icon: '🏦', description: 'All major banks' },
-  { id: 'wallet', label: 'Wallet', icon: '👛', description: 'Paytm, Amazon Pay' },
+  { id: 'upi', label: 'UPI', Icon: Smartphone, description: 'Google Pay, PhonePe, Paytm' },
+  { id: 'card', label: 'Credit / Debit Card', Icon: CreditCard, description: 'Visa, Mastercard, Rupay' },
+  { id: 'netbanking', label: 'Net Banking', Icon: Landmark, description: 'All major banks' },
+  { id: 'wallet', label: 'Wallet', Icon: Wallet, description: 'Paytm, Amazon Pay' },
 ];
 
 export function PaymentScreen({ navigation }: Props) {
@@ -77,7 +79,7 @@ export function PaymentScreen({ navigation }: Props) {
         showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
           <Pressable style={styles.backBtn} onPress={() => navigation.goBack()}>
-            <Text style={styles.backText}>←</Text>
+            <ArrowLeft size={18} color={Colors.textPrimary} />
           </Pressable>
           <Heading2>Payment</Heading2>
         </View>
@@ -95,7 +97,9 @@ export function PaymentScreen({ navigation }: Props) {
                 selectedMethod === option.id && styles.optionSelected,
               ]}>
               <View style={styles.optionRow}>
-                <Body style={styles.optionIcon}>{option.icon}</Body>
+                <View style={styles.optionIcon}>
+                  <option.Icon size={22} color={selectedMethod === option.id ? Colors.accent : Colors.textSecondary} />
+                </View>
                 <View style={styles.optionText}>
                   <Heading3 style={styles.optionLabel}>{option.label}</Heading3>
                   <Body>{option.description}</Body>
@@ -148,11 +152,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  backText: {
-    color: Colors.textPrimary,
-    fontSize: FontSize.md,
-    fontFamily: FontFamily.medium,
-  },
   option: {},
   optionSelected: {
     borderColor: Colors.accent,
@@ -161,7 +160,7 @@ const styles = StyleSheet.create({
     borderLeftColor: Colors.accent,
   },
   optionRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md },
-  optionIcon: { fontSize: 24 },
+  optionIcon: { width: 28, alignItems: 'center' },
   optionText: { flex: 1, gap: 2 },
   optionLabel: { color: Colors.textPrimary },
   radio: {

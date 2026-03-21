@@ -4,10 +4,19 @@ import {
   SafeAreaView,
   ScrollView,
   StyleSheet,
-  Text,
   View,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
+import {
+  ArrowLeft,
+  Ticket,
+  Tag,
+  MapPin,
+  Bell,
+  Settings,
+  HelpCircle,
+  ChevronRight,
+} from 'lucide-react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '@ctypes/navigation';
@@ -18,7 +27,7 @@ import { Heading2, Heading3, Body, BodySmall, Caption } from '@shared/ui';
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
 interface ProfileMenuItem {
-  icon: string;
+  icon: React.ReactNode;
   label: string;
   description: string;
   onPress: () => void;
@@ -29,23 +38,23 @@ export function ProfileScreen() {
 
   const menuItems: ProfileMenuItem[] = [
     {
-      icon: '🎟',
+      icon: <Ticket size={20} color={Colors.accent} />,
       label: 'My Bookings',
       description: 'View your booking history',
       onPress: () => navigation.navigate('MainTabs'),
     },
-    { icon: '🏷️', label: 'Offers & Coupons', description: 'View available offers', onPress: () => {} },
-    { icon: '📍', label: 'Saved Theatres', description: 'Your favourite theatres', onPress: () => {} },
-    { icon: '🔔', label: 'Notifications', description: 'Manage alerts', onPress: () => {} },
-    { icon: '⚙️', label: 'Settings', description: 'App preferences', onPress: () => {} },
-    { icon: '❓', label: 'Help & Support', description: 'FAQs and contact us', onPress: () => {} },
+    { icon: <Tag size={20} color={Colors.violet} />, label: 'Offers & Coupons', description: 'View available offers', onPress: () => {} },
+    { icon: <MapPin size={20} color={Colors.info} />, label: 'Saved Theatres', description: 'Your favourite theatres', onPress: () => {} },
+    { icon: <Bell size={20} color={Colors.warning} />, label: 'Notifications', description: 'Manage alerts', onPress: () => {} },
+    { icon: <Settings size={20} color={Colors.textSecondary} />, label: 'Settings', description: 'App preferences', onPress: () => {} },
+    { icon: <HelpCircle size={20} color={Colors.textSecondary} />, label: 'Help & Support', description: 'FAQs and contact us', onPress: () => {} },
   ];
 
   return (
     <SafeAreaView style={styles.screen}>
       <View style={styles.pageHeader}>
         <Pressable style={styles.backBtn} onPress={() => navigation.goBack()}>
-          <Text style={styles.backText}>←</Text>
+          <ArrowLeft size={18} color={Colors.textPrimary} />
         </Pressable>
         <Heading2>Profile</Heading2>
       </View>
@@ -80,13 +89,13 @@ export function ProfileScreen() {
             <Card key={item.label} onPress={item.onPress} padding="md">
               <View style={styles.menuRow}>
                 <View style={styles.menuIconWrapper}>
-                  <Text style={styles.menuIcon}>{item.icon}</Text>
+                  {item.icon}
                 </View>
                 <View style={styles.menuText}>
                   <Heading3 style={styles.menuLabel}>{item.label}</Heading3>
                   <BodySmall>{item.description}</BodySmall>
                 </View>
-                <Text style={styles.chevron}>›</Text>
+                <ChevronRight size={18} color={Colors.textMuted} />
               </View>
             </Card>
           ))}
@@ -118,11 +127,6 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.surfaceElevated,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  backText: {
-    color: Colors.textPrimary,
-    fontSize: FontSize.md,
-    fontFamily: FontFamily.medium,
   },
   content: { padding: Spacing.md, gap: Spacing.lg, paddingBottom: Spacing.xxl },
   avatarSection: {
@@ -170,14 +174,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  menuIcon: { fontSize: 20 },
   menuText: { flex: 1, gap: 2 },
   menuLabel: { color: Colors.textPrimary },
-  chevron: {
-    fontSize: 18,
-    color: Colors.textMuted,
-    fontFamily: FontFamily.regular,
-  },
   signOut: {
     alignItems: 'center',
     paddingVertical: Spacing.md,

@@ -6,9 +6,9 @@ import {
   SafeAreaView,
   ScrollView,
   StyleSheet,
-  Text,
   View,
 } from 'react-native';
+import { Check, Download, Share2 } from 'lucide-react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '@ctypes/navigation';
 import { Colors, FontFamily, FontSize, FontWeight, Radius, Spacing } from '@constants/theme';
@@ -66,7 +66,7 @@ export function BookingSuccessScreen({ navigation }: Props) {
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
         {/* Success icon */}
         <Animated.View style={[styles.iconWrapper, { transform: [{ scale }], opacity }]}>
-          <Heading1 style={styles.checkmark}>✓</Heading1>
+          <Check size={40} color={Colors.success} strokeWidth={3} />
         </Animated.View>
 
         <Heading1 style={styles.title}>Booking Confirmed!</Heading1>
@@ -124,10 +124,12 @@ export function BookingSuccessScreen({ navigation }: Props) {
       {/* 3-column action buttons */}
       <View style={styles.actionRow}>
         <Pressable style={styles.actionBtn}>
-          <Caption style={styles.actionBtnText}>↓ Download</Caption>
+          <Download size={16} color={Colors.textSecondary} />
+          <Caption style={styles.actionBtnText}>Download</Caption>
         </Pressable>
         <Pressable style={styles.actionBtn}>
-          <Caption style={styles.actionBtnText}>⤴ Share</Caption>
+          <Share2 size={16} color={Colors.textSecondary} />
+          <Caption style={styles.actionBtnText}>Share</Caption>
         </Pressable>
         <Button label="Home" onPress={handleGoHome} style={styles.homeBtn} />
       </View>
@@ -177,7 +179,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginTop: Spacing.xl,
   },
-  checkmark: { color: Colors.success, fontSize: 40 },
   title: { textAlign: 'center', color: Colors.textPrimary },
   subtitle: { textAlign: 'center', color: Colors.textSecondary },
 
@@ -312,6 +313,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.border,
     borderRadius: Radius.md,
+    gap: 4,
   },
   actionBtnText: {
     color: Colors.textSecondary,

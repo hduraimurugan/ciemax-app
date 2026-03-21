@@ -5,9 +5,9 @@ import {
   SafeAreaView,
   ScrollView,
   StyleSheet,
-  Text,
   View,
 } from 'react-native';
+import { ArrowLeft } from 'lucide-react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '@ctypes/navigation';
 import { Seat } from '@ctypes/models';
@@ -62,7 +62,7 @@ export function SeatSelectionScreen({ navigation, route }: Props) {
       {/* Sticky header */}
       <View style={styles.header}>
         <Pressable style={styles.backBtn} onPress={() => navigation.goBack()}>
-          <Text style={styles.backText}>←</Text>
+          <ArrowLeft size={18} color={Colors.textPrimary} />
         </Pressable>
         {selectedMovie?.posterUrl ? (
           <Image source={{ uri: selectedMovie.posterUrl }} style={styles.poster} resizeMode="cover" />
@@ -138,11 +138,6 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.surfaceElevated,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  backText: {
-    color: Colors.textPrimary,
-    fontSize: FontSize.md,
-    fontFamily: FontFamily.medium,
   },
   poster: {
     width: 40,

@@ -8,6 +8,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import { ArrowLeft } from 'lucide-react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '@ctypes/navigation';
 import { Theatre } from '@ctypes/models';
@@ -55,7 +56,7 @@ export function TheatresScreen({ navigation, route }: Props) {
     <SafeAreaView style={styles.screen}>
       <View style={styles.header}>
         <Pressable style={styles.backBtn} onPress={() => navigation.goBack()}>
-          <Text style={styles.backText}>←</Text>
+          <ArrowLeft size={18} color={Colors.textPrimary} />
         </Pressable>
         <View style={styles.headerInfo}>
           <Heading2>Select Theatre</Heading2>
@@ -122,11 +123,6 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.surfaceElevated,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  backText: {
-    color: Colors.textPrimary,
-    fontSize: FontSize.md,
-    fontFamily: FontFamily.medium,
   },
   headerInfo: { flex: 1, gap: 2 },
   movieTitle: { color: Colors.textMuted, fontSize: FontSize.sm },
