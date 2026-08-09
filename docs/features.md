@@ -71,7 +71,7 @@ Backed by `locationStore` (see [docs/state-management.md](state-management.md#lo
 ### MoviesScreen
 
 - Location-aware: prefers `GET /api/user/movies/location/movies?district&state` once a location is set (city chip opens `LocationModal`), falls back to the global `status=now_showing|upcoming` list otherwise.
-- Ad banner: `GET /api/ads/active?placement=banner`, tap records a click via `POST /api/ads/click/:id`.
+- Ad banner: `GET /api/ads/active?placement=banner`, tap records a click via `POST /api/ads/click/:id`. The banner is rendered at the Home content width with a 3.5:1 aspect ratio, autoplay dots, and a visible `AD` corner label.
 - A `Clapperboard` icon in the header opens `Theatres` — the app's other entry point into the hall-first browse flow.
 
 ### MovieDetailScreen

@@ -397,10 +397,14 @@ import { AdBanner } from '@shared/ui';
 <AdBanner imageUrls={['https://...', 'https://...', 'https://...']} />
 ```
 
-- Aspect ratio 5:1 (height = `Math.round(screenWidth / 5)`)
+- Optional `width` controls the carousel viewport and each page's snap distance; it defaults to the device width
+- Aspect ratio 3.5:1 (height = `Math.round(width / 3.5)`)
 - Autoplay every 3 seconds, loops
 - Dot indicators below the image
+- Displays an `AD` label in the top-right corner
 - Gracefully handles 0–5 images (hides when empty)
+
+On `MoviesScreen`, the banner passes the content width (`deviceWidth - Spacing.lg * 2`) and the wrapper uses matching horizontal margins so its edges align with the hero card and movie sections.
 
 Note: `MoviesScreen`'s CineHall-style hero banner (rating/tag/title overlay + segmented progress-bar dots) is a **separate**, screen-local implementation, not `AdBanner` — see [docs/features.md](features.md#movies).
 
