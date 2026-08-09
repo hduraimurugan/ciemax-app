@@ -1,7 +1,10 @@
 import { AppConfig } from '@constants/config';
 
 export function formatPrice(amount: number): string {
-  return `${AppConfig.currencySymbol}${amount.toLocaleString('en-IN')}`;
+  return `${AppConfig.currencySymbol}${amount.toLocaleString('en-IN', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`;
 }
 
 export function formatDuration(minutes: number): string {

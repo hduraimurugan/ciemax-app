@@ -19,7 +19,7 @@ import { CameraRoll } from '@react-native-camera-roll/camera-roll';
 import { Check, Download, Share2 } from 'lucide-react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '@ctypes/navigation';
-import { ColorTokens, FontFamily, FontSize, FontWeight, Radius, Spacing } from '@constants/theme';
+import { ColorTokens, FontFamily, FontSize, FontWeight, Radius, Shadow, Spacing } from '@constants/theme';
 import { useTheme } from '@hooks/useTheme';
 import { Badge, Button, Loader, QRCode } from '@shared/ui';
 import {
@@ -127,7 +127,7 @@ export function BookingSuccessScreen({ navigation, route }: Props) {
         <Body style={styles.subtitle}>Your seats are locked in. Enjoy the show!</Body>
 
         {booking ? (
-          <ViewShot ref={viewShotRef} options={{ format: 'png', quality: 0.92 }}>
+          <ViewShot ref={viewShotRef} style={styles.ticketWrapper} options={{ format: 'png', quality: 0.92 }}>
             <View style={styles.ticketCard}>
               <View style={styles.ticketHeader}>
                 <Text style={styles.ticketBrand}>CINEHALL</Text>
@@ -141,7 +141,9 @@ export function BookingSuccessScreen({ navigation, route }: Props) {
 
               <View style={styles.ticketBody}>
                 <TicketRow label="Booking ID" value={`#${booking.id.slice(0, 8).toUpperCase()}`} mono colors={colors} />
-                <TicketRow label="Theatre" value={booking.theatreName} colors={colors} />
+                {booking.theatreName ? (
+                  <TicketRow label="Theatre" value={booking.theatreName} colors={colors} />
+                ) : null}
                 <TicketRow label="Date" value={formatShowDate(booking.showDate)} colors={colors} />
                 <TicketRow label="Time" value={booking.showTime} colors={colors} />
 
@@ -160,7 +162,9 @@ export function BookingSuccessScreen({ navigation, route }: Props) {
                 </View>
 
                 <View style={styles.qrSection}>
-                  <QRCode value={booking.id} size={90} />
+                  <View style={styles.qrFrame}>
+                    <QRCode value={booking.id} size={130} />
+                  </View>
                   <Caption style={styles.qrHint}>Scan at theatre entrance</Caption>
                 </View>
               </View>
@@ -218,7 +222,12 @@ function TicketRow({ label, value, mono, colors }: { label: string; value: strin
   return (
     <View style={styles.row}>
       <Caption style={styles.label}>{label}</Caption>
-      <BodySmall style={[styles.value, mono && styles.mono]}>{value}</BodySmall>
+      <BodySmall
+        style={[styles.value, mono && styles.mono]}
+        numberOfLines={1}
+        ellipsizeMode="tail">
+        {value}
+      </BodySmall>
     </View>
   );
 }
@@ -231,7 +240,7 @@ const makeTicketRowStyles = (Colors: ColorTokens) =>
       alignItems: 'flex-start',
       paddingVertical: 5,
     },
-    label: { color: Colors.textMuted },
+    label: { color: Colors.textMuted, flexShrink: 0 },
     value: { color: Colors.textPrimary, textAlign: 'right', flex: 1, marginLeft: Spacing.sm },
     mono: {
       fontFamily: FontFamily.medium,
@@ -261,6 +270,10 @@ const makeStyles = (Colors: ColorTokens) =>
     title: { textAlign: 'center', color: Colors.textPrimary },
     subtitle: { textAlign: 'center', color: Colors.textSecondary },
 
+    ticketWrapper: {
+      width: '100%',
+      ...Shadow.lg,
+    },
     ticketCard: {
       width: '100%',
       backgroundColor: Colors.surface,
@@ -362,11 +375,17 @@ const makeStyles = (Colors: ColorTokens) =>
     },
     qrSection: {
       alignItems: 'center',
-      paddingTop: Spacing.md,
+      paddingTop: Spacing.lg,
+      paddingBottom: Spacing.sm,
       gap: Spacing.sm,
       borderTopWidth: 1,
       borderTopColor: Colors.border,
       marginTop: Spacing.xs,
+    },
+    qrFrame: {
+      padding: Spacing.sm + 4,
+      backgroundColor: '#fff',
+      borderRadius: Radius.lg,
     },
     qrHint: {
       color: Colors.textMuted,
