@@ -167,10 +167,13 @@ Spacing.lg          = 24
 Spacing.xl          = 32
 Spacing.xxl         = 48
 Spacing.xxxl        = 64
-Spacing.tabBarHeight = 64   // Bottom tab bar height — use for ScrollView bottom padding
+Spacing.tabBarHeight = 64   // Bottom tab bar's own content height — the rendered bar is
+                            // taller than this on gesture-nav devices; see note below
 ```
 
 Not theme-dependent — imported directly from `@constants/theme` as before.
+
+`TabNavigator`'s `tabBarStyle.height`/`paddingBottom` add `useSafeAreaInsets().bottom` on top of `Spacing.tabBarHeight`/`Spacing.xs`, so the bar clears the OS gesture indicator instead of sitting under it. A fixed `tabBarStyle.height` opts the bar out of React Navigation's own safe-area handling, which is why this has to be done manually rather than left to the default. Any screen that pads its own scroll content to clear the tab bar (none currently do) should add the same `insets.bottom`, not just `Spacing.tabBarHeight`.
 
 ---
 
