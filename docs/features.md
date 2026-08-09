@@ -11,9 +11,11 @@ Each feature in `src/features/` is a self-contained domain module — components
 | File | Purpose |
 |---|---|
 | `screens/SplashScreen.tsx` | Waits on `authStore.bootstrap()`, then routes to `Onboarding` (first run) or `MainTabs` |
-| `screens/OnboardingScreen.tsx` | 3-slide carousel; "Skip"/"Get Started" both land in `MainTabs`, not `Login` |
+| `screens/OnboardingScreen.tsx` | 3-slide carousel with native SVG illustrations for discovery, seat selection, and QR tickets; "Skip"/"Get Started" both land in `MainTabs`, not `Login` |
 
 Splash no longer hard-codes a 2.2s timer into `Onboarding` — it holds for a minimum 1.4s dwell time *and* waits for the persisted auth token (if any) to finish being verified against `GET /me`, so a signed-in user's session isn't lost in a UI flash. First-run state is tracked via `AsyncStorage[StorageKeys.onboardingSeen]`, set once `Onboarding` is dismissed.
+
+The illustrations are rendered locally with `react-native-svg` rather than loaded from image files or a network URL, so onboarding works offline and keeps its cinema marquee, seat-map, and e-ticket visuals theme-aware.
 
 ---
 
@@ -141,7 +143,7 @@ Tapping a seat doesn't toggle it individually:
 
 ### Pinch/pan zoom
 
-`SeatGrid` wraps its content in a `GestureDetector` composing `Gesture.Pinch()` (clamped 0.6×–2.2×) and `Gesture.Pan()`, driven by Reanimated shared values, with a double-tap to reset. `App.tsx` wraps the whole tree in `GestureHandlerRootView` — required for any of this to work.
+`SeatGrid` wraps its content in a `GestureDetector` composing `Gesture.Pinch()` (clamped 0.6×–2.2×) and `Gesture.Pan()`, driven by Reanimated shared values, with a double-tap to reset. The gesture detector is configured inside the seat grid; `App.tsx` owns the global safe-area and navigation providers.
 
 ### Holding seats
 

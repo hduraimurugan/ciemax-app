@@ -94,7 +94,7 @@ src/
 ## Layer Responsibilities
 
 ### `src/app/`
-Bootstrap and navigation wiring. Contains no business logic or UI primitives. `App.tsx` wraps the tree in `GestureHandlerRootView` (required by the seat map's pinch/pan gestures) → `SafeAreaProvider` → `NavigationContainer`.
+Bootstrap and navigation wiring. Contains no business logic or UI primitives. `App.tsx` wraps the tree in `SafeAreaProvider` → `NavigationContainer`; the seat map owns its gesture detector configuration locally.
 
 ### `src/constants/`
 Magic numbers, strings, and environment config. `theme.ts` exports `DarkColors`/`LightColors` — no component should hardcode a colour hex; it must come from `useTheme().colors`. `env.ts` is the only file that reads `react-native-config` directly.
@@ -132,7 +132,7 @@ The single most load-bearing new file. Handles, in one place:
 - **`configureHttpClientAuth`** — `authStore.ts` wires itself in via this function at module load, rather than `httpClient.ts` importing the store directly (avoids a circular dependency: the store needs `httpClient` to call the API; `httpClient` needs the store's tokens).
 
 ### `src/services/mappers.ts`
-The only place a `ApiXxx` DTO becomes an `Xxx` app model. Notable non-obvious mappings documented inline: cinema-hall-api uses **two different field-name sets** for a "theatre" depending on the endpoint (`cinema_hall_id/_name/_location` vs `hall_id/hall_name/location`); seat pricing resolves `price_override` before falling back to the screen's base `pricing`.
+The only place a `ApiXxx` DTO becomes an `Xxx` app model. Notable non-obvious mappings documented inline: cinema-hall-api uses **two different field-name sets** for a "theatre" depending on the endpoint (`cinema_hall_id/_name/_location` vs `hall_id/hall_name/location`); seat pricing resolves `price_override` before falling back to the screen's base `pricing`; PostgreSQL numeric fields such as ratings and booking amounts may arrive as strings and are converted to numbers before entering app models or arithmetic.
 
 ### `src/hooks/`
 Wraps service calls with `loading`, `error`, and `refresh`/`refetch` state, and are location-aware where the underlying endpoint requires `district`/`state` (`useMovies`, `useTheatresForMovie`, `useShowsForMovie`). `useRequireAuth()` is the auth-gating primitive — see [docs/state-management.md](state-management.md#auth-store).

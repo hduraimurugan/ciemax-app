@@ -283,6 +283,12 @@ options={{ tabBarIcon: ({ color, size }) => <Home color={color} size={size} /> }
 
 ---
 
+## Onboarding Illustrations
+
+The onboarding artwork is implemented as local `react-native-svg` scenes in `OnboardingScreen.tsx`, not as remote images. Each slide has a distinct cinema visual — marquee/posters, a selected seat map, and a QR e-ticket — while the accent, surface, border, and gold tokens follow the active theme. Keep new onboarding artwork vector-based so the screen remains offline-safe and scales cleanly across device sizes.
+
+---
+
 ## UI Components
 
 All 11 components in `src/shared/ui/` follow the `useTheme()` + `makeStyles(colors)` pattern described above. Props/API are unchanged from before theming — only the color source changed.

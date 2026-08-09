@@ -7,6 +7,8 @@ Two type layers, kept deliberately separate — see [docs/architecture.md](archi
 
 `src/services/mappers.ts` is the *only* file that converts one into the other.
 
+The API may serialize PostgreSQL numeric values as either JSON numbers or strings. DTOs model both forms where applicable; mappers normalize them before values reach screens. This is especially important for `vote_average` and booking totals, which are used by formatting and price calculations.
+
 ---
 
 ## Movie
@@ -25,7 +27,7 @@ interface Movie {
   posterUrl: string;
   backdropUrl: string;
   genre: string[];
-  rating: number;          // 0–10, from vote_average
+  rating: number;          // 0–10, from vote_average; normalized by mapMovie()
   duration: number;        // minutes, from duration_mins
   language: string;        // first entry of the API's language[] array
   releaseDate: string;
@@ -143,7 +145,7 @@ interface Booking {
   theatreLatitude?: number | null; theatreLongitude?: number | null;
   showId: string; showTime: string; showDate: string; showFormat: ShowFormat;
   seats: Seat[]; seatLabels?: string[];
-  subtotal: number;          // total_amount + discount_amount − convenience_fee − gst_amount
+  subtotal: number;          // normalized total_amount + discount_amount − convenience_fee − gst_amount
   convenienceFee: number; gstAmount?: number;
   offerCode?: string | null; discountAmount?: number;
   totalAmount: number;       // what was actually charged
@@ -160,7 +162,7 @@ interface Booking {
 }
 ```
 
-A booking is only ever created server-side, by `POST /api/payment/verify` after a successful Razorpay checkout — there is no client-side "create booking" call. `mapBooking()` reconstructs `subtotal` from the other server-provided totals since the API doesn't return it directly.
+A booking is only ever created server-side, by `POST /api/payment/verify` after a successful Razorpay checkout — there is no client-side "create booking" call. `mapBooking()` converts the server's numeric/string money fields to numbers, then reconstructs `subtotal` from the other server-provided totals since the API doesn't return it directly.
 
 ---
 
