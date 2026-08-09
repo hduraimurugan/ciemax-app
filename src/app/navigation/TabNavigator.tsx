@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { StyleSheet } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Home, Search, Ticket, User } from 'lucide-react-native';
 import { ColorTokens, FontFamily, FontSize, Spacing } from '@constants/theme';
 import { useTheme } from '@hooks/useTheme';
@@ -21,7 +22,8 @@ function UserIcon({ color, size }: TabIconProps) { return <User color={color} si
 
 export function TabNavigator() {
   const { colors } = useTheme();
-  const styles = useMemo(() => makeStyles(colors), [colors]);
+  const insets = useSafeAreaInsets();
+  const styles = useMemo(() => makeStyles(colors, insets.bottom), [colors, insets.bottom]);
   return (
     <Tab.Navigator
       screenOptions={{
@@ -55,15 +57,15 @@ export function TabNavigator() {
   );
 }
 
-const makeStyles = (Colors: ColorTokens) =>
+const makeStyles = (Colors: ColorTokens, bottomInset: number) =>
   StyleSheet.create({
     tabBar: {
       backgroundColor: Colors.surface,
       borderTopColor: Colors.border,
       borderTopWidth: 1,
       paddingTop: Spacing.xs,
-      paddingBottom: Spacing.xs,
-      height: Spacing.tabBarHeight,
+      paddingBottom: Spacing.xs + bottomInset,
+      height: Spacing.tabBarHeight + bottomInset,
     },
     tabLabel: {
       fontSize: FontSize.xs,
