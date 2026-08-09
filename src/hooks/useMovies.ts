@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Movie } from '@ctypes/models';
 import { getNowShowingMovies, getComingSoonMovies } from '@services/moviesService';
+import { useLocationStore } from '@store/locationStore';
 
 interface MoviesState {
   nowShowing: Movie[];
@@ -16,6 +17,8 @@ export function useMovies(): MoviesState {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [tick, setTick] = useState(0);
+  const district = useLocationStore(s => s.district);
+  const state = useLocationStore(s => s.state);
 
   useEffect(() => {
     let cancelled = false;
@@ -25,8 +28,8 @@ export function useMovies(): MoviesState {
       setError(null);
       try {
         const [ns, cs] = await Promise.all([
-          getNowShowingMovies(),
-          getComingSoonMovies(),
+          getNowShowingMovies(district ?? undefined, state ?? undefined),
+          getComingSoonMovies(district ?? undefined, state ?? undefined),
         ]);
         if (!cancelled) {
           setNowShowing(ns);
@@ -41,7 +44,7 @@ export function useMovies(): MoviesState {
 
     load();
     return () => { cancelled = true; };
-  }, [tick]);
+  }, [tick, district, state]);
 
   return { nowShowing, comingSoon, loading, error, refresh: () => setTick(t => t + 1) };
 }

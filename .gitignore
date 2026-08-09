@@ -66,6 +66,14 @@ yarn-error.log
 # testing
 /coverage
 
+# Environment config — see .env.example for the documented key list.
+# Never commit real values (API hosts, OAuth client IDs, feature flags).
+.env
+.env.local
+.env.staging
+.env.production
+!.env.example
+
 # Yarn
 .yarn/*
 !.yarn/patches

@@ -1,160 +1,67 @@
-import { Show, ShowFormat, Theatre } from '@ctypes/models';
-import { MockDelay } from '@constants/config';
-import { getNowShowingMovies } from './moviesService';
+import { Env } from '@constants/env';
+import { httpClient } from './httpClient';
+import { mapShowtimeHall, mapShowSummary, mapTheatreHall } from './mappers';
+import { getMovieShowtimesRaw } from './moviesService';
+import * as mock from './theatresService.mock';
+import type { Show, Theatre } from '@ctypes/models';
+import type { ApiTheatreHall, GetTheatresWithShowsResponse } from '@ctypes/api';
 
-interface CinemaShowtime {
-  time: string;
-  status: 'available' | 'fast' | 'soldout';
+const MOVIES_BASE = '/api/user/movies';
+
+// ─── Per-movie showtimes (backs MovieDetail -> Showtimes) ──────────────────
+
+export async function getTheatresForMovie(movieId: string, district: string, state: string): Promise<Theatre[]> {
+  if (Env.USE_MOCKS) return mock.getTheatresForMovie(movieId);
+  const { halls } = await getMovieShowtimesRaw(movieId, district, state);
+  return halls.map(mapShowtimeHall);
 }
 
-interface CinemaBase {
-  id: string;
-  name: string;
-  screen: string;
-  format: ShowFormat;
-  showtimes: CinemaShowtime[];
+export async function getShowsForMovie(
+  movieId: string,
+  district: string,
+  state: string,
+  date?: string,
+): Promise<Show[]> {
+  if (Env.USE_MOCKS) return mock.getShowsForMovie(movieId);
+  const { halls } = await getMovieShowtimesRaw(movieId, district, state, date);
+  return halls.flatMap(h => h.shows.map(s => mapShowSummary(s, movieId, h.cinema_hall_id)));
 }
 
-// Sample cinemas from the CineHall design — same 3 venues/showtimes apply across
-// every now-showing movie and date, matching the design's flat mock catalog.
-const CINEMAS_BASE: CinemaBase[] = [
-  {
-    id: 'grand-vista',
-    name: 'Grand Vista Cinemas',
-    screen: 'Screen 3 · Dolby Atmos',
-    format: '2D',
-    showtimes: [
-      { time: '10:30 AM', status: 'available' },
-      { time: '1:45 PM', status: 'fast' },
-      { time: '5:00 PM', status: 'soldout' },
-      { time: '9:15 PM', status: 'available' },
-    ],
-  },
-  {
-    id: 'skyline',
-    name: 'Skyline Multiplex',
-    screen: 'Screen 1 · IMAX',
-    format: 'IMAX',
-    showtimes: [
-      { time: '11:00 AM', status: 'fast' },
-      { time: '2:30 PM', status: 'available' },
-      { time: '8:00 PM', status: 'available' },
-    ],
-  },
-  {
-    id: 'cineplex-prime',
-    name: 'Cineplex Prime - Forum Mall',
-    screen: 'Screen 5',
-    format: '2D',
-    showtimes: [
-      { time: '12:15 PM', status: 'available' },
-      { time: '4:45 PM', status: 'fast' },
-      { time: '7:30 PM', status: 'soldout' },
-      { time: '10:00 PM', status: 'available' },
-    ],
-  },
-];
-
-const TOTAL_SEATS = 120;
-
-function seatsForStatus(status: CinemaShowtime['status']): number {
-  if (status === 'soldout') return 0;
-  if (status === 'fast') return 15; // <20% of TOTAL_SEATS
-  return 80;
+export async function getShowsForMovieAndTheatre(
+  movieId: string,
+  theatreId: string,
+  district: string,
+  state: string,
+  date?: string,
+): Promise<Show[]> {
+  if (Env.USE_MOCKS) return mock.getShowsForMovieAndTheatre(movieId, theatreId);
+  const shows = await getShowsForMovie(movieId, district, state, date);
+  return shows.filter(s => s.theatreId === theatreId);
 }
 
-function nextDates(count: number): string[] {
-  const dates: string[] = [];
-  for (let i = 0; i < count; i++) {
-    const d = new Date();
-    d.setDate(d.getDate() + i);
-    dates.push(d.toISOString().split('T')[0]);
-  }
-  return dates;
-}
+// ─── Theatres tab (hall -> movies -> shows for a location/date) ────────────
 
-const DATES = nextDates(7);
-
-function buildTheatres(): Theatre[] {
-  return CINEMAS_BASE.map(c => ({
-    id: c.id,
-    name: c.name,
-    address: c.screen,
-    city: 'Bengaluru',
-    amenities: c.format === 'IMAX' ? ['IMAX', 'Parking', 'Food Court'] : ['Parking', 'Food Court'],
-    rating: 4.3,
-  }));
-}
-
-const MOCK_THEATRES: Theatre[] = buildTheatres();
-
-function buildShowsForMovie(movieId: string, language: string): Show[] {
-  const shows: Show[] = [];
-  CINEMAS_BASE.forEach(cinema => {
-    DATES.forEach((date, dateIdx) => {
-      cinema.showtimes.forEach((st, timeIdx) => {
-        shows.push({
-          id: `${movieId}-${cinema.id}-${dateIdx}-${timeIdx}`,
-          movieId,
-          theatreId: cinema.id,
-          date,
-          time: st.time,
-          format: cinema.format,
-          language,
-          availableSeats: seatsForStatus(st.status),
-          totalSeats: TOTAL_SEATS,
-          priceMultiplier: cinema.format === 'IMAX' ? 1.8 : 1.0,
-        });
-      });
-    });
+/** Raw hall-grouped data for the Theatres screen (hall -> movies -> shows). */
+export async function getTheatresWithShows(
+  district: string,
+  state: string,
+  date?: string,
+): Promise<ApiTheatreHall[]> {
+  const res = await httpClient.get<GetTheatresWithShowsResponse>(`${MOVIES_BASE}/location/theatres`, {
+    skipAuth: true,
+    query: { district, state, date },
   });
-  return shows;
+  return res.cinema_halls;
 }
 
-let showsCache: Show[] | null = null;
-
-async function getAllShows(): Promise<Show[]> {
-  if (showsCache) return showsCache;
-  const nowShowing = await getNowShowingMovies();
-  showsCache = nowShowing.flatMap(m => buildShowsForMovie(m.id, m.language));
-  return showsCache;
+export async function getAllTheatres(district: string, state: string): Promise<Theatre[]> {
+  if (Env.USE_MOCKS) return mock.getAllTheatres();
+  const halls = await getTheatresWithShows(district, state);
+  return halls.map(mapTheatreHall);
 }
 
-const delay = (ms: number) => new Promise<void>(resolve => setTimeout(resolve, ms));
-
-export async function getTheatresForMovie(movieId: string): Promise<Theatre[]> {
-  await delay(MockDelay);
-  const shows = await getAllShows();
-  const theatreIds = [...new Set(shows.filter(s => s.movieId === movieId).map(s => s.theatreId))];
-  return MOCK_THEATRES.filter(t => theatreIds.includes(t.id));
+export async function getTheatreById(id: string, district: string, state: string): Promise<Theatre | undefined> {
+  if (Env.USE_MOCKS) return mock.getTheatreById(id);
+  const theatres = await getAllTheatres(district, state);
+  return theatres.find(t => t.id === id);
 }
-
-export async function getAllTheatres(): Promise<Theatre[]> {
-  await delay(MockDelay);
-  return MOCK_THEATRES;
-}
-
-export async function getTheatreById(id: string): Promise<Theatre | undefined> {
-  await delay(MockDelay / 2);
-  return MOCK_THEATRES.find(t => t.id === id);
-}
-
-export async function getShowsForMovieAndTheatre(movieId: string, theatreId: string): Promise<Show[]> {
-  await delay(MockDelay);
-  const shows = await getAllShows();
-  return shows.filter(s => s.movieId === movieId && s.theatreId === theatreId);
-}
-
-export async function getShowsForMovie(movieId: string): Promise<Show[]> {
-  await delay(MockDelay);
-  const shows = await getAllShows();
-  return shows.filter(s => s.movieId === movieId);
-}
-
-export async function getShowById(id: string): Promise<Show | undefined> {
-  await delay(MockDelay / 2);
-  const shows = await getAllShows();
-  return shows.find(s => s.id === id);
-}
-
-export const SHOWTIME_DATES = DATES;

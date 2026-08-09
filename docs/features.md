@@ -1,415 +1,254 @@
 # Feature Modules
 
-Each feature in `src/features/` is a self-contained domain module. It owns its components, screens, and types, and exposes a single `index.ts` barrel. No feature imports from another feature.
-
-Screens marked **⚠ unrouted** below still compile and are still exported from their feature's `index.ts`, but are not registered in `RootNavigator`/`TabNavigator` — see [docs/navigation.md](navigation.md) for the live route map.
+Each feature in `src/features/` is a self-contained domain module — components, screens, and (where needed) a small `utils/`, exposed via a single `index.ts` barrel. See [docs/navigation.md](navigation.md) for the live route map and [docs/architecture.md](architecture.md) for the service/mapper layer every feature calls into.
 
 ---
 
 ## onboarding
 
-**Domain:** First-run experience — shown once per app launch, before auth.
+**Domain:** First-run experience and session bootstrap.
 
 | File | Purpose |
 |---|---|
-| `screens/SplashScreen.tsx` | Brand moment — icon, wordmark, tagline; auto-advances to Onboarding |
-| `screens/OnboardingScreen.tsx` | 3-slide carousel introducing the app |
+| `screens/SplashScreen.tsx` | Waits on `authStore.bootstrap()`, then routes to `Onboarding` (first run) or `MainTabs` |
+| `screens/OnboardingScreen.tsx` | 3-slide carousel; "Skip"/"Get Started" both land in `MainTabs`, not `Login` |
 
-### SplashScreen
-
-- 88×88 rounded icon box (`accent` background, `makeNeonShadow` glow) with a `Play` icon
-- "CineHall" wordmark (JetBrains Mono Bold) + "BOOK. WATCH. REPEAT." tagline
-- `useEffect` sets a 2200ms `setTimeout` that calls `navigation.replace('Onboarding')` — cleaned up on unmount
-- No back button, no user interaction
-
-### OnboardingScreen
-
-- 3 slides, local `idx` state (not a swipeable `ScrollView` — matches the design's button-driven pagination):
-  1. "Browse Now Showing & Upcoming"
-  2. "Pick Your Perfect Seat"
-  3. "Pay & Walk Right In"
-- "Skip" (top-right) and the last slide's "Get Started" both call `navigation.reset({ index: 0, routes: [{ name: 'Login' }] })` — Login becomes the stack root (no back button)
-- Dot pagination: active dot widens to 18px, `accent` colored; others are 6px, `border` colored
-- Illustration placeholder box (striped pattern) stands in for artwork, matching the design's own placeholder convention
+Splash no longer hard-codes a 2.2s timer into `Onboarding` — it holds for a minimum 1.4s dwell time *and* waits for the persisted auth token (if any) to finish being verified against `GET /me`, so a signed-in user's session isn't lost in a UI flash. First-run state is tracked via `AsyncStorage[StorageKeys.onboardingSeen]`, set once `Onboarding` is dismissed.
 
 ---
 
 ## auth
 
-**Domain:** Authentication UI (no backend — UI only). The CineHall design has **no signup screen** — Login → Otp is the only path for new and returning users.
+**Domain:** Full account lifecycle — login, signup+OTP, forgot password, Google Sign-In. Pushed as `presentation: 'modal'` stack screens, reachable from anywhere via `useRequireAuth()`.
 
 | File | Purpose |
 |---|---|
-| `screens/LoginScreen.tsx` | Email input → Otp |
-| `screens/OtpScreen.tsx` | 6-digit code entry, 30s resend countdown |
-| `screens/RegisterScreen.tsx` | ⚠ unrouted — two-step form + inline OTP, kept for reference |
+| `screens/LoginScreen.tsx` | Email + password against `POST /api/customer/login` |
+| `screens/RegisterScreen.tsx` | Details form with a live password-policy checklist → `POST /api/customer/signup` |
+| `screens/OtpScreen.tsx` | 6-digit code → `POST /api/otp/verify`; auto-logs in if it came from Register |
+| `screens/ForgotPasswordScreen.tsx` | 3 steps: email → OTP + new password → success |
+| `utils/passwordPolicy.ts` | Mirrors `cinema-hall-api/utils/passwordPolicy.js` rule-for-rule (8+ chars, upper, lower, digit, special) |
+| `utils/googleAuth.ts` | Wraps `@react-native-google-signin/google-signin`, returns an ID token for `POST /api/customer/google-login` |
 
-### LoginScreen
+### LoginScreen error handling
 
-- "CineHall" wordmark + "Sign in to book your next show" subtitle
-- Single `EMAIL ADDRESS` `Input` — no password field
-- "Continue with Email" → `navigation.navigate('Otp', { email })`
-- "OR" divider, then a decorative "Continue with Google" secondary button (no real OAuth — same UI-only convention as before)
+Every documented API failure mode gets a distinct UI response, not a generic "login failed":
+- `423 ACCOUNT_LOCKED` → banner with the human-readable `lockedUntil` time + a link to Forgot Password.
+- A `hint` field on a wrong-password response → "N attempts remaining before account is locked."
+- "email not verified" → auto-sends a fresh OTP and pushes `OtpScreen`.
+- Account not found → inline error, no enumeration hint beyond what the API already reveals.
 
-### OtpScreen
+### Google Sign-In
 
-- Back button → Login
-- "Verify your email" heading + masked email subtitle (`you@***@domain.com`-style mask via regex)
-- 6 individual digit boxes with auto-advance-on-input and backspace-to-previous-box focus handling (`TextInput` refs array)
-- Resend countdown built on the shared `useCountdown(30)` hook — shows "Resend code in 0:SS" while running, a tappable "Resend Code" link once it hits zero (`reset(30)` restarts it)
-- "Verify & Continue" → `navigation.reset({ index: 0, routes: [{ name: 'MainTabs' }] })`
+`GoogleSignin.configure({ webClientId: Env.GOOGLE_WEB_CLIENT_ID })` — note this is the **web** client ID even on native, since that's the audience `verifyGoogleToken()` checks server-side; it needs its own OAuth client registered in Google Cloud Console (Android needs a SHA-1-keyed client, separate from the web app's).
 
-### RegisterScreen (unrouted)
+---
 
-Untouched two-step flow (form → inline 6-box OTP with its own local 60s timer) from the pre-CineHall app. Kept on disk in case a standalone sign-up flow is reintroduced; its `Props` type no longer references the removed `'Register'` route (uses a loosened `NativeStackNavigationProp<RootStackParamList, 'Login'>` type instead) so it still compiles.
+## location
+
+**Domain:** District/state resolution, feeding every location-aware browse endpoint.
+
+| File | Purpose |
+|---|---|
+| `components/LocationModal.tsx` | BottomSheet: "Use my current location" (GPS) or a state → district picker |
+
+Backed by `locationStore` (see [docs/state-management.md](state-management.md#location-store)). The state list is a small curated set of Indian states (no state-list endpoint exists in the API); districts within a chosen state come from `GET /api/user/movies/location/districts`.
 
 ---
 
 ## movies
 
-**Domain:** Film catalogue — browsing, discovery, and detail.
+**Domain:** Film catalogue — browsing and detail.
 
 | File | Purpose |
 |---|---|
-| `screens/MoviesScreen.tsx` | **Home tab** — hero carousel + Now Showing / Coming Soon / Recommended rows |
-| `screens/MovieDetailScreen.tsx` | Backdrop hero, synopsis, cast, "Book Tickets" CTA |
-| `components/MovieCard.tsx` | 128×184px poster card, `variant: 'rating' \| 'soon' \| 'plain'` |
-| `components/MovieFilter.tsx` | ⚠ built but not wired into any screen — no filter UI in the design |
+| `screens/MoviesScreen.tsx` | **Home tab** — hero carousel, ad banner, Now Showing / Coming Soon / Recommended rows |
+| `screens/MovieDetailScreen.tsx` | Backdrop hero, real cast photos, trailer link, favourite/share, "Book Tickets" |
+| `components/MovieCard.tsx` | `variant: 'rating' \| 'soon' \| 'plain'` |
 
-### MoviesScreen (Home)
+### MoviesScreen
 
-```
-┌─────────────────────────────────────────┐
-│  📍 Bengaluru ▾          [🔍] [🔔]        │  ← header (location pill is non-interactive)
-├─────────────────────────────────────────┤
-│ ┌─────────────────────────────────────┐ │
-│ │  Hero carousel (backdrop + overlay)  │ │  ← auto-rotates every 4s
-│ │  ★ 8.4 · Now Showing                 │ │
-│ │  Spider-Man: Brand New Day           │ │
-│ └─────────────────────────────────────┘ │
-│ Now Showing                              │
-│ ┌──────┐ ┌──────┐                       │  ← horizontal ScrollView, rating badge
-│ Coming Soon                              │
-│ ┌──────┐                                 │  ← "SOON" badge instead of rating
-│ Recommended For You                      │
-│ ┌──────┐ ┌──────┐                       │  ← no badge (variant="plain")
-└─────────────────────────────────────────┘
-```
-
-- Search icon navigates to the sibling `SearchTab`; the header uses `CompositeScreenProps` (tab + stack) so it can also `navigate('MovieDetail', ...)`
-- Hero carousel: local `heroIdx` state cycling every 4000ms through `nowShowing.slice(0, 3)`; a segmented progress bar (`Animated.Value` per active slide, `Animated.timing` over 4000ms) mirrors the design's per-slide fill animation — this is a screen-local implementation, **not** the shared `AdBanner` component (see [docs/design-system.md](design-system.md#adbanner))
-- "Recommended For You" is `[...nowShowing, ...comingSoon].reverse().slice(0, 4)` — no separate recommendation service
-
-**MovieCard variants:**
-| Variant | Shows | Used by |
-|---|---|---|
-| `rating` (default) | ⭐ rating pill, top-right | Now Showing row |
-| `soon` | Violet "SOON" pill, top-left | Coming Soon row |
-| `plain` | No overlay badge | Recommended row |
+- Location-aware: prefers `GET /api/user/movies/location/movies?district&state` once a location is set (city chip opens `LocationModal`), falls back to the global `status=now_showing|upcoming` list otherwise.
+- Ad banner: `GET /api/ads/active?placement=banner`, tap records a click via `POST /api/ads/click/:id`.
+- A `Clapperboard` icon in the header opens `Theatres` — the app's other entry point into the hall-first browse flow.
 
 ### MovieDetailScreen
 
-- 340px backdrop hero (movie's own `backdropUrl`, not blurred — matches the design, which shows the poster art directly rather than a blurred version) with back / favorite (`Heart`) / share (`Share2`) icon buttons and a centered play-trailer circle button
-- Title, badge row (`★ rating`, genre, duration, language)
-- Synopsis with a 110-character clamp + "Read more"/"Show less" toggle
-- Cast row: horizontal scroll of 56px circle avatars showing each `CastMember.initials`, with `name` below
-- "Book Tickets" → `navigation.navigate('Showtimes', { movieId })` — no date selector on this screen; date selection now lives entirely on `ShowtimesScreen` (see below), removing the duplicated 7-day date-strip helper that used to exist in both `MovieDetailScreen` and `TheatresScreen`
+- Cast row renders real TMDB photos (`profilePath`) when available, falling back to initials.
+- Heart icon persists a favourite to `AsyncStorage[StorageKeys.favouriteMovies]` via `useFavourites()`.
+- Share icon uses the native `Share` API.
+- A trailer button (shown only when `trailerUrl` is present) opens it via `Linking.openURL` — no in-app player.
 
 ---
 
 ## search
 
-**Domain:** Movie search. New feature — no equivalent existed before the CineHall redesign.
+**Domain:** Movie search.
 
 | File | Purpose |
 |---|---|
-| `screens/SearchScreen.tsx` | Recent Searches + Trending chips ⇄ live 2-column results grid |
+| `screens/SearchScreen.tsx` | Debounced live search, persisted recent searches |
 
-- Empty query: "RECENT SEARCHES" list (3 static, in-memory sample queries) + "TRENDING" chip wrap (4 static chips) — tapping either sets the query
-- Non-empty query: debounce-free live search via `moviesService.searchMovies(query)` on every keystroke (`useEffect` keyed on `query`, cancelled on cleanup), rendered as a 2-column `FlatList` grid (poster + title only, no rating badge — matches the design)
-- No results: `No results for "<query>"` message
+Query input is debounced 350ms (`useDebouncedValue`) before calling `GET /api/user/movies?search=`, replacing the old fire-on-every-keystroke behavior. Recent searches persist to `AsyncStorage[StorageKeys.recentSearches]` (capped at 6, most-recent-first, deduped case-insensitively) instead of a static in-file array.
 
 ---
 
 ## theatres
 
-**Domain:** Cinema and showtime selection.
+**Domain:** Cinema and showtime selection — two distinct entry points into the same data.
 
 | File | Purpose |
 |---|---|
-| `screens/ShowtimesScreen.tsx` | **Routed** — merges the old Theatres + ShowSelection screens into one, per the design |
-| `screens/TheatresScreen.tsx` | ⚠ unrouted — superseded |
-| `screens/AllTheatresScreen.tsx` | ⚠ unrouted — old "Theatres" tab, no design equivalent |
-| `screens/ShowSelectionScreen.tsx` | ⚠ unrouted — superseded |
-| `components/TheatreCard.tsx` | ⚠ unrouted — only used by the superseded screens above |
-| `components/ShowTimeChip.tsx` | ⚠ unrouted — same |
-| `types.ts` | `ShowGroup`, `FormatFilter` |
+| `screens/ShowtimesScreen.tsx` | Per-movie: date strip + per-cinema showtime chips (reached from `MovieDetail`) |
+| `screens/TheatresScreen.tsx` | Per-location: hall → movies → shows, all halls in the current district/state |
 
 ### ShowtimesScreen
 
-```
-┌─────────────────────────────────────────┐
-│ [← Back]  Spider-Man: Brand New Day     │  ← header
-│           Select date & showtime         │
-├─────────────────────────────────────────┤
-│ SAT  SUN  MON  TUE  WED  THU  FRI       │  ← 7-day date strip (today → +6)
-│  9    10   11   12   13   14   15       │
-├─────────────────────────────────────────┤
-│ Grand Vista Cinemas                      │
-│ Screen 3 · Dolby Atmos                   │
-│ [10:30 AM] [1:45 PM] [5:00 PM] [9:15 PM]│  ← green/amber/disabled chips
-│ Skyline Multiplex                        │
-│ Screen 1 · IMAX                          │
-│ [11:00 AM] [2:30 PM] [8:00 PM]          │
-└─────────────────────────────────────────┘
-```
+- Requires a location; shows a "Set Location" prompt (opens `LocationModal`) if none is set yet.
+- `GET /api/user/movies/:movieId/showtimes?district&state&date` via `useTheatresForMovie`/`useShowsForMovie`.
+- Each cinema card has a heart (favourite, `AsyncStorage[StorageKeys.favouriteTheatres]`) and a Directions button (`Linking` → Google Maps, using lat/lng when available, else a text query).
+- Tapping a showtime chip sets `selectedMovie`/`selectedTheatre`/`selectedShow` on `bookingStore` (display-only from here on) and navigates to `SeatSelection`.
 
-- Fetches the movie (`getMovieById`), the theatres showing it (`useTheatresForMovie`), and all of its shows (`useShowsForMovie` — new hook in `useTheatres.ts`)
-- Date strip built from `theatresService.SHOWTIME_DATES` (the next 7 real calendar dates, computed once at module load — not hardcoded strings) so it's always correct regardless of when the app is run
-- Showtime chip status is derived per-show, not stored: `availableSeats === 0` → soldout (disabled, secondary bg), `< 20%` → "fast" (amber), else "available" (green) — see `statusOf()` in the screen and [docs/data-models.md](data-models.md#show)
-- Tapping an available/fast chip calls `setSelectedMovie` / `setSelectedTheatre` / `setSelectedShow` on `bookingStore` **and then** navigates to `SeatSelection` — this is what keeps the header/summary on `SeatSelectionScreen` and `CheckoutScreen` populated further down the flow
+### TheatresScreen
 
-### TheatreCard / ShowTimeChip (unrouted)
-
-Both theme-converted (compile cleanly) but no longer reachable from any screen — `ShowtimesScreen` builds its own inline cinema-card + chip UI instead, since the design's chips are simpler (time-only, no format dot/availability caption) than what `ShowTimeChip` renders.
+- `GET /api/user/movies/location/theatres?district&state&date` — the same date-strip UI, but grouped by hall first, then by movie, then by showtime.
+- Tapping a showtime builds a minimal `Movie` stub from the listing's summary fields (`mapTheatreListingMovie()` — the location endpoint doesn't return a full movie detail) before navigating to `SeatSelection`.
 
 ---
 
 ## seats
 
-**Domain:** Interactive seat selection. The most complex feature in the app.
+**Domain:** Interactive seat selection — the most complex feature in the app, and the one that changed most.
 
 | File | Purpose |
 |---|---|
-| `screens/SeatSelectionScreen.tsx` | Sticky header + grid + bottom selection bar |
-| `components/SeatGrid.tsx` | Pure grid renderer — no toggle logic |
-| `components/SeatItem.tsx` | Single seat square (28×28px) |
-| `components/SeatLegend.tsx` | Available / Premium / Selected / Booked colour key |
-| `components/SectionHeader.tsx` | PREMIUM / STANDARD divider with price |
-| `types.ts` | `SeatItemState`, `SeatGridProps` |
+| `screens/SeatSelectionScreen.tsx` | Opens `SeatCountModal`, then the real seat grid + hold flow |
+| `components/SeatCountModal.tsx` | 1–`AppConfig.maxSeatSelectionPerBooking` picker with live per-section availability |
+| `components/SeatGrid.tsx` | Pinch/pan-zoomable renderer, built from `layout.allSeats` (not the pricing-grouped `sections`) |
+| `components/SeatItem.tsx` | Single seat — renders `passage`/`isBlocked` seats as invisible spacers |
+| `utils/seatSelection.ts` | `findBestAdjacentSeats()` — ported verbatim from the web app |
 
-### SeatGrid Architecture
+### The seat map
 
-Unchanged from before the redesign — the critical design decision remains: `SeatGrid` is a **pure renderer**. It receives:
+`GET /api/shows/get/:showId` returns the authoritative layout: per-seat `type`/`status`/`isBlocked`, `screenPosition`, `aisleAfterColumns`, `aisleAfterRows`, and pricing (`price_override` overrides the screen's base `pricing` per seat type). `SeatGrid` groups consecutive rows by their dominant seat type to place section headers (`PREMIUM`/`STANDARD`/`SILVER`) at the right boundaries, while still rendering passage seats inline within a row as blank spacers — critical for column alignment around aisles.
 
-```tsx
-interface SeatGridProps {
-  layout: SeatLayout;             // From seatsService (original statuses)
-  selectedSeatIds: Set<string>;   // From Zustand store
-  onSeatPress: (seat: Seat) => void;
-}
-```
+### Auto-adjacent selection
 
-It derives the visual state at render time:
-```tsx
-const effectiveStatus =
-  selectedSeatIds.has(seat.id) ? 'selected' : seat.status;
-```
+Tapping a seat doesn't toggle it individually:
+1. Tapping an already-selected seat clears the whole selection.
+2. Otherwise, `findBestAdjacentSeats(tappedSeat, seatCount, allSeats)` slides a window of size `seatCount` across the same-row available seats, requiring column contiguity, and scores each valid window — preferring blocks that contain the tapped seat, then ones that extend rightward. The winning block replaces the whole selection via `setSelectedSeats()`.
+3. If no valid block of that size exists, an alert explains it and the selection clears.
 
-This means:
-- `SeatGrid` never mutates data
-- Toggle logic lives entirely in `useBookingStore.toggleSeat`
-- The component can be tested in isolation with any `layout` + `selectedSeatIds`
-- `SectionRenderer` now skips a section entirely (`rows.length === 0` → `return null`) so the always-empty `silver` tier renders nothing instead of an empty header
+### Pinch/pan zoom
 
-### Seat States
+`SeatGrid` wraps its content in a `GestureDetector` composing `Gesture.Pinch()` (clamped 0.6×–2.2×) and `Gesture.Pan()`, driven by Reanimated shared values, with a double-tap to reset. `App.tsx` wraps the whole tree in `GestureHandlerRootView` — required for any of this to work.
 
-| State | Visual |
-|---|---|
-| Available (standard) | Transparent fill, `colors.border` hairline border |
-| Available (premium) | `colors.goldDim` fill, `colors.gold` border — new: premium rows are visually distinct even before selection, matching the design |
-| Selected | `colors.seatSelected` fill (= accent) |
-| Booked | `colors.seatBooked` fill (= secondary) — not tappable |
+### Holding seats
 
-### SeatSelectionScreen layout
+"Proceed" is gated behind `useRequireAuth()`. On tap: `POST /api/booking/hold {show_id, seats}`.
+- **200** → navigate to `Checkout` with the full `CheckoutParams` (see [docs/navigation.md](navigation.md#navigation-param-types)), carrying the real `hold_expires_at`.
+- **409** (seat taken since the layout was fetched) → an alert names the conflicting seats (matched back to their labels), clears the selection, and refetches the layout.
 
-```
-┌─────────────────────────────────────────┐
-│ [← Back]  [Poster 40×60]  Movie / Show  │  ← sticky header
-├─────────────────────────────────────────┤
-│         ╭──────────────╮                │  ← screen arc (accent-tinted, rounded-top)
-│           SCREEN THIS WAY                │
-│  Available  Premium  Selected  Booked    │  ← SeatLegend (4 items now, was 3)
-│                                         │
-│  A  [1][2][3]...[12]  A   PREMIUM ₹350  │
-│  ...                                    │
-│  D  [1][2][3]...[12]  D   STANDARD ₹220 │
-│  ...  (rows D–J, 12 seats each)         │
-├─────────────────────────────────────────┤
-│ Seats: [A3] [A4] [A5]   (zinc pills)    │  ← seat pills (if any selected)
-│ Total: ₹1,050          [Proceed] primary│  ← bottom bar → navigate('Checkout')
-└─────────────────────────────────────────┘
-```
-
-### Seat Generation
-
-`seatsService.generateSeatLayout(showId)` now produces a **fixed** layout matching the CineHall design exactly, rather than a per-show pseudo-random one:
-- Rows A–C: `premium`, 12 seats/row, ₹350
-- Rows D–J: `gold` (displayed as "STANDARD"), 12 seats/row, ₹220
-- `silver`: always `[]`
-- Pre-booked seats: the fixed `BOOKED` list (see [docs/data-models.md](data-models.md#seat)) — same booked seats for every show, matching the design's flat mock catalog. The `SeatPricing` config values live in `src/constants/config.ts`.
+The seat map also refetches on screen focus and app-foreground (`useFocusEffect` + `AppState` listener) — there's no realtime/socket layer in the API, so this poll-on-resume is the only staleness guard.
 
 ---
 
 ## booking
 
-**Domain:** Order review, payment, and confirmation.
+**Domain:** Checkout, payment, and confirmation.
 
 | File | Purpose |
 |---|---|
-| `screens/CheckoutScreen.tsx` | **Routed as `Checkout`** — summary + seats + price breakdown + promo code |
-| `screens/OrderSummaryScreen.tsx` | ⚠ unrouted — superseded (had a horizontal offer-carousel instead of a single input) |
-| `screens/PaymentScreen.tsx` | Card / UPI / Wallet tabs + processing sub-state |
-| `screens/BookingSuccessScreen.tsx` | Ticket card with QR code, download/share/home actions |
-| `screens/BookingFailureScreen.tsx` | Error screen with try-again and home actions |
-| `components/PriceBreakdown.tsx` | Subtotal / fee / GST / discount / grand total rows |
+| `screens/CheckoutScreen.tsx` | Summary, real countdown, offers, promo code, price breakdown |
+| `screens/PaymentScreen.tsx` | Amount summary + "Pay securely" → `POST /api/payment/create-order` |
+| `screens/RazorpayWebViewScreen.tsx` | Hosts `checkout.js` in a WebView, bridges the result back via `postMessage` |
+| `screens/BookingSuccessScreen.tsx` | Fetches the real booking by `payment_id`, renders + saves/shares the ticket |
+| `screens/BookingFailureScreen.tsx` | Cancelled/failed payment, hold countdown continues, Try Again / Release Seats |
+| `components/PriceBreakdown.tsx` | Subtotal / fee / GST / discount / total rows — settings-driven, not hardcoded |
+| `utils/pricing.ts` | `computeCheckoutPricing()` — pure function, unit tested |
+| `utils/razorpayCheckoutHtml.ts` | Builds the inline HTML page for the WebView |
+
+### Pricing
+
+`computeCheckoutPricing()` mirrors `cinema-hall-api/controllers/payment.Controller.js` exactly:
+
+```ts
+convenienceTotal = numTickets * feePerTicket   // GET /api/settings, default ₹15/ticket
+gstAmount        = round(convenienceTotal * gstPercentage / 100, 2)   // GST on the FEE ONLY, default 18%
+subtotalWithFee  = ticketTotal + convenienceTotal + gstAmount
+grandTotal       = round(subtotalWithFee - discountAmount, 2)
+```
+
+This is display-only — `POST /api/payment/create-order` recomputes the real charge server-side, so a mismatch here would only ever show the wrong number, never charge the wrong amount. Covered by `src/features/booking/utils/pricing.test.ts`.
 
 ### CheckoutScreen
 
-- Header includes a `CountdownTimer initialSeconds={300}` (5-minute seat hold, down from the old 10-minute `OrderSummaryScreen` session) — on expiry, an `Alert` resets to `MainTabs`
-- Movie/cinema/showtime summary card, seat chips row (`SEATS (n)`)
-- `PriceBreakdown`: Subtotal → Convenience Fee (₹30/seat) → GST (18% of subtotal+fee) → Discount (if a promo is applied) → **Total**
-- A single promo-code `TextInput` + "Apply" button — replaces the old horizontal scrollable offer-carousel UI. "Apply" calls `offersService.validateCoupon(code, subtotal)`; on success it calls `setAppliedOffer(offer)` on `bookingStore` (reusing the store's existing `appliedOffer`/`getAppliedDiscount`/`getGrandTotal` getters rather than adding new store state)
-- "Pay Now · ₹X" → `navigation.navigate('Payment')`
+- Countdown seconds are computed once from `route.params.holdExpiresAt` at mount, not a fixed 5:00 — expiry replaces to `SeatSelection` with an alert.
+- Back/cancel calls `POST /api/booking/release` before leaving.
+- Offers: `GET /api/offers/active`, filtered to ones the current subtotal qualifies for, rendered as a horizontal card row; tapping one or typing a code both call `POST /api/offers/validate`.
 
-### PaymentScreen
-
-- 3 payment method tabs — **Card / UPI / Wallet** (down from the old 4-way UPI/Card/NetBanking/Wallet radio-card list; `'netbanking'` is kept in the `PaymentMethod` type union for data-shape stability even though there's no UI for it anymore)
-- Tab-specific inputs: Card → number + MM/YY + CVV; UPI → `yourname@upi` input + 3 app tiles (GPay/PhonePe/Paytm); Wallet → 3 radio rows (Amazon Pay/Paytm Wallet/Mobikwik)
-- **Processing sub-state**: tapping "Pay" swaps the whole screen body for a centered spinner (`Animated` rotation loop) + "Processing payment via Razorpay..." while `bookingService.createBooking(...)` runs, instead of only showing a spinner inside the button as before
-- On success: `setBookingDetails(booking)` → `navigate('BookingSuccess', { bookingId })`, then `resetBookingFlow()` after 3s
-- On error: `navigate('BookingFailure', { error: e.message })`
-
-### BookingSuccessScreen
-
-Displays a styled ticket card (visual structure unchanged from before, just theme-converted and rebranded):
+### Payment → RazorpayWebView
 
 ```
-┌─────────────────────────────────────────┐
-│  CINEHALL             [accent header]    │
-│  Movie Title                             │
-│  Date · Time · Format                    │
-├ · · · · · · · · · · · · · · · · · · · · ┤  ← perforated divider
-│  Booking ID    #CH20938                  │
-│  Theatre       Skyline Multiplex         │
-│  Date          Sat, 9 Aug 2026           │
-│  Time          7:30 PM                   │
-│  Seats         [E5] [E6]                 │
-│  Amount        ₹610                      │
-│           ┌─────────┐                    │
-│           │  QR Code │                   │
-│           └─────────┘                    │
-│        Scan at theatre entrance          │
-└─────────────────────────────────────────┘
-       [↓ Download]  [⤴ Share]  [Home →]
-             "View My Bookings" link
+PaymentScreen: POST /api/payment/create-order {show_id, seats, offer_code?}
+   → {order_id, amount(paise), currency, key_id}
+RazorpayWebViewScreen: loads an inline HTML page with <script src="checkout.js">,
+   opens Razorpay's native checkout sheet, bridges back via window.ReactNativeWebView.postMessage
+   → success  → POST /api/payment/verify {razorpay_order_id, razorpay_payment_id, razorpay_signature}
+              → BookingSuccess { paymentId }
+   → dismiss  → BookingFailure { reason: 'cancelled' }   (hold stays alive)
+   → error    → BookingFailure { reason: 'failed' }
 ```
 
-- Entry animation: `Animated.spring` scale + `Animated.timing` opacity on the check icon circle (unchanged)
-- `resetBookingFlow()` called after 3 seconds to clean up store state
-- New "View My Bookings" link resets into `MainTabs` with the `Bookings` tab focused (see [docs/navigation.md](navigation.md#resetting-into-a-specific-tab-used-after-bookingsuccess--view-my-bookings))
-- The `DashedLine` sub-component was hoisted to module scope (was previously defined inline inside the screen component on every render) and now takes `styles` as a prop, fixing a `react/no-unstable-nested-components` lint warning
+A `settledRef` guard prevents the bridge firing twice (e.g. a stray `dismiss` arriving after `success`). `BookingSuccessScreen` deliberately re-fetches the booking by `payment_id` rather than trusting anything held locally — the server's Razorpay webhook can create the booking independently of the client ever calling `/verify`, so the client's own belief about "did it work" isn't authoritative.
 
 ### BookingFailureScreen
 
-Unchanged in behavior — theme-converted only. Note: the CineHall design has **no** payment-failure screen of its own; this was kept because the mock payment flow can still fail, and dropping error handling would be a regression, not a design-fidelity improvement.
+The seat hold's countdown keeps running on this screen too (same `holdExpiresAt` from `checkoutParams`) — if it lapses before the user acts, it auto-redirects to `SeatSelection`. "Try Again" replaces to `Checkout` with the same params (re-verifying settings/offers fresh rather than jumping straight back into Payment). "Cancel and Release Seats" calls `POST /api/booking/release`.
 
 ---
 
 ## profile
 
-**Domain:** User account, booking history, and app settings. Now a **tab-bar root**, not a stack screen reached via an avatar button.
+**Domain:** Account, booking history, settings.
 
 | File | Purpose |
 |---|---|
-| `screens/ProfileScreen.tsx` | Avatar, user info, Dark Mode toggle, menu items |
-| `screens/MyBookingsScreen.tsx` | Upcoming / Past tabs, booking cards → TicketDetail |
-| `screens/TicketDetailScreen.tsx` | **New** — full ticket view + Cancel Booking |
+| `screens/ProfileScreen.tsx` | Real `/me` data, inline edit, connected-provider management, Dark Mode |
+| `screens/MyBookingsScreen.tsx` | Upcoming/Past, pull-to-refresh, login-gated |
+| `screens/TicketDetailScreen.tsx` | Full ticket, price breakdown, refund status, Directions, Contact Support |
+| `screens/ChangePasswordScreen.tsx` | For accounts with a password set |
+| `screens/SetPasswordScreen.tsx` | For Google-only accounts (`hasPassword === false`) |
 
 ### ProfileScreen
 
-- Avatar: `LinearGradient` from `colors.accent` to `colors.accentDim`, 80×80px circle, initials "AS" — sample user "Aditi Sharma" matches the CineHall design's placeholder content (was "Hello, Cinephile!" / "DH" before)
-- **Dark Mode row**: a `Switch` bound to `useTheme().toggleTheme` — the one and only in-app theme control (see [docs/design-system.md](design-system.md#toggling-the-theme))
-- Menu items — each in a `Card` with a 40×40 icon container and `ChevronRight`:
-  - My Bookings — `Ticket` icon → `navigation.navigate('Bookings')` (sibling tab)
-  - Payment Methods — `CreditCard` icon (decorative, no-op)
-  - Notifications — `Bell` icon (decorative, no-op)
-  - Help & Support — `HelpCircle` icon (decorative, no-op)
-  - Logout — `LogOut` icon → `resetBookingFlow()` + resets the **root stack** to `Login` via `navigation.getParent()?.reset(...)` (see [docs/navigation.md](navigation.md#reaching-the-parent-stack-navigator-explicitly))
-- Dropped from the old menu: "Offers & Coupons" and "Saved Theatres" (no design equivalent), "Settings" (folded away), the "Edit Profile" button
+Guests see a "Sign In" prompt (Dark Mode still works without a session). Signed-in users get: avatar (real `avatarUrl` or gradient initials), inline name/phone editing (`PUT /api/customer/update`), a "Connected Login Methods" card (Email & Password status, Google Connect/Disconnect via `linkProvider`/`unlinkProvider`), and a menu routing to My Bookings, Offers, Change/Set Password, and a real Logout (`authStore.logout()`, resets to `MainTabs` — not `Login`).
 
 ### MyBookingsScreen
 
-- **Tab switcher**: Upcoming / Past, same filter logic as before (`status === 'confirmed' && showDate >= today` vs. everything else)
-- Booking cards: unchanged visual structure (poster thumb, status-colored left border, meta rows, seat pills, amount)
-- **Tapping a card now navigates to `TicketDetailScreen`** instead of opening a `Modal` with just a QR code — the design's Ticket Detail screen needed more room (Cancel Booking confirm panel, Contact Support) than a small modal could hold
+`GET /api/booking/my-bookings`, split into Upcoming (`status==='confirmed' && showDate >= today`) and Past. Each card shows a refund badge when applicable and a Directions link.
 
-### TicketDetailScreen (new)
+### TicketDetailScreen
 
-```
-┌─────────────────────────────────────────┐
-│ [← Back]  E-Ticket                       │
-├─────────────────────────────────────────┤
-│         VALID FOR ENTRY                  │
-│         ┌───────────┐                    │
-│         │  QR Code   │  (160px)          │
-│         └───────────┘                    │
-│           CH20938                        │
-│  ┄ ┄ ┄ ┄ ┄ ┄ ┄ ┄ ┄ ┄ ┄ ┄ ┄ ┄ ┄ ┄ ┄ ┄ ┄ ┄  │  ← dashed divider
-│  Movie          Odyssey                  │
-│  Cinema         Skyline Multiplex        │
-│  Date & Time    Aug 9 · 7:30 PM          │
-│  Seats          E5, E6                   │
-│  Amount Paid    ₹610                     │
-├─────────────────────────────────────────┤
-│  [Cancel Booking]      [Contact Support] │
-└─────────────────────────────────────────┘
-```
-
-- Fetches the booking via `bookingService.getBookingById(bookingId)`
-- Status label: `VALID FOR ENTRY` (confirmed), `CANCELLED`, or `BOOKING COMPLETED`
-- "Cancel Booking" (disabled once already cancelled) opens an inline confirm panel — "Keep Booking" / "Yes, Cancel" — calling `bookingService.cancelBooking(bookingId)` and re-fetching on confirm, matching the design's inline-panel pattern rather than a separate confirmation dialog
-- "Contact Support" is decorative (no-op), matching the design
+No Cancel Booking button — there is no customer-facing cancellation endpoint in the API; refunds are admin-initiated. In its place: a price breakdown (ticket subtotal derived from the booking's own totals), a refund block when one exists (`refundStatus`, amount, Razorpay refund ID, timestamps, failure reason), Directions, and a Contact Support mail link.
 
 ---
 
 ## offers
 
-**Domain:** Discount coupons. ⚠ **Unrouted** — the CineHall design has no offer-browsing screen; promo codes are entered directly in `CheckoutScreen`.
+**Domain:** Discount coupons — browsable in their own screen *and* applicable inline at Checkout.
 
 | File | Purpose |
 |---|---|
-| `screens/OffersScreen.tsx` | ⚠ unrouted — 2-column grid of offer cards |
+| `screens/OffersScreen.tsx` | Login-gated grid of active offers |
 
-Kept on disk (theme-converted, still compiles) for reference. `offersService.ts` is still very much alive — it backs `CheckoutScreen`'s promo-code validation (see [docs/data-models.md](data-models.md#offer)).
+`GET /api/offers/active`, real clipboard copy (`@react-native-clipboard/clipboard`), `is_redeemed` offers render struck-through and non-copyable, expiring-within-3-days offers get an "ENDING SOON" badge, hall-scoped offers get a "HALL OFFER" badge.
 
 ---
 
 ## Adding a New Feature
 
-1. Create the folder:
-   ```
-   src/features/<name>/
-   ├── components/
-   ├── screens/
-   ├── types.ts
-   └── index.ts
-   ```
-
-2. Add mock data to a new or existing service in `src/services/`
-
-3. Add any data fetching to a hook in `src/hooks/` (or a feature-local hook)
-
-4. Register screens in `src/app/navigation/RootNavigator.tsx` or `TabNavigator.tsx`
-
-5. Add param types to `src/types/navigation.ts`
-
-6. If the screen needs theme colors, follow the `useTheme()` + `makeStyles(colors)` pattern — see [docs/design-system.md](design-system.md#theming-architecture)
-
-7. Export public surface from `index.ts`:
-   ```ts
-   export { MyNewScreen } from './screens/MyNewScreen';
-   export { MyNewCard } from './components/MyNewCard';
-   ```
-
-The rest of the codebase imports only from `@features/<name>` — never from internal paths.
+1. Add the DTO to `src/types/api.ts`, the mapper to `src/services/mappers.ts`, and the service function to `src/services/<name>Service.ts` (see [docs/architecture.md](architecture.md#scaling-guide)).
+2. Create `src/features/<name>/` (`components/`, `screens/`, `index.ts`).
+3. Register screens in `RootNavigator`/`TabNavigator` + `src/types/navigation.ts`.
+4. Follow the `useTheme()` + `makeStyles(colors)` pattern for any new styled component — see [docs/design-system.md](design-system.md#theming-architecture).

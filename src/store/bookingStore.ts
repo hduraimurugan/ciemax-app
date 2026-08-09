@@ -1,33 +1,36 @@
 import { create } from 'zustand';
-import { Booking, Movie, Offer, Seat, Show, Theatre } from '@ctypes/models';
+import { Movie, Seat, Show, Theatre } from '@ctypes/models';
 
+/**
+ * Holds the in-progress browse -> seat-selection flow. Once seats are held
+ * (SeatSelectionScreen -> POST /api/booking/hold), Checkout/Payment/Failure
+ * stop reading from here and become route-param-driven instead (see
+ * CheckoutParams in @ctypes/navigation) — that's what survives a
+ * backgrounded app without losing the live server-side hold. Pricing
+ * (convenience fee / GST / offer discount) is no longer computed here: it's
+ * server-computed and only mirrored client-side in CheckoutScreen using
+ * GET /api/settings, since the old flat "₹30/seat + 18% on everything"
+ * formula didn't match the API.
+ */
 interface BookingState {
-  // Flow state
   selectedMovie: Movie | null;
   selectedTheatre: Theatre | null;
   selectedShow: Show | null;
   selectedSeats: Seat[];
-  appliedCoupon: string | null;
-  appliedOffer: Offer | null;
-  bookingDetails: Booking | null;
+  // How many seats the user asked for (SeatCountModal) — drives the
+  // auto-adjacent selection algorithm in seatSelection.ts.
+  seatCount: number;
 
-  // Actions
   setSelectedMovie: (movie: Movie) => void;
   setSelectedTheatre: (theatre: Theatre) => void;
   setSelectedShow: (show: Show) => void;
-  toggleSeat: (seat: Seat) => void;
+  setSeatCount: (count: number) => void;
+  /** Replaces the whole selection — used after findBestAdjacentSeats picks a block. */
+  setSelectedSeats: (seats: Seat[]) => void;
   clearSeatSelection: () => void;
-  setAppliedCoupon: (code: string | null) => void;
-  setAppliedOffer: (offer: Offer | null) => void;
-  setBookingDetails: (booking: Booking) => void;
   resetBookingFlow: () => void;
 
-  // Computed (via selector pattern)
   getTotalAmount: () => number;
-  getConvenienceFee: () => number;
-  getGST: () => number;
-  getAppliedDiscount: () => number;
-  getGrandTotal: () => number;
 }
 
 export const useBookingStore = create<BookingState>((set, get) => ({
@@ -35,38 +38,20 @@ export const useBookingStore = create<BookingState>((set, get) => ({
   selectedTheatre: null,
   selectedShow: null,
   selectedSeats: [],
-  appliedCoupon: null,
-  appliedOffer: null,
-  bookingDetails: null,
+  seatCount: 0,
 
   setSelectedMovie: movie => set({ selectedMovie: movie }),
 
   setSelectedTheatre: theatre => set({ selectedTheatre: theatre }),
 
   setSelectedShow: show =>
-    set({ selectedShow: show, selectedSeats: [] }), // clear seats on new show
+    set({ selectedShow: show, selectedSeats: [], seatCount: 0 }), // clear seats on new show
 
-  toggleSeat: seat =>
-    set(state => {
-      const alreadySelected = state.selectedSeats.some(s => s.id === seat.id);
-      if (alreadySelected) {
-        return { selectedSeats: state.selectedSeats.filter(s => s.id !== seat.id) };
-      }
-      if (state.selectedSeats.length >= 8) {
-        return state; // max 8 seats per booking
-      }
-      return {
-        selectedSeats: [...state.selectedSeats, { ...seat, status: 'selected' }],
-      };
-    }),
+  setSeatCount: count => set({ seatCount: count, selectedSeats: [] }),
+
+  setSelectedSeats: seats => set({ selectedSeats: seats.map(s => ({ ...s, status: 'selected' })) }),
 
   clearSeatSelection: () => set({ selectedSeats: [] }),
-
-  setAppliedCoupon: code => set({ appliedCoupon: code }),
-
-  setAppliedOffer: offer => set({ appliedOffer: offer, appliedCoupon: offer?.code ?? null }),
-
-  setBookingDetails: booking => set({ bookingDetails: booking }),
 
   resetBookingFlow: () =>
     set({
@@ -74,37 +59,8 @@ export const useBookingStore = create<BookingState>((set, get) => ({
       selectedTheatre: null,
       selectedShow: null,
       selectedSeats: [],
-      appliedCoupon: null,
-      appliedOffer: null,
-      bookingDetails: null,
+      seatCount: 0,
     }),
 
-  getTotalAmount: () =>
-    get().selectedSeats.reduce((sum, s) => sum + s.price, 0),
-
-  // ₹30 per seat (matches CineHall design)
-  getConvenienceFee: () => get().selectedSeats.length * 30,
-
-  // 18% GST on (subtotal + convenience fee), matching the CineHall design
-  getGST: () => {
-    const { getTotalAmount, getConvenienceFee } = get();
-    return Math.round((getTotalAmount() + getConvenienceFee()) * 0.18);
-  },
-
-  getAppliedDiscount: () => {
-    const { appliedOffer, getTotalAmount } = get();
-    if (!appliedOffer) return 0;
-    const subtotal = getTotalAmount();
-    if (subtotal < appliedOffer.minOrderAmount) return 0;
-    if (appliedOffer.discountType === 'flat') {
-      return Math.min(appliedOffer.discountValue, appliedOffer.maxDiscount);
-    }
-    const pct = Math.round(subtotal * appliedOffer.discountValue / 100);
-    return Math.min(pct, appliedOffer.maxDiscount);
-  },
-
-  getGrandTotal: () => {
-    const { getTotalAmount, getConvenienceFee, getGST, getAppliedDiscount } = get();
-    return getTotalAmount() + getConvenienceFee() + getGST() - getAppliedDiscount();
-  },
+  getTotalAmount: () => get().selectedSeats.reduce((sum, s) => sum + s.price, 0),
 }));

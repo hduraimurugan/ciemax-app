@@ -1,67 +1,47 @@
-import { Booking, PaymentMethod, Seat, Show } from '@ctypes/models';
-import { MockDelay } from '@constants/config';
+import { Env } from '@constants/env';
+import { httpClient } from './httpClient';
+import { mapBooking } from './mappers';
+import * as mock from './bookingService.mock';
+import type { Booking } from '@ctypes/models';
+import type {
+  HoldSeatsResponse,
+  ReleaseSeatsResponse,
+  GetMyBookingsResponse,
+  GetBookingResponse,
+} from '@ctypes/api';
 
-const delay = (ms: number) => new Promise<void>(resolve => setTimeout(resolve, ms));
+const BASE = '/api/booking';
 
-let mockBookings: Booking[] = [];
-
-function generateBookingId(): string {
-  return `CH${Math.floor(20000 + Math.random() * 9999)}`;
+/**
+ * Places a 5-minute server-side hold on the given seats. All-or-nothing —
+ * a 409 (thrown as ApiError with `.results`) means at least one seat was
+ * taken; the caller should show the conflict and refetch the seat map.
+ * Note: `createBooking`/`cancelBooking` from the old mock service are gone
+ * on purpose — the real flow creates a booking via payment verification
+ * (paymentService.verifyPayment), and there is no customer-facing
+ * cancellation endpoint (refunds are admin-initiated).
+ */
+export async function holdSeats(showId: string, seatIds: string[]): Promise<HoldSeatsResponse> {
+  return httpClient.post<HoldSeatsResponse>(`${BASE}/hold`, { show_id: showId, seats: seatIds });
 }
 
-export async function createBooking(params: {
-  movie: { id: string; title: string; posterUrl: string };
-  theatre: { id: string; name: string };
-  show: Show;
-  seats: Seat[];
-  paymentMethod: PaymentMethod;
-  // Pre-computed by useBookingStore (getConvenienceFee/getGrandTotal) so the fee/GST
-  // formula lives in exactly one place instead of being re-derived here too.
-  convenienceFee: number;
-  totalAmount: number;
-}): Promise<Booking> {
-  await delay(MockDelay * 2); // Simulate payment processing
-
-  const subtotal = params.seats.reduce((sum, s) => sum + s.price, 0);
-
-  const booking: Booking = {
-    id: generateBookingId(),
-    movieId: params.movie.id,
-    movieTitle: params.movie.title,
-    theatreId: params.theatre.id,
-    theatreName: params.theatre.name,
-    showId: params.show.id,
-    showTime: params.show.time,
-    showDate: params.show.date,
-    showFormat: params.show.format,
-    seats: params.seats.map(s => ({ ...s, status: 'booked' })),
-    subtotal,
-    convenienceFee: params.convenienceFee,
-    totalAmount: params.totalAmount,
-    bookingDate: new Date().toISOString(),
-    status: 'confirmed',
-    paymentMethod: params.paymentMethod,
-    posterUrl: params.movie.posterUrl,
-  };
-
-  mockBookings = [booking, ...mockBookings];
-  return booking;
-}
-
-export async function getBookingById(id: string): Promise<Booking | undefined> {
-  await delay(MockDelay / 2);
-  return mockBookings.find(b => b.id === id);
+export async function releaseSeats(showId: string, seatIds: string[]): Promise<ReleaseSeatsResponse> {
+  return httpClient.post<ReleaseSeatsResponse>(`${BASE}/release`, { show_id: showId, seats: seatIds });
 }
 
 export async function getUserBookings(): Promise<Booking[]> {
-  await delay(MockDelay);
-  return mockBookings;
+  if (Env.USE_MOCKS) return mock.getUserBookings();
+  const res = await httpClient.get<GetMyBookingsResponse>(`${BASE}/my-bookings`);
+  return res.bookings.map(mapBooking);
 }
 
-export async function cancelBooking(id: string): Promise<boolean> {
-  await delay(MockDelay);
-  const idx = mockBookings.findIndex(b => b.id === id);
-  if (idx === -1) return false;
-  mockBookings[idx] = { ...mockBookings[idx], status: 'cancelled' };
-  return true;
+export async function getBookingById(id: string): Promise<Booking | undefined> {
+  if (Env.USE_MOCKS) return mock.getBookingById(id);
+  const res = await httpClient.get<GetBookingResponse>(`${BASE}/${id}`);
+  return mapBooking(res.booking);
+}
+
+export async function getBookingByPaymentId(paymentId: string): Promise<Booking | undefined> {
+  const res = await httpClient.get<GetBookingResponse>(`${BASE}/by-payment/${paymentId}`);
+  return mapBooking(res.booking);
 }

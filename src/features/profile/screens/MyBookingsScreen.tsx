@@ -1,14 +1,17 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   FlatList,
   Image,
+  Linking,
   Pressable,
+  RefreshControl,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Calendar, Clock, MapPin, Monitor, Film, Ticket } from 'lucide-react-native';
+import { useFocusEffect } from '@react-navigation/native';
+import { Calendar, Clock, MapPin, Film, Ticket, LogIn } from 'lucide-react-native';
 import { CompositeScreenProps } from '@react-navigation/native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
@@ -16,10 +19,11 @@ import { RootStackParamList, TabParamList } from '@ctypes/navigation';
 import { Booking } from '@ctypes/models';
 import { ColorTokens, FontFamily, FontSize, FontWeight, Radius, Spacing } from '@constants/theme';
 import { useTheme } from '@hooks/useTheme';
-import { Badge, Loader } from '@shared/ui';
+import { Badge, Button, Loader } from '@shared/ui';
 import { Heading2, Heading3, Body, BodySmall, Caption, Label } from '@shared/ui';
 import { getUserBookings } from '@services/bookingService';
 import { formatPrice, formatShowDate } from '@shared/utils';
+import { useAuthStore } from '@store/authStore';
 
 type Props = CompositeScreenProps<
   BottomTabScreenProps<TabParamList, 'Bookings'>,
@@ -30,16 +34,38 @@ type ActiveTab = 'upcoming' | 'past';
 export function MyBookingsScreen({ navigation }: Props) {
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
+  const status = useAuthStore(s => s.status);
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState<ActiveTab>('upcoming');
 
-  useEffect(() => {
-    getUserBookings().then(data => {
-      setBookings(data);
+  const load = useCallback(() => {
+    if (status !== 'authed') {
       setLoading(false);
-    });
-  }, []);
+      return;
+    }
+    return getUserBookings()
+      .then(setBookings)
+      .finally(() => setLoading(false));
+  }, [status]);
+
+  useEffect(() => {
+    setLoading(true);
+    load();
+  }, [load]);
+
+  // Refresh when returning from a new booking so it shows up immediately.
+  useFocusEffect(
+    useCallback(() => {
+      if (status === 'authed') load();
+    }, [load, status]),
+  );
+
+  function onRefresh() {
+    setRefreshing(true);
+    Promise.resolve(load()).finally(() => setRefreshing(false));
+  }
 
   const today = new Date().toISOString().split('T')[0];
   const upcoming = bookings.filter(b => b.status === 'confirmed' && b.showDate >= today);
@@ -48,6 +74,22 @@ export function MyBookingsScreen({ navigation }: Props) {
 
   function openTicket(bookingId: string) {
     navigation.navigate('TicketDetail', { bookingId });
+  }
+
+  if (status !== 'authed') {
+    return (
+      <SafeAreaView style={styles.screen}>
+        <View style={styles.signedOut}>
+          <Ticket size={48} color={colors.textMuted} />
+          <Body style={styles.emptyText}>Sign in to view your bookings.</Body>
+          <Button
+            label="Sign In"
+            onPress={() => navigation.navigate('Login', {})}
+            leftIcon={<LogIn size={16} color={colors.textInverse} />}
+          />
+        </View>
+      </SafeAreaView>
+    );
   }
 
   if (loading) return <Loader fullScreen />;
@@ -91,10 +133,19 @@ export function MyBookingsScreen({ navigation }: Props) {
           )}
           contentContainerStyle={styles.list}
           showsVerticalScrollIndicator={false}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.accent} />}
         />
       )}
     </SafeAreaView>
   );
+}
+
+function openDirections(booking: Booking) {
+  const url =
+    booking.theatreLatitude && booking.theatreLongitude
+      ? `https://www.google.com/maps/search/?api=1&query=${booking.theatreLatitude},${booking.theatreLongitude}`
+      : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(booking.theatreName)}`;
+  Linking.openURL(url).catch(() => {});
 }
 
 function BookingCard({ booking, onPress, colors }: { booking: Booking; onPress: () => void; colors: ColorTokens }) {
@@ -108,6 +159,8 @@ function BookingCard({ booking, onPress, colors }: { booking: Booking; onPress: 
   const statusVariant = booking.status === 'confirmed'
     ? 'success'
     : booking.status === 'cancelled' ? 'error' : 'warning';
+
+  const seatLabels = booking.seatLabels ?? booking.seats.map(s => s.label ?? `${s.row}${s.number}`);
 
   return (
     <Pressable style={[styles.card, { borderLeftColor: accentColor }]} onPress={onPress}>
@@ -126,34 +179,37 @@ function BookingCard({ booking, onPress, colors }: { booking: Booking; onPress: 
             <Badge label={booking.status.toUpperCase()} variant={statusVariant} />
           </View>
           <View style={styles.meta}>
-            <View style={styles.metaRow}>
+            <Pressable style={styles.metaRow} onPress={() => openDirections(booking)} hitSlop={4}>
               <MapPin size={11} color={colors.textMuted} />
-              <Caption style={styles.metaText}>{booking.theatreName}</Caption>
-            </View>
+              <Caption style={styles.metaLink}>{booking.theatreName}</Caption>
+            </Pressable>
             <View style={styles.metaRow}>
               <Calendar size={11} color={colors.textMuted} />
               <Caption style={styles.metaText}>{formatShowDate(booking.showDate)}</Caption>
               <Clock size={11} color={colors.textMuted} />
               <Caption style={styles.metaText}>{booking.showTime}</Caption>
             </View>
-            <View style={styles.metaRow}>
-              <Monitor size={11} color={colors.textMuted} />
-              <Caption style={styles.metaText}>{booking.showFormat}</Caption>
-            </View>
+            {booking.refundStatus ? (
+              <Badge
+                label={`Refund ${booking.refundStatus}`}
+                variant={booking.refundStatus === 'settled' ? 'success' : booking.refundStatus === 'failed' ? 'error' : 'warning'}
+                style={styles.refundBadge}
+              />
+            ) : null}
           </View>
           <View style={styles.seatPills}>
-            {booking.seats.slice(0, 4).map(s => (
-              <Badge key={s.id} label={`${s.row}${s.number}`} variant="default" />
+            {seatLabels.slice(0, 4).map(label => (
+              <Badge key={label} label={label} variant="default" />
             ))}
-            {booking.seats.length > 4 && (
-              <Caption style={styles.morePills}>+{booking.seats.length - 4}</Caption>
+            {seatLabels.length > 4 && (
+              <Caption style={styles.morePills}>+{seatLabels.length - 4}</Caption>
             )}
           </View>
         </View>
       </View>
 
       <View style={styles.footer}>
-        <Label style={styles.bookingId}>#{booking.id}</Label>
+        <Label style={styles.bookingId}>#{booking.id.slice(0, 8).toUpperCase()}</Label>
         <View style={styles.footerRight}>
           <BodySmall style={styles.amount}>{formatPrice(booking.totalAmount)}</BodySmall>
           <View style={styles.qrBtn}>
@@ -168,6 +224,7 @@ function BookingCard({ booking, onPress, colors }: { booking: Booking; onPress: 
 const makeStyles = (Colors: ColorTokens) =>
   StyleSheet.create({
     screen: { flex: 1, backgroundColor: Colors.background },
+    signedOut: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: Spacing.md, padding: Spacing.xl },
     pageHeader: {
       paddingHorizontal: Spacing.md,
       paddingTop: Spacing.md,
@@ -255,6 +312,11 @@ const makeStyles = (Colors: ColorTokens) =>
       color: Colors.textSecondary,
       fontSize: FontSize.xs,
     },
+    metaLink: {
+      color: Colors.accent,
+      fontSize: FontSize.xs,
+    },
+    refundBadge: { alignSelf: 'flex-start', marginTop: 2 },
     seatPills: {
       flexDirection: 'row',
       flexWrap: 'wrap',

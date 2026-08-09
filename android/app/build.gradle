@@ -2,6 +2,17 @@ apply plugin: "com.android.application"
 apply plugin: "org.jetbrains.kotlin.android"
 apply plugin: "com.facebook.react"
 
+// react-native-config: pick the .env file for this build variant, then load
+// it into project.ext.env / BuildConfig.* / R.string.* — must run before the
+// `android {}` block below so project.ext.env is populated in time for
+// manifestPlaceholders.
+project.ext.envConfigFiles = [
+    debug:   ".env",
+    staging: ".env.staging",
+    release: ".env.production",
+]
+apply from: project(':react-native-config').projectDir.getPath() + "/dotenv.gradle"
+
 /**
  * This is the configuration block to customize your React Native Android app.
  * By default you don't need to apply any configuration, just uncomment the lines you need.
@@ -84,6 +95,10 @@ android {
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1
         versionName "1.0"
+        // Backs android:usesCleartextTraffic in AndroidManifest.xml — set
+        // ENABLE_CLEARTEXT=false in .env.production so release builds only
+        // ever talk to the API over HTTPS.
+        manifestPlaceholders = [usesCleartextTraffic: (project.ext.env?.ENABLE_CLEARTEXT ?: "true")]
     }
     signingConfigs {
         debug {

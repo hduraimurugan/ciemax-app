@@ -9,19 +9,21 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Search, ChevronDown, Bell, MapPin } from 'lucide-react-native';
+import { Search, ChevronDown, Bell, MapPin, Clapperboard } from 'lucide-react-native';
 import { CompositeScreenProps } from '@react-navigation/native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import { RootStackParamList, TabParamList } from '@ctypes/navigation';
 import { Movie } from '@ctypes/models';
-import { AppConfig } from '@constants/config';
 import { ColorTokens, FontFamily, FontSize, FontWeight, Radius, Spacing } from '@constants/theme';
 import { useTheme } from '@hooks/useTheme';
-import { Loader } from '@shared/ui';
+import { AdBanner, Loader } from '@shared/ui';
 import { Body, Heading2 } from '@shared/ui';
 import { formatRating } from '@shared/utils';
 import { useMovies } from '@hooks/useMovies';
+import { useLocationStore } from '@store/locationStore';
+import { getActiveAds, recordAdClick } from '@services/adsService';
+import { LocationModal } from '@features/location';
 import { MovieCard } from '../components/MovieCard';
 
 type Props = CompositeScreenProps<
@@ -37,6 +39,21 @@ export function MoviesScreen({ navigation }: Props) {
   const { nowShowing, comingSoon, loading, error } = useMovies();
   const [heroIdx, setHeroIdx] = useState(0);
   const progress = useRef(new Animated.Value(0)).current;
+
+  const district = useLocationStore(s => s.district);
+  const detect = useLocationStore(s => s.detect);
+  const [locationModalVisible, setLocationModalVisible] = useState(false);
+  const [ads, setAds] = useState<{ id: string; image_url: string; click_url?: string | null }[]>([]);
+
+  useEffect(() => {
+    // Best-effort auto-detect on first Home mount if no location is cached yet.
+    if (!district) detect();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    getActiveAds('banner').then(setAds);
+  }, []);
 
   const heroMovies = nowShowing.slice(0, 3);
   const recommended = [...nowShowing, ...comingSoon].reverse().slice(0, 4);
@@ -58,6 +75,11 @@ export function MoviesScreen({ navigation }: Props) {
     navigation.navigate('MovieDetail', { movieId: movie.id });
   }
 
+  function handleAdPress(index: number) {
+    const ad = ads[index];
+    if (ad) recordAdClick(ad.id);
+  }
+
   if (loading && nowShowing.length === 0) {
     return <Loader fullScreen message="Loading movies..." />;
   }
@@ -75,12 +97,15 @@ export function MoviesScreen({ navigation }: Props) {
   return (
     <SafeAreaView style={styles.screen}>
       <View style={styles.header}>
-        <View style={styles.locationRow}>
+        <Pressable style={styles.locationRow} onPress={() => setLocationModalVisible(true)} hitSlop={6}>
           <MapPin size={14} color={colors.textPrimary} />
-          <Text style={styles.location}>{AppConfig.defaultCity}</Text>
+          <Text style={styles.location} numberOfLines={1}>{district ?? 'Set location'}</Text>
           <ChevronDown size={10} color={colors.textMuted} />
-        </View>
+        </Pressable>
         <View style={styles.headerActions}>
+          <Pressable onPress={() => navigation.navigate('Theatres')} hitSlop={8}>
+            <Clapperboard size={20} color={colors.textPrimary} />
+          </Pressable>
           <Pressable onPress={() => navigation.navigate('SearchTab')} hitSlop={8}>
             <Search size={20} color={colors.textPrimary} />
           </Pressable>
@@ -90,7 +115,7 @@ export function MoviesScreen({ navigation }: Props) {
 
       <ScrollView showsVerticalScrollIndicator={false}>
         {heroMovie && (
-          <View style={styles.hero}>
+          <Pressable style={styles.hero} onPress={() => handleMoviePress(heroMovie)}>
             <Image source={{ uri: heroMovie.backdropUrl }} style={StyleSheet.absoluteFill} resizeMode="cover" />
             <View style={[StyleSheet.absoluteFill, styles.heroOverlay]} />
             <View style={styles.heroDots}>
@@ -114,6 +139,13 @@ export function MoviesScreen({ navigation }: Props) {
               <Text style={styles.heroTag}>★ {formatRating(heroMovie.rating)} · {heroMovie.isNowShowing ? 'Now Showing' : 'Coming Soon'}</Text>
               <Text style={styles.heroTitle}>{heroMovie.title}</Text>
             </View>
+          </Pressable>
+        )}
+
+        {ads.length > 0 && (
+          <View style={styles.adBannerWrap}>
+            {/* AdBanner sizes itself to the full device width internally. */}
+            <AdBanner imageUrls={ads.map(a => a.image_url)} onPressIndex={handleAdPress} />
           </View>
         )}
 
@@ -121,8 +153,16 @@ export function MoviesScreen({ navigation }: Props) {
         <MovieRow title="Coming Soon" movies={comingSoon} onPress={handleMoviePress} colors={colors} variant="soon" />
         <MovieRow title="Recommended For You" movies={recommended} onPress={handleMoviePress} colors={colors} variant="plain" />
 
+        {nowShowing.length === 0 && comingSoon.length === 0 && !loading && (
+          <Body style={styles.errorText}>
+            {district ? `No movies found near ${district}.` : 'Set your location to see movies playing near you.'}
+          </Body>
+        )}
+
         <View style={styles.bottomPad} />
       </ScrollView>
+
+      <LocationModal visible={locationModalVisible} onClose={() => setLocationModalVisible(false)} />
     </SafeAreaView>
   );
 }
@@ -165,11 +205,12 @@ const makeStyles = (Colors: ColorTokens) =>
       paddingTop: Spacing.sm,
       paddingBottom: Spacing.sm,
     },
-    locationRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+    locationRow: { flexDirection: 'row', alignItems: 'center', gap: 4, flexShrink: 1 },
     location: {
       fontSize: FontSize.md - 1,
       fontWeight: FontWeight.semibold,
       color: Colors.textPrimary,
+      maxWidth: 160,
     },
     headerActions: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md },
     hero: {
@@ -205,6 +246,7 @@ const makeStyles = (Colors: ColorTokens) =>
       marginBottom: 4,
     },
     heroTitle: { fontSize: FontSize.lg, fontWeight: FontWeight.bold, color: '#fff' },
+    adBannerWrap: { marginBottom: Spacing.lg },
     section: { marginBottom: Spacing.lg },
     sectionTitle: { paddingHorizontal: Spacing.lg, marginBottom: Spacing.sm, fontSize: FontSize.md + 1 },
     horizontalList: { paddingHorizontal: Spacing.lg, gap: Spacing.sm },

@@ -1,87 +1,61 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
-import {
-  Animated,
-  Easing,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import React, { useMemo, useRef, useState } from 'react';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ArrowLeft } from 'lucide-react-native';
+import { ArrowLeft, CreditCard, Landmark, ShieldCheck, Smartphone, Wallet } from 'lucide-react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '@ctypes/navigation';
-import { PaymentMethod } from '@ctypes/models';
 import { ColorTokens, FontFamily, FontSize, FontWeight, Radius, Spacing } from '@constants/theme';
 import { useTheme } from '@hooks/useTheme';
-import { Heading3 } from '@shared/ui';
-import { useBookingStore } from '@store/bookingStore';
-import { createBooking } from '@services/bookingService';
+import { Button, Heading3 } from '@shared/ui';
 import { formatPrice } from '@shared/utils';
+import { useAuthStore } from '@store/authStore';
+import { createOrder } from '@services/paymentService';
+import { errorMessage } from '@services/httpClient';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Payment'>;
-type Tab = Extract<PaymentMethod, 'card' | 'upi' | 'wallet'>;
 
-const TABS: { key: Tab; label: string }[] = [
-  { key: 'card', label: 'Card' },
-  { key: 'upi', label: 'UPI' },
-  { key: 'wallet', label: 'Wallet' },
-];
-const UPI_APPS = ['GPay', 'PhonePe', 'Paytm'];
-const WALLETS = ['Amazon Pay', 'Paytm Wallet', 'Mobikwik'];
+const METHODS = [
+  { key: 'card', label: 'Cards', icon: CreditCard },
+  { key: 'upi', label: 'UPI', icon: Smartphone },
+  { key: 'wallet', label: 'Wallets', icon: Wallet },
+  { key: 'netbanking', label: 'Net Banking', icon: Landmark },
+] as const;
 
-export function PaymentScreen({ navigation }: Props) {
+export function PaymentScreen({ navigation, route }: Props) {
+  const params = route.params;
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
-  const [tab, setTab] = useState<Tab>('card');
-  const [processing, setProcessing] = useState(false);
-  const spin = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    if (!processing) return;
-    spin.setValue(0);
-    const loop = Animated.loop(
-      Animated.timing(spin, { toValue: 1, duration: 800, easing: Easing.linear, useNativeDriver: true }),
-    );
-    loop.start();
-    return () => loop.stop();
-  }, [processing, spin]);
-
-  const spinRotate = spin.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] });
-
-  const selectedMovie = useBookingStore(s => s.selectedMovie);
-  const selectedTheatre = useBookingStore(s => s.selectedTheatre);
-  const selectedShow = useBookingStore(s => s.selectedShow);
-  const selectedSeats = useBookingStore(s => s.selectedSeats);
-  const getGrandTotal = useBookingStore(s => s.getGrandTotal);
-  const getConvenienceFee = useBookingStore(s => s.getConvenienceFee);
-  const setBookingDetails = useBookingStore(s => s.setBookingDetails);
-  const resetBookingFlow = useBookingStore(s => s.resetBookingFlow);
-
-  const grandTotal = getGrandTotal();
+  const customer = useAuthStore(s => s.customer);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  // Guards against a double-tap firing two Razorpay orders for the same hold.
+  const inFlight = useRef(false);
 
   async function payNow() {
-    if (!selectedMovie || !selectedTheatre || !selectedShow) return;
-    setProcessing(true);
+    if (inFlight.current) return;
+    inFlight.current = true;
+    setSubmitting(true);
+    setError(null);
     try {
-      const booking = await createBooking({
-        movie: { id: selectedMovie.id, title: selectedMovie.title, posterUrl: selectedMovie.posterUrl },
-        theatre: { id: selectedTheatre.id, name: selectedTheatre.name },
-        show: selectedShow,
-        seats: selectedSeats,
-        paymentMethod: tab,
-        convenienceFee: getConvenienceFee(),
-        totalAmount: grandTotal,
+      const order = await createOrder(params.showId, params.seatIds, params.offerCode ?? undefined);
+      setSubmitting(false);
+      inFlight.current = false;
+      navigation.navigate('RazorpayWebView', {
+        orderId: order.order_id,
+        amountPaise: order.amount,
+        currency: order.currency,
+        keyId: order.key_id,
+        customerName: customer?.name ?? '',
+        customerEmail: customer?.email ?? '',
+        customerPhone: customer?.phone ?? undefined,
+        description: `Booking for ${params.seatIds.length} seat(s) — ${params.movieTitle}`,
+        checkoutParams: params,
+        offerCode: params.offerCode,
       });
-      setBookingDetails(booking);
-      setProcessing(false);
-      navigation.navigate('BookingSuccess', { bookingId: booking.id });
-      setTimeout(resetBookingFlow, 3000);
-    } catch (e: any) {
-      setProcessing(false);
-      navigation.navigate('BookingFailure', { error: e?.message ?? 'Payment failed' });
+    } catch (err) {
+      setSubmitting(false);
+      inFlight.current = false;
+      setError(errorMessage(err, 'Could not start payment. Please try again.'));
     }
   }
 
@@ -94,90 +68,40 @@ export function PaymentScreen({ navigation }: Props) {
         <Heading3>Payment</Heading3>
       </View>
 
-      {processing ? (
-        <View style={styles.processing}>
-          <Animated.View style={[styles.spinner, { transform: [{ rotate: spinRotate }] }]} />
-          <Text style={styles.processingText}>Processing payment via Razorpay...</Text>
+      <View style={styles.content}>
+        <View style={styles.amountBlock}>
+          <Text style={styles.amountLabel}>AMOUNT PAYABLE</Text>
+          <Text style={styles.amountValue}>{formatPrice(params.grandTotal)}</Text>
+          <Text style={styles.amountSub}>{params.seatIds.length} seat(s) · {params.movieTitle}</Text>
         </View>
-      ) : (
-        <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-          <View style={styles.amountBlock}>
-            <Text style={styles.amountLabel}>AMOUNT PAYABLE</Text>
-            <Text style={styles.amountValue}>{formatPrice(grandTotal)}</Text>
-          </View>
 
-          <View style={styles.tabsRow}>
-            {TABS.map(t => (
-              <Pressable
-                key={t.key}
-                style={[styles.tabBtn, tab === t.key && styles.tabBtnActive]}
-                onPress={() => setTab(t.key)}>
-                <Text style={[styles.tabLabel, tab === t.key && styles.tabLabelActive]}>{t.label}</Text>
-              </Pressable>
-            ))}
-          </View>
-
-          {tab === 'card' && (
-            <View style={styles.formGroup}>
-              <TextInput
-                placeholder="Card Number"
-                placeholderTextColor={colors.textMuted}
-                style={styles.input}
-              />
-              <View style={styles.rowGap}>
-                <TextInput
-                  placeholder="MM/YY"
-                  placeholderTextColor={colors.textMuted}
-                  style={[styles.input, styles.flex1]}
-                />
-                <TextInput
-                  placeholder="CVV"
-                  placeholderTextColor={colors.textMuted}
-                  style={[styles.input, styles.flex1]}
-                  secureTextEntry
-                />
-              </View>
-            </View>
-          )}
-
-          {tab === 'upi' && (
-            <View style={styles.formGroup}>
-              <TextInput
-                placeholder="yourname@upi"
-                placeholderTextColor={colors.textMuted}
-                style={styles.input}
-                autoCapitalize="none"
-              />
-              <View style={styles.rowGap}>
-                {UPI_APPS.map(app => (
-                  <View key={app} style={[styles.upiTile, styles.flex1]}>
-                    <Text style={styles.upiTileText}>{app}</Text>
-                  </View>
-                ))}
-              </View>
-            </View>
-          )}
-
-          {tab === 'wallet' && (
-            <View style={styles.walletList}>
-              {WALLETS.map(w => (
-                <View key={w} style={styles.walletRow}>
-                  <Text style={styles.walletLabel}>{w}</Text>
-                  <View style={styles.radio} />
-                </View>
-              ))}
-            </View>
-          )}
-        </ScrollView>
-      )}
-
-      {!processing && (
-        <View style={styles.cta}>
-          <Pressable style={styles.payBtn} onPress={payNow}>
-            <Text style={styles.payBtnText}>Pay {formatPrice(grandTotal)}</Text>
-          </Pressable>
+        <View style={styles.secureRow}>
+          <ShieldCheck size={16} color={colors.success} />
+          <Text style={styles.secureText}>Secured by Razorpay · PCI-DSS compliant</Text>
         </View>
-      )}
+
+        <View style={styles.methodsGrid}>
+          {METHODS.map(m => (
+            <View key={m.key} style={styles.methodTile}>
+              <m.icon size={20} color={colors.textSecondary} />
+              <Text style={styles.methodLabel}>{m.label}</Text>
+            </View>
+          ))}
+        </View>
+
+        {error ? <Text style={styles.errorText}>{error}</Text> : null}
+      </View>
+
+      <View style={styles.cta}>
+        <Button
+          label={submitting ? 'Starting payment…' : `Pay ${formatPrice(params.grandTotal)} securely`}
+          onPress={payNow}
+          disabled={submitting}
+          loading={submitting}
+          fullWidth
+          size="lg"
+        />
+      </View>
     </SafeAreaView>
   );
 }
@@ -201,18 +125,8 @@ const makeStyles = (Colors: ColorTokens) =>
       alignItems: 'center',
       justifyContent: 'center',
     },
-    processing: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: Spacing.md },
-    spinner: {
-      width: 44,
-      height: 44,
-      borderRadius: Radius.full,
-      borderWidth: 3,
-      borderColor: Colors.border,
-      borderTopColor: Colors.accent,
-    },
-    processingText: { fontSize: FontSize.sm, color: Colors.textMuted },
-    content: { paddingHorizontal: Spacing.lg, paddingBottom: Spacing.xl },
-    amountBlock: { alignItems: 'center', marginBottom: Spacing.lg },
+    content: { flex: 1, paddingHorizontal: Spacing.lg, gap: Spacing.lg },
+    amountBlock: { alignItems: 'center', marginTop: Spacing.xl },
     amountLabel: { fontSize: FontSize.xs, color: Colors.textMuted, letterSpacing: 1.5, marginBottom: 4 },
     amountValue: {
       fontFamily: FontFamily.bold,
@@ -220,75 +134,37 @@ const makeStyles = (Colors: ColorTokens) =>
       fontSize: FontSize.xxl,
       color: Colors.textPrimary,
     },
-    tabsRow: {
+    amountSub: { fontSize: FontSize.xs, color: Colors.textMuted, marginTop: 4 },
+    secureRow: {
       flexDirection: 'row',
-      backgroundColor: Colors.surface,
-      borderRadius: Radius.md,
-      padding: 4,
-      marginBottom: Spacing.lg,
-    },
-    tabBtn: {
-      flex: 1,
       alignItems: 'center',
-      paddingVertical: Spacing.sm + 2,
-      borderRadius: Radius.sm,
+      justifyContent: 'center',
+      gap: Spacing.xs,
     },
-    tabBtnActive: { backgroundColor: Colors.accent },
-    tabLabel: { fontSize: FontSize.sm - 0.5, fontWeight: FontWeight.semibold, color: Colors.textMuted },
-    tabLabelActive: { color: '#fff' },
-    formGroup: { gap: Spacing.md },
-    rowGap: { flexDirection: 'row', gap: Spacing.md },
-    flex1: { flex: 1 },
-    input: {
-      height: 48,
-      borderRadius: Radius.md,
-      backgroundColor: Colors.surface,
-      borderWidth: 1,
-      borderColor: Colors.border,
-      color: Colors.textPrimary,
-      paddingHorizontal: Spacing.md,
-      fontSize: FontSize.sm,
-      fontFamily: FontFamily.medium,
+    secureText: { fontSize: FontSize.xs, color: Colors.textMuted },
+    methodsGrid: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: Spacing.sm,
+      justifyContent: 'center',
     },
-    upiTile: {
-      height: 56,
+    methodTile: {
+      width: 78,
+      height: 64,
       borderRadius: Radius.md,
       backgroundColor: Colors.surface,
       borderWidth: 1,
       borderColor: Colors.border,
       alignItems: 'center',
       justifyContent: 'center',
+      gap: 6,
     },
-    upiTileText: { fontSize: FontSize.xs, color: Colors.textMuted, fontFamily: FontFamily.medium },
-    walletList: { gap: 2 },
-    walletRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      paddingVertical: Spacing.sm + 6,
-      borderBottomWidth: 1,
-      borderBottomColor: Colors.border,
-    },
-    walletLabel: { fontSize: FontSize.sm + 0.5, color: Colors.textPrimary },
-    radio: {
-      width: 18,
-      height: 18,
-      borderRadius: Radius.full,
-      borderWidth: 2,
-      borderColor: Colors.border,
-    },
+    methodLabel: { fontSize: FontSize.xs - 1, color: Colors.textMuted },
+    errorText: { textAlign: 'center', color: Colors.error, fontSize: FontSize.sm },
     cta: {
       padding: Spacing.lg,
       backgroundColor: Colors.background,
       borderTopWidth: 1,
       borderTopColor: Colors.border,
     },
-    payBtn: {
-      height: 52,
-      borderRadius: Radius.lg,
-      backgroundColor: Colors.accent,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    payBtnText: { color: '#fff', fontWeight: FontWeight.semibold, fontSize: FontSize.md },
   });

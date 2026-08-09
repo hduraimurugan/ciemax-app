@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   KeyboardAvoidingView,
   Platform,
@@ -6,168 +6,176 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { User, ShieldCheck } from 'lucide-react-native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { Check, User, X } from 'lucide-react-native';
+import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '@ctypes/navigation';
 import { ColorTokens, FontFamily, FontSize, FontWeight, Radius, Spacing } from '@constants/theme';
 import { useTheme } from '@hooks/useTheme';
-import { Button, Card, Input } from '@shared/ui';
-import { Heading2, Body, Caption } from '@shared/ui';
+import { Button, Card, Input, Heading2, Body, Caption } from '@shared/ui';
+import { useAuthStore } from '@store/authStore';
+import { authService } from '@services/authService';
+import { evaluatePassword, isPasswordValid } from '../utils/passwordPolicy';
 
-// NOTE: not currently wired into RootNavigator — the CineHall design has no signup
-// screen (Login → Otp is the only auth path). Kept on disk, unrouted, in case a
-// standalone sign-up flow is reintroduced later.
-type Props = { navigation: NativeStackNavigationProp<RootStackParamList, 'Login'> };
-type Step = 'form' | 'otp';
+type Props = NativeStackScreenProps<RootStackParamList, 'Register'>;
 
 export function RegisterScreen({ navigation }: Props) {
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
-  const [step, setStep] = useState<Step>('form');
+  const signup = useAuthStore(s => s.signup);
+
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
-  const [otp, setOtp] = useState<string[]>(['', '', '', '', '', '']);
-  const [resendSeconds, setResendSeconds] = useState(60);
-  const inputRefs = useRef<(TextInput | null)[]>([]);
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
 
-  useEffect(() => {
-    if (step !== 'otp' || resendSeconds <= 0) return;
-    const timer = setInterval(() => setResendSeconds(s => s - 1), 1000);
-    return () => clearInterval(timer);
-  }, [step, resendSeconds]);
+  const rules = evaluatePassword(password);
+  const passwordsMatch = password.length > 0 && password === confirmPassword;
 
-  function handleOtpChange(value: string, index: number) {
-    const newOtp = [...otp];
-    newOtp[index] = value.replace(/[^0-9]/g, '').slice(-1);
-    setOtp(newOtp);
-    if (value && index < 5) {
-      inputRefs.current[index + 1]?.focus();
+  const submit = async () => {
+    setError(null);
+    if (!name.trim() || !email.trim() || !password) {
+      setError('Please fill in your name, email, and password.');
+      return;
     }
-  }
-
-  function handleOtpKeyPress(key: string, index: number) {
-    if (key === 'Backspace' && !otp[index] && index > 0) {
-      inputRefs.current[index - 1]?.focus();
+    if (!email.includes('@')) {
+      setError('Enter a valid email address.');
+      return;
     }
-  }
+    if (!isPasswordValid(password)) {
+      setError('Your password doesn’t meet all the requirements below.');
+      return;
+    }
+    if (!passwordsMatch) {
+      setError('Passwords do not match.');
+      return;
+    }
+
+    setSubmitting(true);
+    const result = await signup({
+      name: name.trim(),
+      email: email.trim(),
+      password,
+      phone: phone.trim() || undefined,
+    });
+
+    if (!result.success) {
+      setSubmitting(false);
+      setError(result.error?.message ?? 'Signup failed. Please try again.');
+      return;
+    }
+
+    try {
+      await authService.sendOtp(email.trim(), 'signup');
+    } catch {
+      // Non-fatal — OtpScreen's own "Resend Code" can retry.
+    }
+    setSubmitting(false);
+    navigation.replace('Otp', { email: email.trim(), type: 'signup', password });
+  };
 
   return (
     <SafeAreaView style={styles.screen}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.kav}>
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.kav}>
         <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-          {/* Logo */}
+          {navigation.canGoBack() && (
+            <Pressable style={styles.closeButton} onPress={() => navigation.goBack()} hitSlop={8}>
+              <X size={18} color={colors.textPrimary} />
+            </Pressable>
+          )}
+
           <View style={styles.brandRow}>
             <Text style={styles.logo}>CINEHALL</Text>
           </View>
 
           <Card variant="glass" padding="none" style={styles.formCard}>
-            {/* Tab bar */}
             <View style={styles.tabs}>
-              <Pressable style={styles.tab} onPress={() => navigation.replace('Login')}>
-                <Text style={styles.tabText}>Login</Text>
-              </Pressable>
               <View style={[styles.tab, styles.tabActive]}>
                 <Text style={[styles.tabText, styles.tabTextActive]}>Sign Up</Text>
               </View>
+              <Pressable style={styles.tab} onPress={() => navigation.replace('Login')}>
+                <Text style={styles.tabText}>Login</Text>
+              </Pressable>
             </View>
 
-            {step === 'form' ? (
-              <View style={styles.formBody}>
-                <View style={styles.iconRow}>
-                  <View style={styles.iconCircle}>
-                    <User size={24} color={colors.accent} />
-                  </View>
-                  <Heading2 style={styles.formTitle}>Create Account</Heading2>
-                  <Body style={styles.formSub}>Join CineHall to start booking</Body>
+            <View style={styles.formBody}>
+              <View style={styles.iconRow}>
+                <View style={styles.iconCircle}>
+                  <User size={24} color={colors.accent} />
                 </View>
-
-                <Input label="Full Name" value={name} onChangeText={setName} placeholder="Your name" />
-                <Input
-                  label="Email"
-                  value={email}
-                  onChangeText={setEmail}
-                  placeholder="you@example.com"
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                />
-                <Input
-                  label="Phone"
-                  value={phone}
-                  onChangeText={setPhone}
-                  placeholder="10-digit mobile number"
-                  keyboardType="phone-pad"
-                />
-                <Input
-                  label="Password"
-                  value={password}
-                  onChangeText={setPassword}
-                  placeholder="Create a password"
-                  secureTextEntry
-                />
-
-                <Button
-                  label="Create Account"
-                  onPress={() => setStep('otp')}
-                  fullWidth
-                  size="lg"
-                />
+                <Heading2 style={styles.formTitle}>Create Account</Heading2>
+                <Body style={styles.formSub}>Join CineHall to start booking</Body>
               </View>
-            ) : (
-              <View style={styles.formBody}>
-                <View style={styles.iconRow}>
-                  <View style={styles.iconCircleGray}>
-                    <ShieldCheck size={24} color={colors.textSecondary} />
-                  </View>
-                  <Heading2 style={styles.formTitle}>Verify Your Phone</Heading2>
-                  <Body style={styles.formSub}>
-                    Enter the 6-digit OTP sent to {phone || 'your number'}
-                  </Body>
-                </View>
 
-                {/* OTP boxes */}
-                <View style={styles.otpRow}>
-                  {otp.map((digit, i) => (
-                    <TextInput
-                      key={i}
-                      ref={el => { inputRefs.current[i] = el; }}
-                      style={[styles.otpBox, digit ? styles.otpBoxFilled : null]}
-                      value={digit}
-                      onChangeText={v => handleOtpChange(v, i)}
-                      onKeyPress={({ nativeEvent }) => handleOtpKeyPress(nativeEvent.key, i)}
-                      keyboardType="numeric"
-                      maxLength={1}
-                      textAlign="center"
-                      selectTextOnFocus
-                    />
+              {error ? <Text style={styles.errorText}>{error}</Text> : null}
+
+              <Input label="Full Name" value={name} onChangeText={setName} placeholder="Your name" />
+              <Input
+                label="Email"
+                value={email}
+                onChangeText={setEmail}
+                placeholder="you@example.com"
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoComplete="email"
+              />
+              <Input
+                label="Phone (optional)"
+                value={phone}
+                onChangeText={setPhone}
+                placeholder="10-digit mobile number"
+                keyboardType="phone-pad"
+              />
+              <Input
+                label="Password"
+                value={password}
+                onChangeText={setPassword}
+                placeholder="Create a password"
+                secureTextEntry
+                autoCapitalize="none"
+              />
+
+              {password.length > 0 && (
+                <View style={styles.checklist}>
+                  {rules.map(rule => (
+                    <View key={rule.key} style={styles.checklistRow}>
+                      {rule.passed ? (
+                        <Check size={13} color={colors.success} />
+                      ) : (
+                        <X size={13} color={colors.textMuted} />
+                      )}
+                      <Caption style={[styles.checklistLabel, rule.passed && { color: colors.success }]}>
+                        {rule.label}
+                      </Caption>
+                    </View>
                   ))}
                 </View>
+              )}
 
-                <Button
-                  label="Verify OTP"
-                  onPress={() => navigation.navigate('Login')}
-                  fullWidth
-                  size="lg"
-                />
+              <Input
+                label="Confirm Password"
+                value={confirmPassword}
+                onChangeText={setConfirmPassword}
+                placeholder="Re-enter your password"
+                secureTextEntry
+                autoCapitalize="none"
+                error={confirmPassword.length > 0 && !passwordsMatch ? 'Passwords do not match' : undefined}
+              />
 
-                {resendSeconds > 0 ? (
-                  <Caption style={styles.resendTimer}>
-                    Resend OTP in {resendSeconds}s
-                  </Caption>
-                ) : (
-                  <Pressable onPress={() => setResendSeconds(60)}>
-                    <Caption style={styles.resendLink}>Resend OTP</Caption>
-                  </Pressable>
-                )}
-              </View>
-            )}
+              <Button
+                label={submitting ? 'Creating account…' : 'Create Account'}
+                onPress={submit}
+                disabled={submitting}
+                loading={submitting}
+                fullWidth
+                size="lg"
+              />
+            </View>
           </Card>
 
           <Caption style={styles.footer}>
@@ -191,6 +199,15 @@ const makeStyles = (Colors: ColorTokens) =>
       justifyContent: 'center',
       padding: Spacing.lg,
       gap: Spacing.lg,
+    },
+    closeButton: {
+      alignSelf: 'flex-end',
+      width: 36,
+      height: 36,
+      borderRadius: 18,
+      backgroundColor: Colors.surfaceElevated,
+      alignItems: 'center',
+      justifyContent: 'center',
     },
     brandRow: { alignItems: 'center' },
     logo: {
@@ -242,14 +259,6 @@ const makeStyles = (Colors: ColorTokens) =>
       alignItems: 'center',
       justifyContent: 'center',
     },
-    iconCircleGray: {
-      width: 56,
-      height: 56,
-      borderRadius: Radius.full,
-      backgroundColor: Colors.surfaceElevated,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
     formTitle: {
       textAlign: 'center',
       color: Colors.textPrimary,
@@ -258,37 +267,18 @@ const makeStyles = (Colors: ColorTokens) =>
       textAlign: 'center',
       color: Colors.textSecondary,
     },
-    // OTP
-    otpRow: {
-      flexDirection: 'row',
-      justifyContent: 'center',
-      gap: Spacing.sm,
-    },
-    otpBox: {
-      width: 44,
-      height: 54,
-      borderRadius: Radius.md,
-      borderWidth: 1,
-      borderColor: Colors.border,
-      backgroundColor: Colors.surfaceElevated,
-      color: Colors.textPrimary,
-      fontSize: FontSize.xl,
-      fontFamily: FontFamily.bold,
-      fontWeight: FontWeight.bold,
+    errorText: {
+      fontSize: FontSize.sm,
+      color: Colors.error,
       textAlign: 'center',
     },
-    otpBoxFilled: {
-      borderColor: Colors.accent,
+    checklist: {
+      gap: Spacing.xs / 2,
+      marginTop: -Spacing.xs,
+      marginBottom: Spacing.xs,
     },
-    resendTimer: {
-      textAlign: 'center',
-      color: Colors.textMuted,
-    },
-    resendLink: {
-      textAlign: 'center',
-      color: Colors.accent,
-      textDecorationLine: 'underline',
-    },
+    checklistRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.xs },
+    checklistLabel: { color: Colors.textMuted },
     footer: {
       textAlign: 'center',
       color: Colors.textMuted,

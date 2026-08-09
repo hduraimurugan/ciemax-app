@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { SeatLayout } from '@ctypes/models';
 import { getSeatLayout } from '@services/seatsService';
 
@@ -6,6 +6,7 @@ export function useSeatLayout(showId: string) {
   const [layout, setLayout] = useState<SeatLayout | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [tick, setTick] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -25,7 +26,9 @@ export function useSeatLayout(showId: string) {
 
     if (showId) load();
     return () => { cancelled = true; };
-  }, [showId]);
+  }, [showId, tick]);
 
-  return { layout, loading, error };
+  const refetch = useCallback(() => setTick(t => t + 1), []);
+
+  return { layout, loading, error, refetch };
 }

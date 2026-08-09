@@ -1,11 +1,13 @@
 import React, { useMemo, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import Svg, { Circle, Defs, G, Line, Path, Polygon, Rect, Stop, LinearGradient as SvgGradient } from 'react-native-svg';
 import { RootStackParamList } from '@ctypes/navigation';
 import { ColorTokens, FontSize, Radius, Spacing } from '@constants/theme';
 import { useTheme } from '@hooks/useTheme';
+import { StorageKeys } from '@constants/config';
 import { Button, Caption, Heading2, Body } from '@shared/ui';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Onboarding'>;
@@ -84,11 +86,17 @@ export function OnboardingScreen({ navigation }: Props) {
   const [idx, setIdx] = useState(0);
   const slide = ONBOARD_SLIDES[idx];
   const isLast = idx === ONBOARD_SLIDES.length - 1;
-  const goLogin = () => navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
-  const onNext = () => isLast ? goLogin() : setIdx(i => i + 1);
+  // Browsing is public — onboarding lands guests in the app, not a forced
+  // login. Login only appears when a protected action needs it
+  // (useRequireAuth), matching the web app's behavior.
+  const finish = async () => {
+    await AsyncStorage.setItem(StorageKeys.onboardingSeen, '1');
+    navigation.reset({ index: 0, routes: [{ name: 'MainTabs' }] });
+  };
+  const onNext = () => isLast ? finish() : setIdx(i => i + 1);
 
   return <SafeAreaView style={styles.screen}>
-    <View style={styles.skipRow}><Pressable onPress={goLogin} hitSlop={8}><Caption style={styles.skip}>Skip</Caption></Pressable></View>
+    <View style={styles.skipRow}><Pressable onPress={finish} hitSlop={8}><Caption style={styles.skip}>Skip</Caption></Pressable></View>
     <View style={styles.body}>
       <OnboardingIllustration kind={slide.illustration} colors={colors} />
       <View style={styles.textBlock}><Heading2 style={styles.title}>{slide.title}</Heading2><Body style={styles.desc}>{slide.desc}</Body></View>

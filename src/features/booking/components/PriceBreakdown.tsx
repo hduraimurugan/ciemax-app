@@ -8,14 +8,19 @@ import { formatPrice } from '@shared/utils';
 interface PriceBreakdownProps {
   subtotal: number;
   convenienceFee: number;
+  /** e.g. "₹15/ticket" — server-driven, from GET /api/settings. */
+  feeHint?: string;
   gst?: number;
+  gstPercentage?: number;
   discount?: number;
 }
 
 export function PriceBreakdown({
   subtotal,
   convenienceFee,
+  feeHint,
   gst = 0,
+  gstPercentage,
   discount = 0,
 }: PriceBreakdownProps) {
   const { colors } = useTheme();
@@ -28,8 +33,10 @@ export function PriceBreakdown({
 
       <View style={styles.rows}>
         <Row label="Ticket Price" value={formatPrice(subtotal)} colors={colors} />
-        <Row label="Convenience Fee" value={formatPrice(convenienceFee)} hint="₹30 per seat" colors={colors} />
-        {gst > 0 && <Row label="GST (18%)" value={formatPrice(gst)} colors={colors} />}
+        <Row label="Convenience Fee" value={formatPrice(convenienceFee)} hint={feeHint} colors={colors} />
+        {gst > 0 && (
+          <Row label={`GST${gstPercentage ? ` (${gstPercentage}%)` : ''}`} value={formatPrice(gst)} colors={colors} />
+        )}
         {discount > 0 && (
           <Row
             label="Discount"

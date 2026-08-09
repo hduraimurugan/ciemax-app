@@ -2,8 +2,10 @@ import React, { useEffect, useMemo, useState } from 'react';
 import {
   Dimensions,
   Image,
+  Linking,
   Pressable,
   ScrollView,
+  Share,
   StyleSheet,
   Text,
   View,
@@ -15,6 +17,8 @@ import { RootStackParamList } from '@ctypes/navigation';
 import { Movie } from '@ctypes/models';
 import { ColorTokens, FontSize, FontWeight, Radius, Spacing } from '@constants/theme';
 import { useTheme } from '@hooks/useTheme';
+import { useFavourites } from '@hooks/useFavourites';
+import { StorageKeys } from '@constants/config';
 import { Badge, Button, Loader } from '@shared/ui';
 import { Heading1, Body, BodySmall, Label } from '@shared/ui';
 import { formatDuration, formatRating } from '@shared/utils';
@@ -32,12 +36,19 @@ export function MovieDetailScreen({ navigation, route }: Props) {
   const [movie, setMovie] = useState<Movie | null>(null);
   const [loading, setLoading] = useState(true);
   const [synopsisExpanded, setSynopsisExpanded] = useState(false);
+  const { isFavourite, toggle } = useFavourites(StorageKeys.favouriteMovies);
 
   useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
     getMovieById(movieId).then(m => {
+      if (cancelled) return;
       if (m) setMovie(m);
       setLoading(false);
     });
+    return () => {
+      cancelled = true;
+    };
   }, [movieId]);
 
   function handleBookNow() {
@@ -45,9 +56,24 @@ export function MovieDetailScreen({ navigation, route }: Props) {
     navigation.navigate('Showtimes', { movieId: movie.id });
   }
 
+  async function handleShare() {
+    if (!movie) return;
+    try {
+      await Share.share({
+        message: `Check out ${movie.title} on CineHall!`,
+        title: movie.title,
+      });
+    } catch {
+      // user dismissed — nothing to do
+    }
+  }
+
+  const trailerUrl = movie?.trailerUrl;
+
   if (loading) return <Loader fullScreen />;
   if (!movie) return null;
 
+  const favourited = isFavourite(movie.id);
   const synopsisText =
     synopsisExpanded || movie.synopsis.length <= SYNOPSIS_CLAMP
       ? movie.synopsis
@@ -64,17 +90,19 @@ export function MovieDetailScreen({ navigation, route }: Props) {
             <ArrowLeft size={18} color="#fff" />
           </Pressable>
           <View style={styles.heroActions}>
-            <View style={styles.iconButton}>
-              <Heart size={17} color="#fff" />
-            </View>
-            <View style={styles.iconButton}>
+            <Pressable style={styles.iconButton} onPress={() => toggle(movie.id)}>
+              <Heart size={17} color="#fff" fill={favourited ? '#fff' : 'none'} />
+            </Pressable>
+            <Pressable style={styles.iconButton} onPress={handleShare}>
               <Share2 size={16} color="#fff" />
-            </View>
+            </Pressable>
           </View>
 
-          <Pressable style={styles.playButton}>
-            <Play size={20} color="#fff" fill="#fff" />
-          </Pressable>
+          {trailerUrl ? (
+            <Pressable style={styles.playButton} onPress={() => Linking.openURL(trailerUrl)}>
+              <Play size={20} color="#fff" fill="#fff" />
+            </Pressable>
+          ) : null}
         </View>
 
         <View style={styles.body}>
@@ -93,17 +121,28 @@ export function MovieDetailScreen({ navigation, route }: Props) {
             </Pressable>
           )}
 
-          <Label style={styles.castLabel}>Cast</Label>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.castRow}>
-            {movie.cast.map(c => (
-              <View key={c.name} style={styles.castItem}>
-                <View style={styles.castAvatar}>
-                  <Text style={styles.castInitials}>{c.initials}</Text>
-                </View>
-                <BodySmall style={styles.castName} numberOfLines={1}>{c.name}</BodySmall>
-              </View>
-            ))}
-          </ScrollView>
+          {movie.cast.length > 0 && (
+            <>
+              <Label style={styles.castLabel}>Cast</Label>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.castRow}>
+                {movie.cast.map(c => (
+                  <View key={c.name} style={styles.castItem}>
+                    <View style={styles.castAvatar}>
+                      {c.profilePath ? (
+                        <Image source={{ uri: c.profilePath }} style={styles.castPhoto} resizeMode="cover" />
+                      ) : (
+                        <Text style={styles.castInitials}>{c.initials}</Text>
+                      )}
+                    </View>
+                    <BodySmall style={styles.castName} numberOfLines={1}>{c.name}</BodySmall>
+                    {c.character ? (
+                      <BodySmall style={styles.castCharacter} numberOfLines={1}>{c.character}</BodySmall>
+                    ) : null}
+                  </View>
+                ))}
+              </ScrollView>
+            </>
+          )}
         </View>
       </ScrollView>
 
@@ -177,9 +216,12 @@ const makeStyles = (Colors: ColorTokens) =>
       alignItems: 'center',
       justifyContent: 'center',
       marginBottom: 6,
+      overflow: 'hidden',
     },
+    castPhoto: { width: '100%', height: '100%' },
     castInitials: { fontSize: FontSize.md - 1, fontWeight: FontWeight.bold, color: Colors.textPrimary },
     castName: { textAlign: 'center', color: Colors.textMuted },
+    castCharacter: { textAlign: 'center', color: Colors.textMuted, opacity: 0.7, fontSize: FontSize.xs - 1 },
 
     cta: {
       position: 'absolute',

@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { Pressable, StyleSheet, Text } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Seat } from '@ctypes/models';
 import { ColorTokens, FontSize, FontWeight, Radius } from '@constants/theme';
 import { useTheme } from '@hooks/useTheme';
@@ -15,7 +15,16 @@ interface SeatItemProps {
 export function SeatItem({ seat, onPress }: SeatItemProps) {
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
+
+  // Passage/blocked seats are invisible spacers that preserve the grid's
+  // column alignment — not rendered as a seat at all.
+  if (seat.section === 'passage' || seat.isBlocked) {
+    return <View style={styles.spacer} />;
+  }
+
   const isBooked = seat.status === 'booked';
+  const isHeld = seat.status === 'held';
+  const isUnavailable = isBooked || isHeld;
   const isSelected = seat.status === 'selected';
   const isPremium = seat.section === 'premium';
 
@@ -23,20 +32,20 @@ export function SeatItem({ seat, onPress }: SeatItemProps) {
     <Pressable
       style={[
         styles.seat,
-        isPremium && !isBooked && !isSelected && styles.premium,
-        isBooked && styles.booked,
+        isPremium && !isUnavailable && !isSelected && styles.premium,
+        isUnavailable && styles.booked,
         isSelected && styles.selected,
       ]}
-      onPress={() => !isBooked && onPress(seat)}
-      disabled={isBooked}
+      onPress={() => !isUnavailable && onPress(seat)}
+      disabled={isUnavailable}
       hitSlop={2}>
       <Text
         style={[
           styles.label,
-          isPremium && !isBooked && !isSelected && styles.labelPremium,
+          isPremium && !isUnavailable && !isSelected && styles.labelPremium,
           isSelected && styles.labelSelected,
         ]}>
-        {seat.number}
+        {String(seat.number).padStart(2, '0')}
       </Text>
     </Pressable>
   );
@@ -44,6 +53,11 @@ export function SeatItem({ seat, onPress }: SeatItemProps) {
 
 const makeStyles = (Colors: ColorTokens) =>
   StyleSheet.create({
+    spacer: {
+      width: SEAT_SIZE,
+      height: SEAT_SIZE,
+      margin: SEAT_GAP / 2,
+    },
     seat: {
       width: SEAT_SIZE,
       height: SEAT_SIZE,
@@ -62,6 +76,7 @@ const makeStyles = (Colors: ColorTokens) =>
     booked: {
       backgroundColor: Colors.seatBooked,
       borderColor: Colors.seatBookedBorder,
+      opacity: 0.55,
     },
     selected: {
       backgroundColor: Colors.seatSelected,

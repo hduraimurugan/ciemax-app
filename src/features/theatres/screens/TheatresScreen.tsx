@@ -1,115 +1,181 @@
-import React, { useMemo, useState } from 'react';
-import {
-  FlatList,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ArrowLeft } from 'lucide-react-native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { ArrowLeft, Heart, MapPin, Navigation } from 'lucide-react-native';
+import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '@ctypes/navigation';
 import { Theatre } from '@ctypes/models';
 import { ColorTokens, FontFamily, FontSize, FontWeight, Radius, Spacing } from '@constants/theme';
 import { useTheme } from '@hooks/useTheme';
-import { Loader } from '@shared/ui';
-import { Heading2, Body, Caption, Label } from '@shared/ui';
-import { useTheatresForMovie } from '@hooks/useTheatres';
+import { useFavourites } from '@hooks/useFavourites';
+import { StorageKeys } from '@constants/config';
+import { useLocationStore } from '@store/locationStore';
+import { getTheatresWithShows } from '@services/theatresService';
+import { mapShowSummary, mapTheatreListingMovie, mapTheatreHall } from '@services/mappers';
+import { Body, Heading2, Heading3, Loader } from '@shared/ui';
 import { useBookingStore } from '@store/bookingStore';
-import { TheatreCard } from '../components/TheatreCard';
+import { LocationModal } from '@features/location';
+import type { ApiTheatreHall } from '@ctypes/api';
 
-// NOTE: superseded by ShowtimesScreen.tsx (merges theatre + showtime selection into
-// one screen per the CineHall design) and no longer routed in RootNavigator. Kept
-// on disk, unrouted, rather than deleted.
-type Props = {
-  navigation: NativeStackNavigationProp<RootStackParamList>;
-  route: { params: { movieId: string } };
-};
+type Props = NativeStackScreenProps<RootStackParamList, 'Theatres'>;
 
-const DAY_NAMES = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
-
-function getNext7Days() {
-  const days = [];
+function getNext7Dates(): Array<{ iso: string; dow: string; num: string }> {
+  const days: Array<{ iso: string; dow: string; num: string }> = [];
   for (let i = 0; i < 7; i++) {
     const d = new Date();
     d.setDate(d.getDate() + i);
     days.push({
-      key: d.toISOString().split('T')[0],
-      day: DAY_NAMES[d.getDay()],
-      date: d.getDate(),
+      iso: d.toISOString().split('T')[0],
+      dow: d.toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase(),
+      num: String(d.getDate()),
     });
   }
   return days;
 }
 
-export function TheatresScreen({ navigation, route }: Props) {
-  const { movieId } = route.params;
+const DATE_LABELS = getNext7Dates();
+
+function openDirections(theatre: Theatre) {
+  const url =
+    theatre.latitude && theatre.longitude
+      ? `https://www.google.com/maps/search/?api=1&query=${theatre.latitude},${theatre.longitude}`
+      : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(theatre.name + ' ' + theatre.address)}`;
+  Linking.openURL(url).catch(() => {});
+}
+
+export function TheatresScreen({ navigation }: Props) {
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
-  const { theatres, loading, error } = useTheatresForMovie(movieId);
-  const selectedMovie = useBookingStore(s => s.selectedMovie);
+  const [dateIdx, setDateIdx] = useState(0);
+  const [halls, setHalls] = useState<ApiTheatreHall[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [locationModalVisible, setLocationModalVisible] = useState(false);
+  const district = useLocationStore(s => s.district);
+  const state = useLocationStore(s => s.state);
+  const { isFavourite, toggle } = useFavourites(StorageKeys.favouriteTheatres);
+  const setSelectedMovie = useBookingStore(s => s.setSelectedMovie);
   const setSelectedTheatre = useBookingStore(s => s.setSelectedTheatre);
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
-  const dateDays = getNext7Days();
+  const setSelectedShow = useBookingStore(s => s.setSelectedShow);
 
-  function handleTheatrePress(theatre: Theatre) {
+  useEffect(() => {
+    if (!district || !state) {
+      setLoading(false);
+      setHalls([]);
+      return;
+    }
+    let cancelled = false;
+    setLoading(true);
+    getTheatresWithShows(district, state, DATE_LABELS[dateIdx].iso)
+      .then(data => {
+        if (!cancelled) setHalls(data);
+      })
+      .catch(() => {
+        if (!cancelled) setHalls([]);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [district, state, dateIdx]);
+
+  function goSeats(hall: ApiTheatreHall, movie: ApiTheatreHall['movies'][number], showId: string) {
+    const theatre = mapTheatreHall(hall);
+    const movieModel = mapTheatreListingMovie(movie);
+    const show = movie.shows.find(s => s.show_id === showId);
+    if (!show) return;
+    setSelectedMovie(movieModel);
     setSelectedTheatre(theatre);
-    (navigation as any).navigate('ShowSelection', { movieId, theatreId: theatre.id });
+    setSelectedShow(mapShowSummary(show, movie.movie_id, hall.hall_id));
+    navigation.navigate('SeatSelection', { showId, movieId: movie.movie_id });
   }
-
-  if (loading) return <Loader fullScreen message="Finding theatres..." />;
 
   return (
     <SafeAreaView style={styles.screen}>
       <View style={styles.header}>
         <Pressable style={styles.backBtn} onPress={() => navigation.goBack()}>
-          <ArrowLeft size={18} color={colors.textPrimary} />
+          <ArrowLeft size={17} color={colors.textPrimary} />
         </Pressable>
-        <View style={styles.headerInfo}>
-          <Heading2>Select Theatre</Heading2>
-          {selectedMovie ? (
-            <Body numberOfLines={1} style={styles.movieTitle}>{selectedMovie.title}</Body>
-          ) : null}
+        <Heading2>Theatres</Heading2>
+      </View>
+
+      {!district || !state ? (
+        <View style={styles.noLocation}>
+          <MapPin size={32} color={colors.textMuted} />
+          <Body style={styles.noLocationText}>Set your location to see theatres near you.</Body>
+          <Pressable style={styles.setLocationBtn} onPress={() => setLocationModalVisible(true)}>
+            <Text style={styles.setLocationBtnText}>Set Location</Text>
+          </Pressable>
         </View>
-      </View>
-
-      <View style={styles.dateSection}>
-        <Label style={styles.dateSectionLabel}>Select Date</Label>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.dateList}>
-          {dateDays.map(d => (
-            <Pressable
-              key={d.key}
-              style={[styles.dateBtn, selectedDate === d.key && styles.dateBtnActive]}
-              onPress={() => setSelectedDate(d.key)}>
-              <Caption style={[styles.dateBtnDay, selectedDate === d.key && styles.dateBtnTextActive]}>
-                {d.day}
-              </Caption>
-              <Text style={[styles.dateBtnDate, selectedDate === d.key && styles.dateBtnTextActive]}>
-                {d.date}
-              </Text>
-            </Pressable>
-          ))}
-        </ScrollView>
-      </View>
-
-      {error ? (
-        <Body style={styles.error}>{error}</Body>
       ) : (
-        <FlatList
-          data={theatres}
-          keyExtractor={item => item.id}
-          renderItem={({ item }) => (
-            <TheatreCard theatre={item} onPress={handleTheatrePress} />
+        <>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.dateStrip}>
+            {DATE_LABELS.map((d, i) => (
+              <Pressable
+                key={d.iso}
+                style={[styles.dateBtn, i === dateIdx && styles.dateBtnActive]}
+                onPress={() => setDateIdx(i)}>
+                <Text style={[styles.dateDow, i === dateIdx && styles.dateTextActive]}>{d.dow}</Text>
+                <Text style={[styles.dateNum, i === dateIdx && styles.dateTextActive]}>{d.num}</Text>
+              </Pressable>
+            ))}
+          </ScrollView>
+
+          {loading ? (
+            <Loader fullScreen message="Finding theatres..." />
+          ) : (
+            <ScrollView contentContainerStyle={styles.list} showsVerticalScrollIndicator={false}>
+              {halls.length === 0 && (
+                <Body style={styles.empty}>No theatres found near {district}.</Body>
+              )}
+              {halls.map(hall => {
+                const theatre = mapTheatreHall(hall);
+                const favourited = isFavourite(hall.hall_id);
+                return (
+                  <View key={hall.hall_id} style={styles.hallCard}>
+                    <View style={styles.hallHeaderRow}>
+                      <View style={styles.hallInfo}>
+                        <Heading3 style={styles.hallName}>{hall.hall_name}</Heading3>
+                        <Text style={styles.hallLocation}>{hall.location}</Text>
+                      </View>
+                      <Pressable onPress={() => toggle(hall.hall_id)} hitSlop={8}>
+                        <Heart size={17} color={favourited ? colors.accent : colors.textMuted} fill={favourited ? colors.accent : 'none'} />
+                      </Pressable>
+                      <Pressable onPress={() => openDirections(theatre)} hitSlop={8} style={styles.directionsBtn}>
+                        <Navigation size={15} color={colors.accent} />
+                      </Pressable>
+                    </View>
+
+                    {hall.movies.map(movie => (
+                      <View key={movie.movie_id} style={styles.movieBlock}>
+                        <Pressable onPress={() => navigation.navigate('MovieDetail', { movieId: movie.movie_id })}>
+                          <Text style={styles.movieTitle}>{movie.title}</Text>
+                        </Pressable>
+                        <View style={styles.chipsRow}>
+                          {movie.shows.map(show => (
+                            <Pressable
+                              key={show.show_id}
+                              style={styles.chip}
+                              onPress={() => goSeats(hall, movie, show.show_id)}>
+                              <Text style={styles.chipTime}>
+                                {show.start_time.slice(0, 5)}
+                              </Text>
+                              <Text style={styles.chipScreen}>{show.screen_name}</Text>
+                            </Pressable>
+                          ))}
+                        </View>
+                      </View>
+                    ))}
+                  </View>
+                );
+              })}
+            </ScrollView>
           )}
-          contentContainerStyle={styles.list}
-          showsVerticalScrollIndicator={false}
-        />
+        </>
       )}
+
+      <LocationModal visible={locationModalVisible} onClose={() => setLocationModalVisible(false)} />
     </SafeAreaView>
   );
 }
@@ -120,68 +186,81 @@ const makeStyles = (Colors: ColorTokens) =>
     header: {
       flexDirection: 'row',
       alignItems: 'center',
-      padding: Spacing.md,
-      gap: Spacing.sm,
-      borderBottomWidth: 1,
-      borderBottomColor: Colors.border,
+      gap: Spacing.md,
+      paddingHorizontal: Spacing.lg,
+      paddingTop: Spacing.md,
+      paddingBottom: Spacing.sm + 2,
     },
     backBtn: {
-      width: 36,
-      height: 36,
-      borderRadius: Radius.sm,
+      width: 34,
+      height: 34,
+      borderRadius: Radius.md,
       backgroundColor: Colors.surfaceElevated,
       alignItems: 'center',
       justifyContent: 'center',
     },
-    headerInfo: { flex: 1, gap: 2 },
-    movieTitle: { color: Colors.textMuted, fontSize: FontSize.sm },
-    dateSection: {
-      paddingTop: Spacing.md,
-      gap: Spacing.sm,
-      borderBottomWidth: 1,
-      borderBottomColor: Colors.border,
-      paddingBottom: Spacing.md,
+    noLocation: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: Spacing.md, padding: Spacing.xl },
+    noLocationText: { textAlign: 'center', color: Colors.textMuted },
+    setLocationBtn: {
+      backgroundColor: Colors.accent,
+      paddingHorizontal: Spacing.lg,
+      paddingVertical: Spacing.sm + 2,
+      borderRadius: Radius.md,
     },
-    dateSectionLabel: {
-      paddingHorizontal: Spacing.md,
-    },
-    dateList: {
-      paddingHorizontal: Spacing.md,
-      gap: Spacing.sm,
-    },
+    setLocationBtnText: { color: '#fff', fontWeight: FontWeight.semibold },
+    dateStrip: { gap: Spacing.sm, paddingHorizontal: Spacing.lg, paddingBottom: Spacing.lg },
     dateBtn: {
-      width: 56,
-      height: 64,
+      width: 52,
+      height: 68,
       borderRadius: Radius.lg,
-      alignItems: 'center',
-      justifyContent: 'center',
       backgroundColor: Colors.surface,
       borderWidth: 1,
       borderColor: Colors.border,
-      gap: 2,
+      alignItems: 'center',
+      justifyContent: 'center',
     },
-    dateBtnActive: {
-      backgroundColor: Colors.accent,
-      borderColor: Colors.accent,
-    },
-    dateBtnDay: {
-      color: Colors.textMuted,
-      fontSize: FontSize.xs,
-      fontFamily: FontFamily.medium,
-      fontWeight: FontWeight.medium,
-    },
-    dateBtnDate: {
-      color: Colors.textPrimary,
-      fontSize: FontSize.md,
+    dateBtnActive: { backgroundColor: Colors.accent, borderColor: Colors.accent },
+    dateDow: { fontSize: FontSize.xs - 1, fontWeight: FontWeight.semibold, color: Colors.textMuted },
+    dateNum: {
       fontFamily: FontFamily.bold,
+      fontSize: FontSize.md + 2,
       fontWeight: FontWeight.bold,
-    },
-    dateBtnTextActive: {
       color: Colors.textPrimary,
+      marginTop: 2,
     },
-    list: {
+    dateTextActive: { color: '#fff' },
+    list: { padding: Spacing.lg, paddingTop: 0, gap: Spacing.md, paddingBottom: Spacing.xl },
+    empty: { textAlign: 'center', marginTop: Spacing.xl },
+    hallCard: {
+      backgroundColor: Colors.surface,
+      borderWidth: 1,
+      borderColor: Colors.border,
+      borderRadius: Radius.xl,
       padding: Spacing.md,
-      paddingBottom: Spacing.xxl,
+      gap: Spacing.md,
     },
-    error: { textAlign: 'center', margin: Spacing.xl },
+    hallHeaderRow: { flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.sm },
+    hallInfo: { flex: 1 },
+    directionsBtn: { paddingLeft: 2 },
+    hallName: { marginBottom: 2 },
+    hallLocation: { fontSize: FontSize.xs + 1, color: Colors.textMuted },
+    movieBlock: {
+      borderTopWidth: 1,
+      borderTopColor: Colors.divider,
+      paddingTop: Spacing.sm,
+      gap: Spacing.sm,
+    },
+    movieTitle: { fontWeight: FontWeight.semibold, fontSize: FontSize.sm, color: Colors.textPrimary },
+    chipsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm },
+    chip: {
+      paddingHorizontal: Spacing.sm + 4,
+      paddingVertical: Spacing.sm - 2,
+      borderRadius: Radius.md,
+      borderWidth: 1,
+      borderColor: Colors.border,
+      backgroundColor: Colors.surfaceElevated,
+      alignItems: 'center',
+    },
+    chipTime: { fontFamily: FontFamily.semibold, fontWeight: FontWeight.semibold, fontSize: FontSize.sm - 1, color: Colors.textPrimary },
+    chipScreen: { fontSize: FontSize.xs - 1, color: Colors.textMuted, marginTop: 1 },
   });

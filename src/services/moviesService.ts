@@ -1,107 +1,101 @@
-import { Movie } from '@ctypes/models';
-import { MockDelay } from '@constants/config';
+import { Env } from '@constants/env';
+import { httpClient } from './httpClient';
+import { mapMovie } from './mappers';
+import * as mock from './moviesService.mock';
+import type { Movie } from '@ctypes/models';
+import type {
+  GetAllMoviesResponse,
+  GetMovieByIdResponse,
+  GetMoviesByLocationResponse,
+  GetMovieShowtimesResponse,
+  GetDistrictsResponse,
+  ApiShowtimeHall,
+} from '@ctypes/api';
 
-const MOCK_MOVIES: Movie[] = [
-  {
-    id: 'spiderman',
-    title: 'Spider-Man: Brand New Day',
-    posterUrl: 'https://picsum.photos/seed/spiderman/400/600',
-    backdropUrl: 'https://picsum.photos/seed/spiderman-back/800/450',
-    genre: ['Action', 'Sci-Fi'],
-    rating: 8.4,
-    duration: 148,
-    language: 'English',
-    releaseDate: '2026-07-10',
-    synopsis:
-      "Peter Parker faces his most personal battle yet as new threats emerge across the city, forcing him to redefine what it means to be a hero while balancing the life he's tried to protect. As old alliances fracture, he must decide how far he'll go to keep the people he loves safe.",
-    cast: [
-      { name: 'R. Menon', initials: 'RM' },
-      { name: 'A. Fernandes', initials: 'AF' },
-      { name: 'K. Iyer', initials: 'KI' },
-      { name: 'S. Rao', initials: 'SR' },
-    ],
-    director: 'A. Krishnan',
-    format: ['2D', '3D', 'IMAX'],
-    isNowShowing: true,
-    isComingSoon: false,
-  },
-  {
-    id: 'odyssey',
-    title: 'Odyssey',
-    posterUrl: 'https://picsum.photos/seed/odyssey/400/600',
-    backdropUrl: 'https://picsum.photos/seed/odyssey-back/800/450',
-    genre: ['Adventure', 'Drama'],
-    rating: 8.9,
-    duration: 165,
-    language: 'English',
-    releaseDate: '2026-06-01',
-    synopsis:
-      "A sweeping journey across uncharted seas follows a crew bound by loyalty and haunted by the past, testing the limits of endurance, trust, and the pull of home. Every port raises a new question about what they're really searching for.",
-    cast: [
-      { name: 'T. Bose', initials: 'TB' },
-      { name: 'V. Nair', initials: 'VN' },
-      { name: 'D. Kapoor', initials: 'DK' },
-      { name: 'M. Khan', initials: 'MK' },
-    ],
-    director: 'J. Varma',
-    format: ['2D', 'IMAX'],
-    isNowShowing: true,
-    isComingSoon: false,
-  },
-  {
-    id: 'jananayagan',
-    title: 'Jana Nayagan',
-    posterUrl: 'https://picsum.photos/seed/jananayagan/400/600',
-    backdropUrl: 'https://picsum.photos/seed/jananayagan-back/800/450',
-    genre: ['Action', 'Drama'],
-    rating: 8.1,
-    duration: 170,
-    language: 'Tamil',
-    releaseDate: '2026-09-25',
-    synopsis:
-      "A political drama that follows one man's rise from the margins of power to the center of a movement that could reshape a nation's future. His choices ripple far beyond the ballot box.",
-    cast: [
-      { name: 'P. Raghavan', initials: 'PR' },
-      { name: 'L. Krishnan', initials: 'LK' },
-      { name: 'G. Suresh', initials: 'GS' },
-      { name: 'N. Pillai', initials: 'NP' },
-    ],
-    director: 'S. Ilango',
-    format: ['2D'],
-    isNowShowing: false,
-    isComingSoon: true,
-  },
-];
+const BASE = '/api/user/movies';
 
-const delay = (ms: number) => new Promise<void>(resolve => setTimeout(resolve, ms));
-
-export async function getMovies(): Promise<Movie[]> {
-  await delay(MockDelay);
-  return MOCK_MOVIES;
+export async function getMovies(params?: { search?: string }): Promise<Movie[]> {
+  if (Env.USE_MOCKS) return mock.getMovies();
+  const res = await httpClient.get<GetAllMoviesResponse>(BASE, { skipAuth: true, query: params });
+  return res.movies.map(mapMovie);
 }
 
-export async function getNowShowingMovies(): Promise<Movie[]> {
-  await delay(MockDelay);
-  return MOCK_MOVIES.filter(m => m.isNowShowing);
+/**
+ * Location-aware when district/state are known (real app flow); falls back
+ * to the global now-showing list otherwise (e.g. before the user grants
+ * location permission).
+ */
+export async function getNowShowingMovies(district?: string, state?: string): Promise<Movie[]> {
+  if (Env.USE_MOCKS) return mock.getNowShowingMovies();
+  if (district && state) {
+    const res = await httpClient.get<GetMoviesByLocationResponse>(`${BASE}/location/movies`, {
+      skipAuth: true,
+      query: { district, state },
+    });
+    return res.movies.filter(m => m.status === 'now_showing').map(mapMovie);
+  }
+  const res = await httpClient.get<GetAllMoviesResponse>(BASE, {
+    skipAuth: true,
+    query: { status: 'now_showing' },
+  });
+  return res.movies.map(mapMovie);
 }
 
-export async function getComingSoonMovies(): Promise<Movie[]> {
-  await delay(MockDelay);
-  return MOCK_MOVIES.filter(m => m.isComingSoon);
+export async function getComingSoonMovies(district?: string, state?: string): Promise<Movie[]> {
+  if (Env.USE_MOCKS) return mock.getComingSoonMovies();
+  if (district && state) {
+    const res = await httpClient.get<GetMoviesByLocationResponse>(`${BASE}/location/movies`, {
+      skipAuth: true,
+      query: { district, state },
+    });
+    return res.movies.filter(m => m.status === 'upcoming').map(mapMovie);
+  }
+  const res = await httpClient.get<GetAllMoviesResponse>(BASE, {
+    skipAuth: true,
+    query: { status: 'upcoming' },
+  });
+  return res.movies.map(mapMovie);
 }
 
 export async function getMovieById(id: string): Promise<Movie | undefined> {
-  await delay(MockDelay / 2);
-  return MOCK_MOVIES.find(m => m.id === id);
+  if (Env.USE_MOCKS) return mock.getMovieById(id);
+  const res = await httpClient.get<GetMovieByIdResponse>(`${BASE}/${id}`, { skipAuth: true });
+  return mapMovie(res.movie);
 }
 
 export async function searchMovies(query: string): Promise<Movie[]> {
-  await delay(MockDelay / 2);
-  const q = query.toLowerCase();
-  return MOCK_MOVIES.filter(
-    m =>
-      m.title.toLowerCase().includes(q) ||
-      m.genre.some(g => g.toLowerCase().includes(q)) ||
-      m.cast.some(c => c.name.toLowerCase().includes(q)),
-  );
+  if (!query.trim()) return [];
+  if (Env.USE_MOCKS) return mock.searchMovies(query);
+  const res = await httpClient.get<GetAllMoviesResponse>(BASE, {
+    skipAuth: true,
+    query: { search: query },
+  });
+  return res.movies.map(mapMovie);
+}
+
+export async function getDistrictsInState(state: string): Promise<string[]> {
+  if (Env.USE_MOCKS) return ['Bengaluru Urban', 'Chennai', 'Mumbai City'];
+  const res = await httpClient.get<GetDistrictsResponse>(`${BASE}/location/districts`, {
+    skipAuth: true,
+    query: { state },
+  });
+  return res.districts;
+}
+
+/**
+ * Raw cinema-hall + showtime data for a movie at a location — consumed by
+ * theatresService, which maps it into Theatre/Show. Kept here (rather than
+ * duplicated) since it's the same `/movies/:id/showtimes` endpoint.
+ */
+export async function getMovieShowtimesRaw(
+  movieId: string,
+  district: string,
+  state: string,
+  date?: string,
+): Promise<{ movie: Movie; halls: ApiShowtimeHall[] }> {
+  const res = await httpClient.get<GetMovieShowtimesResponse>(`${BASE}/${movieId}/showtimes`, {
+    skipAuth: true,
+    query: { district, state, date },
+  });
+  return { movie: mapMovie(res.movie), halls: res.cinema_halls };
 }

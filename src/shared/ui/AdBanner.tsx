@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Dimensions,
   Image,
+  Pressable,
   ScrollView,
   StyleSheet,
   View,
@@ -11,12 +12,14 @@ import { useTheme } from '@hooks/useTheme';
 
 interface AdBannerProps {
   imageUrls: string[];
+  /** Called with the tapped banner's index — e.g. to record a click or open its link. */
+  onPressIndex?: (index: number) => void;
 }
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 const BANNER_HEIGHT = Math.round(SCREEN_WIDTH / 5);
 
-export function AdBanner({ imageUrls }: AdBannerProps) {
+export function AdBanner({ imageUrls, onPressIndex }: AdBannerProps) {
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
   const [activeIndex, setActiveIndex] = useState(0);
@@ -49,14 +52,15 @@ export function AdBanner({ imageUrls }: AdBannerProps) {
           const index = Math.round(e.nativeEvent.contentOffset.x / SCREEN_WIDTH);
           setActiveIndex(index);
         }}>
-        {banners.map((url, i) => (
-          <Image
-            key={i}
-            source={{ uri: url }}
-            style={styles.banner}
-            resizeMode="cover"
-          />
-        ))}
+        {banners.map((url, i) =>
+          onPressIndex ? (
+            <Pressable key={i} onPress={() => onPressIndex(i)}>
+              <Image source={{ uri: url }} style={styles.banner} resizeMode="cover" />
+            </Pressable>
+          ) : (
+            <Image key={i} source={{ uri: url }} style={styles.banner} resizeMode="cover" />
+          ),
+        )}
       </ScrollView>
       <View style={styles.dots}>
         {banners.map((_, i) => (

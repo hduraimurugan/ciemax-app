@@ -35,6 +35,17 @@ export function formatShowDate(isoDate: string): string {
   return date.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' });
 }
 
+/** Converts the API's "HH:MM:SS" show time into a display string like "10:30 AM". */
+export function formatShowTime(rawTime: string): string {
+  const [hStr, mStr] = rawTime.split(':');
+  const h = Number(hStr);
+  const m = Number(mStr);
+  if (Number.isNaN(h) || Number.isNaN(m)) return rawTime;
+  const period = h >= 12 ? 'PM' : 'AM';
+  const hour12 = h % 12 === 0 ? 12 : h % 12;
+  return `${hour12}:${String(m).padStart(2, '0')} ${period}`;
+}
+
 export function formatSeatLabel(row: string, number: number): string {
   return `${row}${number}`;
 }
@@ -43,18 +54,3 @@ export function formatSeatList(seats: Array<{ row: string; number: number }>): s
   return seats.map(s => formatSeatLabel(s.row, s.number)).join(', ');
 }
 
-export function formatAvailability(available: number, total: number): string {
-  const percentage = (available / total) * 100;
-  if (percentage === 0) return 'Housefull';
-  if (percentage < 20) return 'Fast Filling';
-  if (percentage < 50) return 'Filling Fast';
-  return 'Available';
-}
-
-export function getAvailabilityColor(available: number, total: number): string {
-  const percentage = (available / total) * 100;
-  if (percentage === 0) return '#EF4444';
-  if (percentage < 20) return '#F59E0B';
-  if (percentage < 50) return '#3B82F6';
-  return '#22C55E';
-}

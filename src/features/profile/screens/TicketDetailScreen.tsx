@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ArrowLeft } from 'lucide-react-native';
+import { ArrowLeft, MapPin, Mail } from 'lucide-react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '@ctypes/navigation';
 import { Booking } from '@ctypes/models';
@@ -9,7 +9,7 @@ import { ColorTokens, FontFamily, FontSize, FontWeight, Radius, Spacing } from '
 import { useTheme } from '@hooks/useTheme';
 import { Heading3, Loader, QRCode } from '@shared/ui';
 import { Body, Caption } from '@shared/ui';
-import { getBookingById, cancelBooking } from '@services/bookingService';
+import { getBookingById } from '@services/bookingService';
 import { formatPrice, formatSeatList, formatShowDate } from '@shared/utils';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'TicketDetail'>;
@@ -20,28 +20,46 @@ export function TicketDetailScreen({ navigation, route }: Props) {
   const styles = useMemo(() => makeStyles(colors), [colors]);
   const [booking, setBooking] = useState<Booking | null>(null);
   const [loading, setLoading] = useState(true);
-  const [cancelConfirm, setCancelConfirm] = useState(false);
 
   useEffect(() => {
+    let cancelled = false;
     getBookingById(bookingId).then(b => {
+      if (cancelled) return;
       setBooking(b ?? null);
       setLoading(false);
     });
+    return () => {
+      cancelled = true;
+    };
   }, [bookingId]);
 
-  async function confirmCancel() {
-    const ok = await cancelBooking(bookingId);
-    if (ok) {
-      const updated = await getBookingById(bookingId);
-      setBooking(updated ?? null);
-    }
-    setCancelConfirm(false);
+  function openDirections() {
+    if (!booking) return;
+    const url =
+      booking.theatreLatitude && booking.theatreLongitude
+        ? `https://www.google.com/maps/search/?api=1&query=${booking.theatreLatitude},${booking.theatreLongitude}`
+        : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(booking.theatreName)}`;
+    Linking.openURL(url).catch(() => {});
+  }
+
+  function contactSupport() {
+    if (!booking) return;
+    Linking.openURL(
+      `mailto:support@cinehall.app?subject=${encodeURIComponent(`Booking #${booking.id.slice(0, 8).toUpperCase()}`)}`,
+    ).catch(() => {});
   }
 
   if (loading) return <Loader fullScreen />;
-  if (!booking) return null;
+  if (!booking) {
+    return (
+      <SafeAreaView style={styles.screen}>
+        <Body style={styles.notFound}>Booking not found.</Body>
+      </SafeAreaView>
+    );
+  }
 
   const statusLabel = booking.status === 'confirmed' ? 'VALID FOR ENTRY' : booking.status === 'cancelled' ? 'CANCELLED' : 'BOOKING COMPLETED';
+  const hasRefund = !!booking.refundStatus;
 
   return (
     <SafeAreaView style={styles.screen}>
@@ -52,7 +70,7 @@ export function TicketDetailScreen({ navigation, route }: Props) {
         <Heading3>E-Ticket</Heading3>
       </View>
 
-      <View style={styles.content}>
+      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.ticketCard}>
           <Text style={styles.statusLabel}>{statusLabel}</Text>
           <QRCode value={booking.id} size={160} />
@@ -60,51 +78,103 @@ export function TicketDetailScreen({ navigation, route }: Props) {
 
           <View style={styles.detailRows}>
             <DetailRow label="Movie" value={booking.movieTitle} colors={colors} />
-            <DetailRow label="Cinema" value={booking.theatreName} colors={colors} />
+            <Pressable onPress={openDirections}>
+              <DetailRow label="Cinema" value={booking.theatreName} colors={colors} link />
+            </Pressable>
             <DetailRow label="Date & Time" value={`${formatShowDate(booking.showDate)} · ${booking.showTime}`} colors={colors} />
-            <DetailRow label="Seats" value={formatSeatList(booking.seats)} colors={colors} mono />
-            <DetailRow label="Amount Paid" value={formatPrice(booking.totalAmount)} colors={colors} mono />
+            <DetailRow
+              label="Seats"
+              value={booking.seatLabels?.join(', ') ?? formatSeatList(booking.seats)}
+              colors={colors}
+              mono
+            />
           </View>
         </View>
 
-        <View style={styles.actionRow}>
-          <Pressable
-            style={[styles.actionBtn, styles.cancelBtn]}
-            onPress={() => setCancelConfirm(true)}
-            disabled={booking.status !== 'confirmed'}>
-            <Text style={styles.cancelBtnText}>Cancel Booking</Text>
-          </Pressable>
-          <View style={styles.actionBtn}>
-            <Text style={styles.supportBtnText}>Contact Support</Text>
-          </View>
+        <View style={styles.card}>
+          <Caption style={styles.cardLabel}>PRICE BREAKDOWN</Caption>
+          <DetailRow label="Ticket Price" value={formatPrice(booking.subtotal)} colors={colors} />
+          <DetailRow label="Convenience Fee" value={formatPrice(booking.convenienceFee)} colors={colors} />
+          {booking.gstAmount ? <DetailRow label="GST" value={formatPrice(booking.gstAmount)} colors={colors} /> : null}
+          {booking.discountAmount ? (
+            <DetailRow label={`Discount${booking.offerCode ? ` (${booking.offerCode})` : ''}`} value={`-${formatPrice(booking.discountAmount)}`} colors={colors} highlight="success" />
+          ) : null}
+          <View style={styles.divider} />
+          <DetailRow label="Amount Paid" value={formatPrice(booking.totalAmount)} colors={colors} bold />
         </View>
 
-        {cancelConfirm && (
-          <View style={styles.confirmPanel}>
-            <Body style={styles.confirmText}>
-              Cancel this booking? Refunds take 5–7 business days.
-            </Body>
-            <View style={styles.confirmRow}>
-              <Pressable style={styles.keepBtn} onPress={() => setCancelConfirm(false)}>
-                <Caption style={styles.keepBtnText}>Keep Booking</Caption>
-              </Pressable>
-              <Pressable style={styles.yesCancelBtn} onPress={confirmCancel}>
-                <Caption style={styles.yesCancelText}>Yes, Cancel</Caption>
-              </Pressable>
-            </View>
+        {booking.paymentId ? (
+          <View style={styles.card}>
+            <Caption style={styles.cardLabel}>PAYMENT INFO</Caption>
+            <DetailRow label="Payment ID" value={booking.paymentId} colors={colors} mono />
+            <DetailRow label="Booked On" value={formatShowDate(booking.bookingDate)} colors={colors} />
+          </View>
+        ) : null}
+
+        {hasRefund && (
+          <View style={[styles.card, styles.refundCard]}>
+            <Caption style={styles.cardLabel}>REFUND DETAILS</Caption>
+            <DetailRow
+              label="Status"
+              value={(booking.refundStatus ?? '').toUpperCase()}
+              colors={colors}
+              highlight={booking.refundStatus === 'settled' ? 'success' : booking.refundStatus === 'failed' ? 'error' : 'warning'}
+            />
+            {booking.refundAmount ? <DetailRow label="Refund Amount" value={formatPrice(booking.refundAmount)} colors={colors} /> : null}
+            {booking.razorpayRefundId ? <DetailRow label="Refund ID" value={booking.razorpayRefundId} colors={colors} mono /> : null}
+            {booking.refundInitiatedAt ? <DetailRow label="Initiated" value={formatShowDate(booking.refundInitiatedAt)} colors={colors} /> : null}
+            {booking.refundSettledAt ? <DetailRow label="Settled" value={formatShowDate(booking.refundSettledAt)} colors={colors} /> : null}
+            {booking.refundFailureReason ? <DetailRow label="Reason" value={booking.refundFailureReason} colors={colors} /> : null}
           </View>
         )}
-      </View>
+
+        <View style={styles.actionRow}>
+          <Pressable style={styles.actionBtn} onPress={openDirections}>
+            <MapPin size={16} color={colors.textPrimary} />
+            <Text style={styles.actionBtnText}>Directions</Text>
+          </Pressable>
+          <Pressable style={styles.actionBtn} onPress={contactSupport}>
+            <Mail size={16} color={colors.textPrimary} />
+            <Text style={styles.actionBtnText}>Contact Support</Text>
+          </Pressable>
+        </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
 
-function DetailRow({ label, value, colors, mono }: { label: string; value: string; colors: ColorTokens; mono?: boolean }) {
+function DetailRow({
+  label,
+  value,
+  colors,
+  mono,
+  bold,
+  link,
+  highlight,
+}: {
+  label: string;
+  value: string;
+  colors: ColorTokens;
+  mono?: boolean;
+  bold?: boolean;
+  link?: boolean;
+  highlight?: 'success' | 'error' | 'warning';
+}) {
   const styles = useMemo(() => makeStyles(colors), [colors]);
+  const highlightColor = highlight === 'success' ? colors.success : highlight === 'error' ? colors.error : highlight === 'warning' ? colors.warning : undefined;
   return (
     <View style={styles.detailRow}>
       <Caption style={styles.detailLabel}>{label}</Caption>
-      <Text style={[styles.detailValue, mono && styles.detailValueMono]}>{value}</Text>
+      <Text
+        style={[
+          styles.detailValue,
+          mono && styles.detailValueMono,
+          bold && styles.detailValueBold,
+          link && { color: colors.accent },
+          highlightColor ? { color: highlightColor } : undefined,
+        ]}>
+        {value}
+      </Text>
     </View>
   );
 }
@@ -112,6 +182,7 @@ function DetailRow({ label, value, colors, mono }: { label: string; value: strin
 const makeStyles = (Colors: ColorTokens) =>
   StyleSheet.create({
     screen: { flex: 1, backgroundColor: Colors.background },
+    notFound: { textAlign: 'center', marginTop: Spacing.xl },
     header: {
       flexDirection: 'row',
       alignItems: 'center',
@@ -128,7 +199,7 @@ const makeStyles = (Colors: ColorTokens) =>
       alignItems: 'center',
       justifyContent: 'center',
     },
-    content: { padding: Spacing.lg },
+    content: { padding: Spacing.lg, gap: Spacing.md, paddingBottom: Spacing.xxl },
     ticketCard: {
       backgroundColor: Colors.surface,
       borderWidth: 1,
@@ -154,14 +225,28 @@ const makeStyles = (Colors: ColorTokens) =>
       paddingTop: Spacing.md,
       gap: Spacing.sm + 4,
     },
-    detailRow: { flexDirection: 'row', justifyContent: 'space-between' },
+    card: {
+      backgroundColor: Colors.surface,
+      borderWidth: 1,
+      borderColor: Colors.border,
+      borderRadius: Radius.lg,
+      padding: Spacing.md,
+      gap: Spacing.xs + 2,
+    },
+    refundCard: { borderColor: Colors.warning },
+    cardLabel: { fontWeight: FontWeight.semibold, marginBottom: Spacing.xs },
+    divider: { height: 1, backgroundColor: Colors.border, marginVertical: Spacing.xs },
+    detailRow: { flexDirection: 'row', justifyContent: 'space-between', gap: Spacing.sm },
     detailLabel: { color: Colors.textMuted },
-    detailValue: { fontSize: FontSize.sm - 0.5, color: Colors.textPrimary, fontWeight: FontWeight.semibold },
+    detailValue: { fontSize: FontSize.sm - 0.5, color: Colors.textPrimary, fontWeight: FontWeight.semibold, flexShrink: 1, textAlign: 'right' },
     detailValueMono: { fontFamily: FontFamily.semibold },
-    actionRow: { flexDirection: 'row', gap: Spacing.sm, marginTop: Spacing.lg },
+    detailValueBold: { fontSize: FontSize.md, color: Colors.accent },
+    actionRow: { flexDirection: 'row', gap: Spacing.sm },
     actionBtn: {
       flex: 1,
       height: 46,
+      flexDirection: 'row',
+      gap: Spacing.xs,
       borderRadius: Radius.md,
       backgroundColor: Colors.surface,
       borderWidth: 1,
@@ -169,35 +254,5 @@ const makeStyles = (Colors: ColorTokens) =>
       alignItems: 'center',
       justifyContent: 'center',
     },
-    cancelBtn: { borderColor: Colors.error },
-    cancelBtnText: { color: Colors.error, fontSize: FontSize.sm - 0.5, fontWeight: FontWeight.semibold },
-    supportBtnText: { color: Colors.textPrimary, fontSize: FontSize.sm - 0.5, fontWeight: FontWeight.semibold },
-    confirmPanel: {
-      marginTop: Spacing.md,
-      backgroundColor: Colors.errorDim,
-      borderWidth: 1,
-      borderColor: Colors.error,
-      borderRadius: Radius.lg,
-      padding: Spacing.md,
-    },
-    confirmText: { marginBottom: Spacing.sm },
-    confirmRow: { flexDirection: 'row', gap: Spacing.sm },
-    keepBtn: {
-      flex: 1,
-      height: 38,
-      borderRadius: Radius.sm,
-      backgroundColor: Colors.surface,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    keepBtnText: { color: Colors.textPrimary },
-    yesCancelBtn: {
-      flex: 1,
-      height: 38,
-      borderRadius: Radius.sm,
-      backgroundColor: Colors.error,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    yesCancelText: { color: '#fff', fontWeight: FontWeight.semibold },
+    actionBtnText: { color: Colors.textPrimary, fontSize: FontSize.sm - 0.5, fontWeight: FontWeight.semibold },
   });

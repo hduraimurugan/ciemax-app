@@ -1,50 +1,138 @@
-import React, { useMemo } from 'react';
-import {
-  Image,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  View,
-} from 'react-native';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { Alert, AppState, Image, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useFocusEffect } from '@react-navigation/native';
 import { ArrowLeft } from 'lucide-react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '@ctypes/navigation';
 import { Seat } from '@ctypes/models';
 import { ColorTokens, FontFamily, FontWeight, Radius, Spacing } from '@constants/theme';
 import { useTheme } from '@hooks/useTheme';
+import { useRequireAuth } from '@hooks/useRequireAuth';
 import { Badge, Button, Loader } from '@shared/ui';
 import { Body, BodySmall, Caption, Heading2 } from '@shared/ui';
 import { useSeatLayout } from '@hooks/useSeatLayout';
 import { useBookingStore } from '@store/bookingStore';
-import { formatPrice } from '@shared/utils';
+import { formatPrice, formatShowTime } from '@shared/utils';
+import { holdSeats } from '@services/bookingService';
+import { errorMessage, isApiError } from '@services/httpClient';
 import { SeatGrid } from '../components/SeatGrid';
+import { SeatCountModal } from '../components/SeatCountModal';
+import { findBestAdjacentSeats } from '../utils/seatSelection';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'SeatSelection'>;
 
 export function SeatSelectionScreen({ navigation, route }: Props) {
-  const { showId } = route.params;
+  const { showId, movieId } = route.params;
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
-  const { layout, loading, error } = useSeatLayout(showId);
+  const { layout, loading, error, refetch } = useSeatLayout(showId);
+  const requireAuth = useRequireAuth();
 
   const selectedSeats = useBookingStore(s => s.selectedSeats);
+  const seatCount = useBookingStore(s => s.seatCount);
   const selectedShow = useBookingStore(s => s.selectedShow);
   const selectedMovie = useBookingStore(s => s.selectedMovie);
-  const toggleSeat = useBookingStore(s => s.toggleSeat);
+  const selectedTheatre = useBookingStore(s => s.selectedTheatre);
+  const setSeatCount = useBookingStore(s => s.setSeatCount);
+  const setSelectedSeats = useBookingStore(s => s.setSelectedSeats);
+  const clearSeatSelection = useBookingStore(s => s.clearSeatSelection);
   const getTotalAmount = useBookingStore(s => s.getTotalAmount);
 
-  const selectedSeatIds = useMemo(
-    () => new Set(selectedSeats.map(s => s.id)),
-    [selectedSeats],
+  const [countModalVisible, setCountModalVisible] = useState(seatCount === 0);
+  const [holding, setHolding] = useState(false);
+
+  const selectedSeatIds = useMemo(() => new Set(selectedSeats.map(s => s.id)), [selectedSeats]);
+
+  // Seat freshness is poll-only (the API has no realtime/sockets) — refetch
+  // whenever this screen regains focus or the app comes back to foreground.
+  useFocusEffect(
+    useCallback(() => {
+      refetch();
+    }, [refetch]),
   );
 
-  function handleSeatPress(seat: Seat) {
-    toggleSeat(seat);
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', state => {
+      if (state === 'active') refetch();
+    });
+    return () => sub.remove();
+  }, [refetch]);
+
+  function handleSeatCountSelect(count: number) {
+    setSeatCount(count);
+    setCountModalVisible(false);
   }
 
-  function handleContinue() {
-    navigation.navigate('Checkout');
+  function handleSeatCountDismiss() {
+    if (seatCount === 0) {
+      navigation.goBack();
+      return;
+    }
+    setCountModalVisible(false);
+  }
+
+  function handleSeatPress(seat: Seat) {
+    if (!layout) return;
+    if (selectedSeatIds.has(seat.id)) {
+      clearSeatSelection();
+      return;
+    }
+    if (!seatCount) {
+      setCountModalVisible(true);
+      return;
+    }
+    const block = findBestAdjacentSeats(seat, seatCount, layout.allSeats ?? []);
+    if (block.length === seatCount) {
+      setSelectedSeats(block);
+    } else {
+      Alert.alert('Not enough adjacent seats', `Unable to find ${seatCount} adjacent seats near your selection.`);
+      clearSeatSelection();
+    }
+  }
+
+  async function handleProceed() {
+    if (selectedSeats.length === 0 || !layout) return;
+    requireAuth(async () => {
+      setHolding(true);
+      try {
+        const result = await holdSeats(showId, selectedSeats.map(s => s.id));
+        setHolding(false);
+        navigation.navigate('Checkout', {
+          showId,
+          movieId,
+          seatIds: selectedSeats.map(s => s.id),
+          seatLabels: selectedSeats.map(s => s.label ?? `${s.row}${s.number}`),
+          holdExpiresAt: result.hold_expires_at,
+          ticketTotal: getTotalAmount(),
+          movieTitle: selectedMovie?.title ?? '',
+          posterUrl: selectedMovie?.posterUrl,
+          cinemaName: selectedTheatre?.name ?? '',
+          screenName: selectedShow?.screenName ?? '',
+          showDate: selectedShow?.date ?? '',
+          startTime: selectedShow?.rawStartTime ?? selectedShow?.time ?? '',
+          language: selectedShow?.language ?? '',
+        });
+      } catch (err) {
+        setHolding(false);
+        if (isApiError(err) && err.status === 409) {
+          const seatLabelById = new Map(selectedSeats.map(s => [s.id, s.label ?? `${s.row}${s.number}`]));
+          const takenLabels = (err.results ?? [])
+            .filter(r => r.status === 'unavailable')
+            .map(r => seatLabelById.get(r.seat_id) ?? r.seat_id);
+          Alert.alert(
+            'Some seats are no longer available',
+            takenLabels.length
+              ? `These seats were just taken: ${takenLabels.join(', ')}. Please pick again.`
+              : 'Please select your seats again.',
+          );
+        } else {
+          Alert.alert('Could not hold seats', errorMessage(err));
+        }
+        clearSeatSelection();
+        refetch();
+      }
+    });
   }
 
   if (loading) return <Loader fullScreen message="Loading seats..." />;
@@ -58,7 +146,7 @@ export function SeatSelectionScreen({ navigation, route }: Props) {
   }
 
   const total = getTotalAmount();
-  const hasSelection = selectedSeats.length > 0;
+  const hasSelection = selectedSeats.length > 0 && selectedSeats.length === seatCount;
 
   return (
     <SafeAreaView style={styles.screen}>
@@ -75,27 +163,28 @@ export function SeatSelectionScreen({ navigation, route }: Props) {
           </BodySmall>
           {selectedShow ? (
             <Caption style={styles.showInfo}>
-              {selectedShow.time} · {selectedShow.format} · {selectedShow.language}
+              {selectedShow.rawStartTime ? formatShowTime(selectedShow.rawStartTime) : selectedShow.time}
+              {' · '}
+              {selectedShow.language}
+              {selectedTheatre ? ` · ${selectedTheatre.name}` : ''}
             </Caption>
           ) : null}
         </View>
       </View>
 
       <View style={styles.gridWrapper}>
-        <SeatGrid
-          layout={layout}
-          selectedSeatIds={selectedSeatIds}
-          onSeatPress={handleSeatPress}
-        />
+        <SeatGrid layout={layout} selectedSeatIds={selectedSeatIds} onSeatPress={handleSeatPress} />
       </View>
 
       <View style={styles.bottomBar}>
-        {hasSelection ? (
+        {selectedSeats.length > 0 ? (
           <View style={styles.seatPills}>
-            <Caption style={styles.seatPillsLabel}>Seats: </Caption>
+            <Caption style={styles.seatPillsLabel}>
+              {selectedSeats.length}/{seatCount} Selected:{' '}
+            </Caption>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.pillScroll}>
               {selectedSeats.map(s => (
-                <Badge key={s.id} label={`${s.row}${s.number}`} variant="zinc" style={styles.pill} />
+                <Badge key={s.id} label={s.label ?? `${s.row}${s.number}`} variant="zinc" style={styles.pill} />
               ))}
             </ScrollView>
           </View>
@@ -106,15 +195,23 @@ export function SeatSelectionScreen({ navigation, route }: Props) {
             <Heading2 style={styles.totalAmount}>{formatPrice(total)}</Heading2>
           </View>
           <Button
-            label={hasSelection ? 'Proceed' : 'Select a seat'}
-            onPress={handleContinue}
-            disabled={!hasSelection}
+            label={holding ? 'Holding seats…' : hasSelection ? 'Proceed' : `Select ${seatCount || ''} seat${seatCount === 1 ? '' : 's'}`}
+            onPress={handleProceed}
+            disabled={!hasSelection || holding}
+            loading={holding}
             variant="primary"
             size="lg"
             style={styles.proceedBtn}
           />
         </View>
       </View>
+
+      <SeatCountModal
+        visible={countModalVisible}
+        layout={layout}
+        onSelect={handleSeatCountSelect}
+        onDismiss={handleSeatCountDismiss}
+      />
     </SafeAreaView>
   );
 }
@@ -194,6 +291,6 @@ const makeStyles = (Colors: ColorTokens) =>
       fontFamily: FontFamily.bold,
     },
     proceedBtn: {
-      minWidth: 120,
+      minWidth: 150,
     },
   });

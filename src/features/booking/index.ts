@@ -1,6 +1,6 @@
 export { CheckoutScreen } from './screens/CheckoutScreen';
-export { OrderSummaryScreen } from './screens/OrderSummaryScreen';
 export { PaymentScreen } from './screens/PaymentScreen';
+export { RazorpayWebViewScreen } from './screens/RazorpayWebViewScreen';
 export { BookingSuccessScreen } from './screens/BookingSuccessScreen';
 export { BookingFailureScreen } from './screens/BookingFailureScreen';
 export { PriceBreakdown } from './components/PriceBreakdown';

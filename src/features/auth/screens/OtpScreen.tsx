@@ -1,5 +1,5 @@
 import React, { useMemo, useRef, useState } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Alert, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ArrowLeft } from 'lucide-react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -7,22 +7,30 @@ import { RootStackParamList } from '@ctypes/navigation';
 import { ColorTokens, FontFamily, FontSize, FontWeight, Radius, Spacing } from '@constants/theme';
 import { useTheme } from '@hooks/useTheme';
 import { useCountdown } from '@hooks/useCountdown';
+import { flushPendingAuthCallbacks } from '@hooks/useRequireAuth';
 import { Button, Heading2 } from '@shared/ui';
+import { authService } from '@services/authService';
+import { errorMessage } from '@services/httpClient';
+import { useAuthStore } from '@store/authStore';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Otp'>;
 
 const OTP_LENGTH = 6;
-const RESEND_SECONDS = 30;
+const RESEND_SECONDS = 60;
 
 export function OtpScreen({ navigation, route }: Props) {
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
   const [otp, setOtp] = useState<string[]>(Array(OTP_LENGTH).fill(''));
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const inputs = useRef<Array<TextInput | null>>([]);
   const { seconds, reset } = useCountdown(RESEND_SECONDS);
+  const login = useAuthStore(s => s.login);
 
-  const email = route.params?.email || '';
-  const maskedEmail = (email || 'you@example.com').replace(/(.{2}).+(@.+)/, '$1***$2');
+  const { email, type, password } = route.params;
+  const maskedEmail = email.replace(/(.{2}).+(@.+)/, '$1***$2');
+  const code = otp.join('');
 
   const updateDigit = (i: number, value: string) => {
     const digit = value.replace(/[^0-9]/g, '').slice(-1);
@@ -38,8 +46,48 @@ export function OtpScreen({ navigation, route }: Props) {
     if (key === 'Backspace' && !otp[i] && i > 0) inputs.current[i - 1]?.focus();
   };
 
-  const verify = () => navigation.reset({ index: 0, routes: [{ name: 'MainTabs' }] });
-  const resend = () => reset(RESEND_SECONDS);
+  const verify = async () => {
+    if (code.length !== OTP_LENGTH) {
+      setError('Enter the full 6-digit code.');
+      return;
+    }
+    setError(null);
+    setSubmitting(true);
+    try {
+      await authService.verifyOtp(email, code, type);
+
+      if (password) {
+        // Came from Register — log straight in with the password already collected.
+        const result = await login(email, password);
+        setSubmitting(false);
+        if (!result.success) {
+          setError(result.error?.message ?? 'Verified, but sign-in failed. Please log in manually.');
+          navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
+          return;
+        }
+        flushPendingAuthCallbacks();
+        navigation.reset({ index: 0, routes: [{ name: 'MainTabs' }] });
+        return;
+      }
+
+      // Bounced here from an "email not verified" login attempt.
+      setSubmitting(false);
+      Alert.alert('Email verified', 'You can now sign in.');
+      navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
+    } catch (err) {
+      setSubmitting(false);
+      setError(errorMessage(err, 'Invalid code. Please try again.'));
+    }
+  };
+
+  const resend = async () => {
+    reset(RESEND_SECONDS);
+    try {
+      await authService.sendOtp(email, type);
+    } catch (err) {
+      setError(errorMessage(err, 'Could not resend the code. Try again shortly.'));
+    }
+  };
 
   const resendLabel = seconds > 0 ? `Resend code in 0:${String(seconds).padStart(2, '0')}` : '';
 
@@ -52,6 +100,8 @@ export function OtpScreen({ navigation, route }: Props) {
 
         <Heading2 style={styles.title}>Verify your email</Heading2>
         <Text style={styles.subtitle}>We sent a 6-digit code to{'\n'}{maskedEmail}</Text>
+
+        {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
         <View style={styles.otpRow}>
           {otp.map((digit, i) => (
@@ -80,7 +130,14 @@ export function OtpScreen({ navigation, route }: Props) {
           )}
         </View>
 
-        <Button label="Verify & Continue" onPress={verify} fullWidth size="lg" />
+        <Button
+          label={submitting ? 'Verifying…' : 'Verify & Continue'}
+          onPress={verify}
+          disabled={submitting}
+          loading={submitting}
+          fullWidth
+          size="lg"
+        />
       </View>
     </SafeAreaView>
   );
@@ -105,6 +162,11 @@ const makeStyles = (Colors: ColorTokens) =>
       color: Colors.textMuted,
       lineHeight: FontSize.sm * 1.5,
       marginBottom: Spacing.xl,
+    },
+    errorText: {
+      fontSize: FontSize.sm,
+      color: Colors.error,
+      marginBottom: Spacing.md,
     },
     otpRow: {
       flexDirection: 'row',

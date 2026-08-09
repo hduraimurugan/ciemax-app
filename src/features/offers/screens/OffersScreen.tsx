@@ -8,57 +8,92 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { ArrowLeft, LogIn, Tag } from 'lucide-react-native';
+import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { RootStackParamList } from '@ctypes/navigation';
 import { Offer } from '@ctypes/models';
 import { ColorTokens, FontFamily, FontSize, FontWeight, Radius, Spacing } from '@constants/theme';
 import { useTheme } from '@hooks/useTheme';
-import { Badge, Loader } from '@shared/ui';
+import { Badge, Body, Button, Loader } from '@shared/ui';
 import { Heading2, BodySmall, Caption } from '@shared/ui';
 import { getOffers } from '@services/offersService';
+import { formatDate } from '@shared/utils';
+import { useAuthStore } from '@store/authStore';
 
-// NOTE: the old "Offers" tab has no equivalent in the CineHall design (promo codes
-// are entered directly in Checkout instead) and is no longer routed in
-// TabNavigator. Kept on disk, unrouted, rather than deleted.
+type Props = NativeStackScreenProps<RootStackParamList, 'Offers'>;
+
 const SCREEN_WIDTH = Dimensions.get('window').width;
 const CARD_WIDTH = (SCREEN_WIDTH - Spacing.md * 2 - Spacing.sm) / 2;
 
-export function OffersScreen() {
+export function OffersScreen({ navigation }: Props) {
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
+  const status = useAuthStore(s => s.status);
   const [offers, setOffers] = useState<Offer[]>([]);
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState<string | null>(null);
 
   useEffect(() => {
+    if (status !== 'authed') {
+      setLoading(false);
+      return;
+    }
     getOffers().then(data => {
       setOffers(data);
       setLoading(false);
     });
-  }, []);
+  }, [status]);
 
   function handleCopy(code: string) {
-    setCopied(code);
-    setTimeout(() => setCopied(null), 2000);
+    // Keep the screen loadable when a stale native build has not linked the Clipboard pod yet.
+    try {
+      const Clipboard = require('@react-native-clipboard/clipboard').default;
+      Clipboard.setString(code);
+      setCopied(code);
+      setTimeout(() => setCopied(null), 2000);
+    } catch {
+      // Copy becomes available after rebuilding the native app with the installed pods.
+    }
   }
-
-  if (loading) return <Loader fullScreen />;
 
   return (
     <SafeAreaView style={styles.screen}>
       <View style={styles.pageHeader}>
-        <Heading2>Offers & Coupons</Heading2>
-        <BodySmall style={styles.headerSub}>Save on your next booking</BodySmall>
+        <Pressable style={styles.backBtn} onPress={() => navigation.goBack()} hitSlop={8}>
+          <ArrowLeft size={18} color={colors.textPrimary} />
+        </Pressable>
+        <View>
+          <Heading2>Offers &amp; Coupons</Heading2>
+          <BodySmall style={styles.headerSub}>Save on your next booking</BodySmall>
+        </View>
       </View>
-      <FlatList
-        data={offers}
-        keyExtractor={item => item.id}
-        numColumns={2}
-        columnWrapperStyle={styles.row}
-        renderItem={({ item }) => (
-          <OfferCard offer={item} copied={copied} onCopy={handleCopy} colors={colors} />
-        )}
-        contentContainerStyle={styles.list}
-        showsVerticalScrollIndicator={false}
-      />
+
+      {status !== 'authed' ? (
+        <View style={styles.signedOut}>
+          <Tag size={40} color={colors.textMuted} />
+          <Body style={styles.signedOutText}>Please log in to view offers.</Body>
+          <Button label="Sign In" onPress={() => navigation.navigate('Login', {})} leftIcon={<LogIn size={16} color={colors.textInverse} />} />
+        </View>
+      ) : loading ? (
+        <Loader fullScreen />
+      ) : offers.length === 0 ? (
+        <View style={styles.signedOut}>
+          <Tag size={40} color={colors.textMuted} />
+          <Body style={styles.signedOutText}>No offers available right now — check back soon.</Body>
+        </View>
+      ) : (
+        <FlatList
+          data={offers}
+          keyExtractor={item => item.id}
+          numColumns={2}
+          columnWrapperStyle={styles.row}
+          renderItem={({ item }) => (
+            <OfferCard offer={item} copied={copied} onCopy={handleCopy} colors={colors} />
+          )}
+          contentContainerStyle={styles.list}
+          showsVerticalScrollIndicator={false}
+        />
+      )}
     </SafeAreaView>
   );
 }
@@ -76,40 +111,50 @@ function OfferCard({
 }) {
   const styles = useMemo(() => makeStyles(colors), [colors]);
   const isCopied = copied === offer.code;
+  const isRedeemed = !!offer.isRedeemed;
   const discountLabel = offer.discountType === 'percentage'
     ? `${offer.discountValue}%`
     : `₹${offer.discountValue}`;
 
+  const daysUntilExpiry = Math.ceil((new Date(offer.validUntil).getTime() - Date.now()) / 86400000);
+  const endingSoon = daysUntilExpiry >= 0 && daysUntilExpiry <= 3;
+
   return (
-    <View style={styles.card}>
+    <View style={[styles.card, isRedeemed && styles.cardRedeemed]}>
       <View style={styles.accentBar} />
 
       <View style={styles.cardBody}>
         <View style={styles.cardTop}>
-          <Text style={styles.offerCode}>{offer.code}</Text>
+          <Text style={[styles.offerCode, isRedeemed && styles.strikethrough]}>{offer.code}</Text>
           <Badge label={discountLabel} variant="violet" />
         </View>
 
-        <BodySmall style={styles.offerTitle} numberOfLines={2}>{offer.title}</BodySmall>
+        <BodySmall style={[styles.offerTitle, isRedeemed && styles.strikethrough]} numberOfLines={2}>{offer.title}</BodySmall>
         <Caption style={styles.offerMin}>Min ₹{offer.minOrderAmount}</Caption>
 
         <View style={styles.badges}>
-          {offer.isActive ? (
-            <Badge label="ACTIVE" variant="success" />
+          {isRedeemed ? (
+            <Badge label="ALREADY USED" variant="zinc" />
+          ) : offer.hallScoped ? (
+            <Badge label="HALL OFFER" variant="gold" />
+          ) : endingSoon ? (
+            <Badge label="ENDING SOON" variant="error" />
           ) : (
-            <Badge label="EXPIRED" variant="error" />
+            <Badge label="ACTIVE" variant="success" />
           )}
         </View>
 
-        <Pressable
-          style={[styles.copyBtn, isCopied && styles.copyBtnCopied]}
-          onPress={() => onCopy(offer.code)}>
-          <Text style={[styles.copyBtnText, isCopied && styles.copyBtnTextCopied]}>
-            {isCopied ? '✓ Copied' : 'Copy Code'}
-          </Text>
-        </Pressable>
+        {!isRedeemed && (
+          <Pressable
+            style={[styles.copyBtn, isCopied && styles.copyBtnCopied]}
+            onPress={() => onCopy(offer.code)}>
+            <Text style={[styles.copyBtnText, isCopied && styles.copyBtnTextCopied]}>
+              {isCopied ? '✓ Copied' : 'Copy Code'}
+            </Text>
+          </Pressable>
+        )}
 
-        <Caption style={styles.validity}>Expires {offer.validUntil}</Caption>
+        <Caption style={styles.validity}>Expires {formatDate(offer.validUntil)}</Caption>
       </View>
     </View>
   );
@@ -119,14 +164,26 @@ const makeStyles = (Colors: ColorTokens) =>
   StyleSheet.create({
     screen: { flex: 1, backgroundColor: Colors.background },
     pageHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: Spacing.md,
       paddingHorizontal: Spacing.md,
       paddingTop: Spacing.md,
       paddingBottom: Spacing.sm,
       borderBottomWidth: 1,
       borderBottomColor: Colors.border,
-      gap: 2,
+    },
+    backBtn: {
+      width: 34,
+      height: 34,
+      borderRadius: Radius.md,
+      backgroundColor: Colors.surfaceElevated,
+      alignItems: 'center',
+      justifyContent: 'center',
     },
     headerSub: { color: Colors.textMuted },
+    signedOut: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: Spacing.md, padding: Spacing.xl },
+    signedOutText: { textAlign: 'center', color: Colors.textSecondary },
     list: {
       padding: Spacing.md,
       paddingBottom: Spacing.xxl,
@@ -143,6 +200,7 @@ const makeStyles = (Colors: ColorTokens) =>
       borderColor: Colors.border,
       overflow: 'hidden',
     },
+    cardRedeemed: { opacity: 0.55 },
     accentBar: {
       height: 4,
       backgroundColor: Colors.violet,
@@ -165,6 +223,7 @@ const makeStyles = (Colors: ColorTokens) =>
       letterSpacing: 1,
       flex: 1,
     },
+    strikethrough: { textDecorationLine: 'line-through' },
     offerTitle: {
       color: Colors.textSecondary,
       fontSize: FontSize.xs,

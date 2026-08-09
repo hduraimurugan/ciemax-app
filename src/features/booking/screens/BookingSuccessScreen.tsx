@@ -1,20 +1,27 @@
-import React, { useEffect, useMemo, useRef } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
+  ActivityIndicator,
+  Alert,
   Animated,
   FlatList,
+  Platform,
+  PermissionsAndroid,
   Pressable,
   ScrollView,
+  Share,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import ViewShot, { ViewShotRef } from 'react-native-view-shot';
+import { CameraRoll } from '@react-native-camera-roll/camera-roll';
 import { Check, Download, Share2 } from 'lucide-react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '@ctypes/navigation';
 import { ColorTokens, FontFamily, FontSize, FontWeight, Radius, Spacing } from '@constants/theme';
 import { useTheme } from '@hooks/useTheme';
-import { Badge, Button, QRCode } from '@shared/ui';
+import { Badge, Button, Loader, QRCode } from '@shared/ui';
 import {
   Heading1,
   Heading2,
@@ -22,24 +29,49 @@ import {
   BodySmall,
   Caption,
 } from '@shared/ui';
-import { useBookingStore } from '@store/bookingStore';
+import { Booking } from '@ctypes/models';
+import { getBookingByPaymentId } from '@services/bookingService';
 import { formatPrice, formatShowDate } from '@shared/utils';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'BookingSuccess'>;
 
-export function BookingSuccessScreen({ navigation }: Props) {
+async function ensureStoragePermission(): Promise<boolean> {
+  if (Platform.OS !== 'android' || Platform.Version >= 29) return true;
+  const granted = await PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.WRITE_EXTERNAL_STORAGE);
+  return granted === PermissionsAndroid.RESULTS.GRANTED;
+}
+
+export function BookingSuccessScreen({ navigation, route }: Props) {
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
-  const booking = useBookingStore(s => s.bookingDetails);
+  const [booking, setBooking] = useState<Booking | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const scale = useRef(new Animated.Value(0)).current;
   const opacity = useRef(new Animated.Value(0)).current;
+  const viewShotRef = useRef<ViewShotRef>(null);
 
   useEffect(() => {
+    let cancelled = false;
+    getBookingByPaymentId(route.params.paymentId)
+      .then(b => {
+        if (!cancelled) setBooking(b ?? null);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [route.params.paymentId]);
+
+  useEffect(() => {
+    if (loading) return;
     Animated.parallel([
       Animated.spring(scale, { toValue: 1, useNativeDriver: true, tension: 50, friction: 7 }),
       Animated.timing(opacity, { toValue: 1, duration: 400, useNativeDriver: true }),
     ]).start();
-  }, [opacity, scale]);
+  }, [loading, opacity, scale]);
 
   function handleGoHome() {
     navigation.reset({ index: 0, routes: [{ name: 'MainTabs' }] });
@@ -48,6 +80,41 @@ export function BookingSuccessScreen({ navigation }: Props) {
   function handleViewBookings() {
     navigation.reset({ index: 0, routes: [{ name: 'MainTabs', params: { screen: 'Bookings' } as never }] });
   }
+
+  async function handleDownload() {
+    if (!viewShotRef.current) return;
+    const allowed = await ensureStoragePermission();
+    if (!allowed) {
+      Alert.alert('Permission needed', 'Storage access is required to save the ticket.');
+      return;
+    }
+    setSaving(true);
+    try {
+      const uri = await viewShotRef.current.capture();
+      await CameraRoll.saveAsset(uri, { type: 'photo', album: 'CineHall' });
+      Alert.alert('Saved', 'Your ticket has been saved to your photo library.');
+    } catch {
+      Alert.alert('Could not save', 'Something went wrong while saving your ticket.');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleShare() {
+    if (!booking) return;
+    try {
+      const uri = viewShotRef.current ? await viewShotRef.current.capture() : undefined;
+      await Share.share({
+        title: 'My CineHall Ticket',
+        message: `${booking.movieTitle} · ${formatShowDate(booking.showDate)} · ${booking.showTime} · Seats ${booking.seatLabels?.join(', ') ?? ''}`,
+        ...(uri ? { url: uri } : {}),
+      });
+    } catch {
+      // user dismissed
+    }
+  }
+
+  if (loading) return <Loader fullScreen message="Loading your ticket..." />;
 
   return (
     <SafeAreaView style={styles.screen}>
@@ -60,44 +127,50 @@ export function BookingSuccessScreen({ navigation }: Props) {
         <Body style={styles.subtitle}>Your seats are locked in. Enjoy the show!</Body>
 
         {booking ? (
-          <View style={styles.ticketCard}>
-            <View style={styles.ticketHeader}>
-              <Text style={styles.ticketBrand}>CINEHALL</Text>
-              <Body style={styles.ticketMovie}>{booking.movieTitle}</Body>
-              <BodySmall style={styles.ticketShowInfo}>
-                {formatShowDate(booking.showDate)} · {booking.showTime} · {booking.showFormat}
-              </BodySmall>
-            </View>
+          <ViewShot ref={viewShotRef} options={{ format: 'png', quality: 0.92 }}>
+            <View style={styles.ticketCard}>
+              <View style={styles.ticketHeader}>
+                <Text style={styles.ticketBrand}>CINEHALL</Text>
+                <Body style={styles.ticketMovie}>{booking.movieTitle}</Body>
+                <BodySmall style={styles.ticketShowInfo}>
+                  {formatShowDate(booking.showDate)} · {booking.showTime}
+                </BodySmall>
+              </View>
 
-            <DashedLine styles={styles} />
+              <DashedLine styles={styles} />
 
-            <View style={styles.ticketBody}>
-              <TicketRow label="Booking ID" value={`#${booking.id}`} mono colors={colors} />
-              <TicketRow label="Theatre" value={booking.theatreName} colors={colors} />
-              <TicketRow label="Date" value={formatShowDate(booking.showDate)} colors={colors} />
-              <TicketRow label="Time" value={booking.showTime} colors={colors} />
+              <View style={styles.ticketBody}>
+                <TicketRow label="Booking ID" value={`#${booking.id.slice(0, 8).toUpperCase()}`} mono colors={colors} />
+                <TicketRow label="Theatre" value={booking.theatreName} colors={colors} />
+                <TicketRow label="Date" value={formatShowDate(booking.showDate)} colors={colors} />
+                <TicketRow label="Time" value={booking.showTime} colors={colors} />
 
-              <View style={styles.seatSection}>
-                <Caption style={styles.rowLabel}>Seats</Caption>
-                <View style={styles.seatPills}>
-                  {booking.seats.map(s => (
-                    <Badge key={s.id} label={`${s.row}${s.number}`} variant="zinc" />
-                  ))}
+                <View style={styles.seatSection}>
+                  <Caption style={styles.rowLabel}>Seats</Caption>
+                  <View style={styles.seatPills}>
+                    {(booking.seatLabels ?? booking.seats.map(s => s.label ?? `${s.row}${s.number}`)).map(label => (
+                      <Badge key={label} label={label} variant="zinc" />
+                    ))}
+                  </View>
+                </View>
+
+                <View style={styles.amountSection}>
+                  <Caption style={styles.rowLabel}>Amount Paid</Caption>
+                  <Heading2 style={styles.amountText}>{formatPrice(booking.totalAmount)}</Heading2>
+                </View>
+
+                <View style={styles.qrSection}>
+                  <QRCode value={booking.id} size={90} />
+                  <Caption style={styles.qrHint}>Scan at theatre entrance</Caption>
                 </View>
               </View>
-
-              <View style={styles.amountSection}>
-                <Caption style={styles.rowLabel}>Amount Paid</Caption>
-                <Heading2 style={styles.amountText}>{formatPrice(booking.totalAmount)}</Heading2>
-              </View>
-
-              <View style={styles.qrSection}>
-                <QRCode value={booking.id} size={90} />
-                <Caption style={styles.qrHint}>Scan at theatre entrance</Caption>
-              </View>
             </View>
-          </View>
-        ) : null}
+          </ViewShot>
+        ) : (
+          <Body style={styles.subtitle}>
+            Payment succeeded, but we couldn&apos;t load the ticket details right now. Check My Bookings shortly.
+          </Body>
+        )}
 
         <Pressable onPress={handleViewBookings}>
           <Text style={styles.viewBookings}>View My Bookings</Text>
@@ -107,11 +180,11 @@ export function BookingSuccessScreen({ navigation }: Props) {
       </ScrollView>
 
       <View style={styles.actionRow}>
-        <Pressable style={styles.actionBtn}>
-          <Download size={16} color={colors.textSecondary} />
+        <Pressable style={styles.actionBtn} onPress={handleDownload} disabled={saving || !booking}>
+          {saving ? <ActivityIndicator size="small" color={colors.textSecondary} /> : <Download size={16} color={colors.textSecondary} />}
           <Caption style={styles.actionBtnText}>Download</Caption>
         </Pressable>
-        <Pressable style={styles.actionBtn}>
+        <Pressable style={styles.actionBtn} onPress={handleShare} disabled={!booking}>
           <Share2 size={16} color={colors.textSecondary} />
           <Caption style={styles.actionBtnText}>Share</Caption>
         </Pressable>

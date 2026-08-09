@@ -4,292 +4,171 @@
 
 CineHall uses a **feature-sliced architecture** — code is organised by domain (movies, seats, booking) rather than by technical layer (components, services, utils). This keeps each feature self-contained and prevents the "god folder" problem where a single `components/` or `screens/` directory grows unbounded.
 
+The app talks to a real backend, [cinema-hall-api](../../cinema-hall/cinema-hall-api) (Express 5 + raw Postgres + Razorpay) — the same one behind [cinema-hall-users](../../cinema-hall/cinema-hall-users), the web app this was ported from. A dedicated **service + mapper layer** (below) is what keeps that server's exact shapes from leaking into every screen.
+
 ---
 
 ## Full Folder Tree
 
 ```
 MyApp/
+├── .env / .env.example / .env.staging / .env.production
+├── android/app/build.gradle       # react-native-config wired per build variant
 ├── metro.config.js                # resolver.unstable_enablePackageExports: false
-│                                  # (forces CJS build of lucide-react-native)
 │
 src/
-├── app/
-│   └── navigation/
-│       ├── RootNavigator.tsx      # Stack navigator — owns the full screen hierarchy
-│       ├── TabNavigator.tsx       # Bottom tab navigator — nested inside RootNavigator
-│       └── index.ts
+├── app/navigation/
+│   ├── RootNavigator.tsx          # Stack navigator — owns the full screen hierarchy
+│   ├── TabNavigator.tsx           # Bottom tab navigator — nested inside RootNavigator
+│   └── index.ts
 │
 ├── constants/
 │   ├── theme.ts                   # DarkColors / LightColors token objects + Spacing/Radius/FontSize/Shadow
-│   ├── config.ts                  # App-level config (app name, seat pricing, mock flags)
+│   ├── config.ts                  # AppConfig (seat cap, currency), StorageKeys, mock-only SeatPricing
+│   ├── env.ts                     # Typed react-native-config wrapper — throws on a missing API_BASE_URL
 │   └── index.ts
 │
 ├── types/
-│   ├── models.ts                  # All domain TypeScript interfaces
-│   ├── navigation.ts              # RootStackParamList, TabParamList
+│   ├── models.ts                  # App-facing camelCase domain interfaces — what every screen imports
+│   ├── api.ts                     # Exact snake_case cinema-hall-api response/request DTOs + ApiError
+│   ├── navigation.ts              # RootStackParamList, TabParamList, CheckoutParams
 │   └── index.ts
 │
 ├── store/
-│   ├── bookingStore.ts            # Zustand store for the active booking flow
+│   ├── authStore.ts               # Zustand + persist — accessToken/refreshToken/customer, bootstrap()
+│   ├── locationStore.ts           # Zustand + persist — district/state, 24h GPS cache
+│   ├── bookingStore.ts            # Zustand — in-progress seat selection (pre-hold; Checkout+ is route-param-driven)
 │   ├── themeStore.ts              # Zustand + persist — dark/light mode, active ColorTokens
 │   └── index.ts
 │
 ├── services/
-│   ├── moviesService.ts           # Mock: 3 movies (Spider-Man/Odyssey/Jana Nayagan), search
-│   ├── theatresService.ts         # Mock: 3 cinemas, showtimes generated per movie × 7 dates
-│   ├── seatsService.ts            # Mock: deterministic seat grid generator
-│   ├── bookingService.ts          # Mock: in-memory booking CRUD
-│   ├── offersService.ts           # Mock: 4 coupons (incl. FIRST50) + validator
+│   ├── httpClient.ts              # fetch wrapper — error normalization, Bearer injection, refresh-on-401/403
+│   ├── mappers.ts                 # api.ts DTO → models.ts app-model conversions (the ONLY place this happens)
+│   ├── authService.ts             # /api/customer/*, /api/otp/*
+│   ├── moviesService.ts           # /api/user/movies* (location-aware, falls back to global list)
+│   ├── theatresService.ts         # Derives Theatre/Show from moviesService's showtimes call + /location/theatres
+│   ├── showsService.ts            # GET /api/shows/get/:id — the seat-map endpoint
+│   ├── seatsService.ts            # Thin mock/real switch in front of showsService (stable import path)
+│   ├── bookingService.ts          # /api/booking/{hold,release,my-bookings,:id,by-payment/:id}
+│   ├── paymentService.ts          # /api/payment/{create-order,verify}
+│   ├── offersService.ts           # /api/offers/{active,validate}
+│   ├── settingsService.ts         # GET /api/settings — convenience_fee_per_ticket, gst_percentage
+│   ├── adsService.ts              # /api/ads/{active,click/:id}
+│   ├── *.mock.ts                  # Original in-memory implementations, selected via Env.USE_MOCKS
 │   └── index.ts
 │
 ├── hooks/
-│   ├── useMovies.ts               # Wraps moviesService with loading/error state
-│   ├── useTheatres.ts             # useTheatresForMovie, useShowsForMovie, useShowsForMovieTheatre
-│   ├── useSeatLayout.ts           # Wraps seatsService with loading/error state
-│   ├── useTheme.ts                # Thin selector over themeStore: { colors, mode, toggleTheme }
-│   ├── useCountdown.ts            # Generic tick-down hook (seconds, onExpire) — shared by
-│   │                               # CountdownTimer, OtpScreen's resend timer, Checkout's session timer
+│   ├── useMovies.ts, useTheatres.ts, useSeatLayout.ts   # loading/error/refetch, location-aware
+│   ├── useRequireAuth.ts          # Guards an action behind login; queues + resumes it after sign-in
+│   ├── useFavourites.ts           # AsyncStorage-backed favourite movies/theatres
+│   ├── useDebouncedValue.ts       # Used by SearchScreen
+│   ├── useTheme.ts, useCountdown.ts
 │   └── index.ts
 │
 ├── shared/
-│   ├── ui/
-│   │   ├── Typography.tsx         # DisplayText, Heading1-3, Body, BodySmall, Caption, Label
-│   │   ├── Button.tsx             # primary / secondary / ghost / danger / emerald, 3 sizes
-│   │   ├── Card.tsx               # variant: default | glass | neon
-│   │   ├── Badge.tsx              # default / accent / success / error / warning / info / violet / zinc / gold / silver / premium
-│   │   ├── Input.tsx
-│   │   ├── Modal.tsx
-│   │   ├── BottomSheet.tsx
-│   │   ├── Loader.tsx
-│   │   ├── AdBanner.tsx           # Auto-playing carousel (aspect-[5/1], dot indicators)
-│   │   ├── CountdownTimer.tsx     # Amber→red pulsing countdown, built on useCountdown
-│   │   ├── QRCode.tsx             # Wraps react-native-qrcode-svg
-│   │   └── index.ts
-│   └── utils/
-│       ├── formatters.ts
-│       └── index.ts
+│   ├── ui/                        # Reusable, theme-aware primitives (Button, Card, Badge, BottomSheet, ...)
+│   └── utils/formatters.ts        # formatPrice, formatShowDate, formatShowTime, ...
 │
 └── features/
-    ├── onboarding/
-    │   ├── screens/
-    │   │   ├── SplashScreen.tsx        # 2200ms auto-advance to Onboarding
-    │   │   └── OnboardingScreen.tsx    # 3-slide carousel, Skip/Next/Get Started
-    │   └── index.ts
-    │
-    ├── auth/
-    │   ├── screens/
-    │   │   ├── LoginScreen.tsx         # Email input → Otp (no password, no signup tab)
-    │   │   ├── OtpScreen.tsx           # 6-digit boxes, 30s resend countdown
-    │   │   └── RegisterScreen.tsx      # ⚠ unrouted — no design equivalent, kept for reference
-    │   └── index.ts                    # exports LoginScreen, OtpScreen only
-    │
-    ├── movies/
-    │   ├── components/
-    │   │   ├── MovieCard.tsx           # variant: 'rating' | 'soon' | 'plain'
-    │   │   └── MovieFilter.tsx         # ⚠ built but not wired into any screen
-    │   ├── screens/
-    │   │   ├── MoviesScreen.tsx        # Home tab — hero carousel + Now Showing/Coming Soon/Recommended
-    │   │   └── MovieDetailScreen.tsx
-    │   ├── types.ts
-    │   └── index.ts
-    │
-    ├── search/
-    │   ├── screens/
-    │   │   └── SearchScreen.tsx        # Recent Searches + Trending chips ⇄ live 2-col results grid
-    │   └── index.ts
-    │
-    ├── theatres/
-    │   ├── components/
-    │   │   ├── TheatreCard.tsx         # ⚠ unrouted — used only by the pre-CineHall screens below
-    │   │   └── ShowTimeChip.tsx        # ⚠ unrouted — same
-    │   ├── screens/
-    │   │   ├── ShowtimesScreen.tsx     # Date strip + per-cinema showtime chips (routed)
-    │   │   ├── TheatresScreen.tsx      # ⚠ unrouted — superseded by ShowtimesScreen
-    │   │   ├── AllTheatresScreen.tsx   # ⚠ unrouted — old "Theatres" tab, no design equivalent
-    │   │   └── ShowSelectionScreen.tsx # ⚠ unrouted — superseded by ShowtimesScreen
-    │   ├── types.ts
-    │   └── index.ts
-    │
+    ├── onboarding/                # SplashScreen (waits on authStore.bootstrap), OnboardingScreen
+    ├── auth/                      # LoginScreen, RegisterScreen, OtpScreen, ForgotPasswordScreen
+    │   └── utils/                 # passwordPolicy.ts (mirrors the server's rules), googleAuth.ts
+    ├── location/                  # LocationModal — GPS "detect" or manual state → district picker
+    ├── movies/                    # MoviesScreen (Home tab), MovieDetailScreen, MovieCard
+    ├── search/                    # SearchScreen
+    ├── theatres/                  # ShowtimesScreen (per-movie), TheatresScreen (hall -> movies -> shows)
     ├── seats/
-    │   ├── components/
-    │   │   ├── SeatGrid.tsx        # Pure renderer — no logic
-    │   │   ├── SeatItem.tsx        # Single seat square
-    │   │   ├── SeatLegend.tsx      # Available / Premium / Selected / Booked key
-    │   │   └── SectionHeader.tsx   # PREMIUM / STANDARD divider
-    │   ├── screens/
-    │   │   └── SeatSelectionScreen.tsx
-    │   ├── types.ts
-    │   └── index.ts
-    │
+    │   ├── components/            # SeatGrid (pinch/pan zoom), SeatItem, SeatCountModal, SeatLegend, SectionHeader
+    │   ├── screens/SeatSelectionScreen.tsx
+    │   └── utils/seatSelection.ts # findBestAdjacentSeats — ported verbatim from the web app
     ├── booking/
-    │   ├── components/
-    │   │   └── PriceBreakdown.tsx
-    │   ├── screens/
-    │   │   ├── CheckoutScreen.tsx      # Routed as `Checkout` — single promo-code input (design)
-    │   │   ├── OrderSummaryScreen.tsx  # ⚠ unrouted — superseded by CheckoutScreen (had an offer carousel)
-    │   │   ├── PaymentScreen.tsx       # Card / UPI / Wallet tabs + processing sub-state
-    │   │   ├── BookingSuccessScreen.tsx
-    │   │   └── BookingFailureScreen.tsx
-    │   └── index.ts
-    │
-    ├── profile/
-    │   ├── screens/
-    │   │   ├── ProfileScreen.tsx       # Tab root — avatar, menu, Dark Mode toggle
-    │   │   ├── MyBookingsScreen.tsx    # Tab root — Upcoming/Past, cards navigate to TicketDetail
-    │   │   └── TicketDetailScreen.tsx  # Full ticket view + Cancel Booking confirm panel
-    │   └── index.ts
-    │
-    └── offers/
-        ├── screens/
-        │   └── OffersScreen.tsx        # ⚠ unrouted — no design equivalent, promo entry lives in Checkout
-        └── index.ts
+    │   ├── screens/                # CheckoutScreen, PaymentScreen, RazorpayWebViewScreen, BookingSuccess/Failure
+    │   ├── components/PriceBreakdown.tsx
+    │   └── utils/                 # pricing.ts (pure fee/GST calc), razorpayCheckoutHtml.ts
+    ├── profile/                    # ProfileScreen, MyBookingsScreen, TicketDetailScreen, Change/SetPasswordScreen
+    └── offers/                     # OffersScreen
 ```
-
-Files marked **⚠ unrouted** compile (they're theme-aware and type-safe) but are not registered in `RootNavigator`/`TabNavigator` — kept on disk rather than deleted per the redesign's "no destructive delete" policy. See [docs/navigation.md](navigation.md) for exactly which screens are live.
 
 ---
 
 ## Layer Responsibilities
 
 ### `src/app/`
-Bootstrap and navigation wiring. Contains no business logic or UI primitives. `App.tsx` at the root imports only from here (plus `useTheme` for `StatusBar` styling).
+Bootstrap and navigation wiring. Contains no business logic or UI primitives. `App.tsx` wraps the tree in `GestureHandlerRootView` (required by the seat map's pinch/pan gestures) → `SafeAreaProvider` → `NavigationContainer`.
 
 ### `src/constants/`
-The single source of truth for all magic numbers and strings. `theme.ts` exports `DarkColors`/`LightColors` (typed as `ColorTokens`) instead of a single static `Colors` object — no component should import a flat `Colors` constant or hardcode a colour hex; it must come from `useTheme().colors`.
+Magic numbers, strings, and environment config. `theme.ts` exports `DarkColors`/`LightColors` — no component should hardcode a colour hex; it must come from `useTheme().colors`. `env.ts` is the only file that reads `react-native-config` directly.
 
 ### `src/types/`
-Pure TypeScript — no runtime code. All domain interfaces (`Movie`, `Seat`, `Booking`, etc.) and navigation param lists live here. Every other layer imports from `@ctypes/*`.
+Two distinct layers on purpose:
+- **`api.ts`** — snake_case, exactly what cinema-hall-api sends and expects. Field names here should never be "cleaned up" to look nicer; that's what mappers are for.
+- **`models.ts`** — camelCase, what every screen and component actually imports. Pre-dates the real API integration; extended (not replaced) to carry the extra fields the server provides (seat `label`/`isBlocked`, refund status, offer redemption, etc.) so existing screens kept compiling through the port.
 
 ### `src/store/`
-Global client state using Zustand. `bookingStore` holds **transient booking flow state** (the current selection in progress); `themeStore` holds the **persisted theme mode** and the currently active `ColorTokens` object. Neither talks to a server — persisted or server-side state belongs in services.
+Global client state using Zustand. `authStore` and `locationStore` are `persist`-backed and own real session/GPS state. `bookingStore` only holds the *in-progress, pre-hold* seat selection — once seats are held server-side (`SeatSelectionScreen` → `POST /api/booking/hold`), `Checkout`/`Payment`/`BookingFailure` stop reading from the store and become **route-param-driven** (`CheckoutParams`, see `src/types/navigation.ts`), so a backgrounded app doesn't desync from the real 5-minute server hold. `themeStore` is unrelated to booking/auth — purely the persisted theme mode.
 
 ### `src/services/`
-The data abstraction layer. All functions are `async` and return typed interfaces. Currently mocked; replacing with real API calls requires changes only here — zero impact on hooks, store, or UI.
+The data abstraction layer, real by default. Every file:
+1. Exports typed `async` functions returning app models (`models.ts`), never raw DTOs.
+2. Calls `httpClient` (never `fetch` directly) so error normalization and token refresh are consistent everywhere.
+3. Runs its response through `mappers.ts` before returning.
 
-```
-// Mock today
-export async function getMovies(): Promise<Movie[]> {
-  await delay(500);
-  return MOCK_MOVIES;
-}
-
-// Real API tomorrow — same signature, same callers
-export async function getMovies(): Promise<Movie[]> {
-  const res = await fetch('/api/v1/movies');
-  return res.json();
+```ts
+// src/services/moviesService.ts
+export async function getMovieById(id: string): Promise<Movie | undefined> {
+  const res = await httpClient.get<GetMovieByIdResponse>(`/api/user/movies/${id}`, { skipAuth: true });
+  return mapMovie(res.movie);
 }
 ```
+
+Every file has a `*.mock.ts` sibling with the original in-memory implementation (movies/theatres/seats/booking/offers). Each real function starts with `if (Env.USE_MOCKS) return mock.fn(...)` — flip `USE_MOCKS=true` in `.env` to develop UI with zero backend dependency.
+
+### `src/services/httpClient.ts`
+
+The single most load-bearing new file. Handles, in one place:
+- **Error normalization** — cinema-hall-api returns errors in four different shapes (`{error}`, `{message}`, `{success:false,message}`, `{success:false,error}`) plus coded variants (`ACCOUNT_LOCKED`, `OTP_EXPIRED`, ...). All of them become one `ApiError { status, message, code?, hint?, lockedUntil?, results? }`.
+- **Auth injection** — attaches `Authorization: Bearer <accessToken>` unless `skipAuth` is passed.
+- **Refresh-and-retry on both 401 *and* 403** — the API uses 401 for a *missing* token and 403 for an *expired/invalid* one. Refreshing only on 401 (the more common assumption) would silently break every session after the 24h access-token lifetime. Concurrent 401/403s share a single in-flight refresh call.
+- **`configureHttpClientAuth`** — `authStore.ts` wires itself in via this function at module load, rather than `httpClient.ts` importing the store directly (avoids a circular dependency: the store needs `httpClient` to call the API; `httpClient` needs the store's tokens).
+
+### `src/services/mappers.ts`
+The only place a `ApiXxx` DTO becomes an `Xxx` app model. Notable non-obvious mappings documented inline: cinema-hall-api uses **two different field-name sets** for a "theatre" depending on the endpoint (`cinema_hall_id/_name/_location` vs `hall_id/hall_name/location`); seat pricing resolves `price_override` before falling back to the screen's base `pricing`.
 
 ### `src/hooks/`
-Wraps service calls with `loading`, `error`, and `refresh` state. Screens import hooks, not services directly. This keeps async lifecycle management out of components. `useTheme` and `useCountdown` are the two theming/timer utility hooks introduced for the CineHall redesign — see [docs/design-system.md](design-system.md) and [docs/state-management.md](state-management.md).
+Wraps service calls with `loading`, `error`, and `refresh`/`refetch` state, and are location-aware where the underlying endpoint requires `district`/`state` (`useMovies`, `useTheatresForMovie`, `useShowsForMovie`). `useRequireAuth()` is the auth-gating primitive — see [docs/state-management.md](state-management.md#auth-store).
 
 ### `src/shared/`
-Framework-agnostic, domain-agnostic code:
-- `ui/` — reusable visual primitives, all theme-aware via `useTheme()` + a `makeStyles(colors)` factory
-- `utils/` — pure functions (formatters, date helpers)
-
-Nothing in `shared/` imports from `features/`.
+Framework-agnostic, domain-agnostic code — unchanged in shape by the API integration. Nothing in `shared/` imports from `features/` or `services/`.
 
 ### `src/features/`
-Domain-bounded modules. The rule: **a feature may import from `shared/`, `hooks/`, `services/`, `store/`, `constants/`, and `types/` — but never from another feature**.
-
-Each feature exposes exactly one `index.ts` barrel. The navigator imports from `@features/movies`, never from `@features/movies/screens/MoviesScreen`.
+Domain-bounded modules. The rule: **a feature may import from `shared/`, `hooks/`, `services/`, `store/`, `constants/`, and `types/` — but never from another feature** (with the narrow exception of `@features/auth/utils/googleAuth` and `@features/location`, reused by `profile` and `movies`/`theatres` respectively, since they're small, self-contained utilities rather than screens).
 
 ---
 
-## Theming Pattern (new)
-
-Every themed file follows the same shape — a pure wrap around the pre-existing static `StyleSheet.create`, not a rewrite of the style bodies:
-
-```tsx
-// Before (single static dark theme)
-import { Colors } from '@constants/theme';
-const styles = StyleSheet.create({ screen: { backgroundColor: Colors.background } });
-
-// After (dark/light aware)
-import { ColorTokens } from '@constants/theme';
-import { useTheme } from '@hooks/useTheme';
-
-export function Screen() {
-  const { colors } = useTheme();
-  const styles = useMemo(() => makeStyles(colors), [colors]);
-  return <View style={styles.screen} />;
-}
-
-const makeStyles = (Colors: ColorTokens) =>
-  StyleSheet.create({ screen: { backgroundColor: Colors.background } });
-```
-
-Because the static `Colors` export was removed from `theme.ts`, any file that still imports it fails `tsc` immediately — this was used deliberately during the redesign as a "build until clean" checklist rather than risking silently-stale colors.
-
----
-
-## Barrel Export Pattern
-
-Every folder with multiple files exposes an `index.ts`:
-
-```ts
-// src/features/movies/index.ts
-export { MoviesScreen } from './screens/MoviesScreen';
-export { MovieDetailScreen } from './screens/MovieDetailScreen';
-export { MovieCard } from './components/MovieCard';
-export type { MovieTab } from './types';
-```
-
-Consumers always import from the feature root:
-```ts
-import { MoviesScreen, MovieCard } from '@features/movies';
-```
-
-This gives you the freedom to move, rename, or refactor internal files without breaking any import outside the feature. Note: unrouted screens (e.g. `TheatresScreen`, `OffersScreen`) are still exported from their feature's `index.ts` for discoverability — they're simply never imported by `RootNavigator`/`TabNavigator`.
-
----
-
-## Dependency Rules (enforced by architecture, not lint yet)
+## Dependency Rules
 
 ```
 features  →  shared, hooks, services, store, constants, types
 hooks     →  services, store, types
-store     →  constants, types
-services  →  types, constants
+store     →  services, constants, types      (authStore/locationStore call services directly)
+services  →  types, constants, mappers
 shared    →  constants, hooks, types
 ```
 
-No circular dependencies. No feature importing from another feature.
+No circular dependencies except the intentionally-inverted one between `httpClient.ts` and `authStore.ts`, resolved via `configureHttpClientAuth` (see above) rather than a direct import in either direction.
 
 ---
 
 ## Scaling Guide
 
-### Adding a new feature
+### Adding a new feature backed by a new endpoint
 
-1. Create `src/features/<name>/` with the standard sub-structure:
-   ```
-   <name>/
-     components/
-     screens/
-     hooks/       (feature-specific hooks, if needed)
-     types.ts
-     index.ts
-   ```
-2. Add mock data to `src/services/<name>Service.ts`
-3. Add screens to `RootNavigator` or `TabNavigator`
-4. Export from the feature's `index.ts`
+1. Add the DTO shape to `src/types/api.ts`.
+2. Add the mapper to `src/services/mappers.ts`.
+3. Add the service function to a new or existing `src/services/<name>Service.ts`, calling `httpClient`.
+4. Add a hook in `src/hooks/` if the screen needs loading/error state.
+5. Create `src/features/<name>/` with the standard sub-structure (`components/`, `screens/`, `index.ts`) and register screens in `RootNavigator`/`TabNavigator` + `src/types/navigation.ts`.
 
-### Adding a new screen to an existing feature
+### Adding a mock fallback for a new service
 
-1. Create the screen file in `features/<name>/screens/`
-2. Add it to `RootStackParamList` (or `TabParamList`) in `src/types/navigation.ts`
-3. Register it in `RootNavigator.tsx` (or `TabNavigator.tsx`)
-4. Export it from the feature's `index.ts`
-5. If it needs theme colors, use the `useTheme()` + `makeStyles(colors)` pattern above — never import a static `Colors` object
-
-### Connecting a real backend
-
-1. Replace mock data in `src/services/` — keep function signatures identical
-2. Remove `MockDelay` calls
-3. Add error handling / retry logic in hooks if needed
-4. Add auth token injection (e.g. an axios interceptor) in a new `src/services/httpClient.ts`
-
-No UI, store, or navigation changes required.
+Create `<name>Service.mock.ts` with the same exported function signatures, then guard each real function with `if (Env.USE_MOCKS) return mock.fn(...)` at the top — see any existing service for the pattern.

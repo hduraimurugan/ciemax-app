@@ -1,141 +1,251 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
+  ActivityIndicator,
   Alert,
   Image,
   Pressable,
   ScrollView,
   StyleSheet,
+  Text,
   TextInput,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ArrowLeft } from 'lucide-react-native';
+import { ArrowLeft, Tag } from 'lucide-react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '@ctypes/navigation';
 import { ColorTokens, FontFamily, FontSize, FontWeight, Radius, Spacing } from '@constants/theme';
 import { useTheme } from '@hooks/useTheme';
 import { Badge, Button, CountdownTimer, Heading3 } from '@shared/ui';
 import { Body, BodySmall, Caption } from '@shared/ui';
-import { useBookingStore } from '@store/bookingStore';
-import { formatShowDate } from '@shared/utils';
-import { validateCoupon } from '@services/offersService';
+import { formatShowDate, formatShowTime, formatPrice } from '@shared/utils';
+import { getSettings } from '@services/settingsService';
+import { getOffers, validateCoupon, CouponValidation } from '@services/offersService';
+import { releaseSeats } from '@services/bookingService';
+import { Offer } from '@ctypes/models';
 import { PriceBreakdown } from '../components/PriceBreakdown';
+import { computeCheckoutPricing } from '../utils/pricing';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Checkout'>;
 
-export function CheckoutScreen({ navigation }: Props) {
+const DEFAULT_FEE_PER_TICKET = 15;
+const DEFAULT_GST_PERCENTAGE = 18;
+
+interface AppliedOffer {
+  offerCode: string;
+  offerTitle: string;
+  discountAmount: number;
+}
+
+export function CheckoutScreen({ navigation, route }: Props) {
+  const params = route.params;
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
 
-  const selectedMovie = useBookingStore(s => s.selectedMovie);
-  const selectedTheatre = useBookingStore(s => s.selectedTheatre);
-  const selectedShow = useBookingStore(s => s.selectedShow);
-  const selectedSeats = useBookingStore(s => s.selectedSeats);
-  const appliedOffer = useBookingStore(s => s.appliedOffer);
-  const setAppliedOffer = useBookingStore(s => s.setAppliedOffer);
-  const getTotalAmount = useBookingStore(s => s.getTotalAmount);
-  const getConvenienceFee = useBookingStore(s => s.getConvenienceFee);
-  const getGST = useBookingStore(s => s.getGST);
-  const getAppliedDiscount = useBookingStore(s => s.getAppliedDiscount);
-  const getGrandTotal = useBookingStore(s => s.getGrandTotal);
-
+  const [feePerTicket, setFeePerTicket] = useState(DEFAULT_FEE_PER_TICKET);
+  const [gstPercentage, setGstPercentage] = useState(DEFAULT_GST_PERCENTAGE);
+  const [offers, setOffers] = useState<Offer[]>([]);
+  const [appliedOffer, setAppliedOffer] = useState<AppliedOffer | null>(null);
   const [promoCode, setPromoCode] = useState('');
   const [checking, setChecking] = useState(false);
+  const [releasing, setReleasing] = useState(false);
 
-  const subtotal = getTotalAmount();
-  const fee = getConvenienceFee();
-  const gst = getGST();
-  const discount = getAppliedDiscount();
-  const grandTotal = getGrandTotal();
+  useEffect(() => {
+    getSettings().then(s => {
+      setFeePerTicket(s.convenience_fee_per_ticket);
+      setGstPercentage(s.gst_percentage);
+    });
+    getOffers().then(setOffers);
+  }, []);
+
+  const numTickets = params.seatIds.length;
+  const discountAmount = appliedOffer?.discountAmount ?? 0;
+  const { convenienceTotal, gstAmount, subtotalWithFee, grandTotal } = computeCheckoutPricing({
+    ticketTotal: params.ticketTotal,
+    numTickets,
+    feePerTicket,
+    gstPercentage,
+    discountAmount,
+  });
+
+  const initialSeconds = Math.max(
+    0,
+    Math.floor((new Date(params.holdExpiresAt).getTime() - Date.now()) / 1000),
+  );
+
+  const releaseAndExit = useCallback(
+    async (destination: 'SeatSelection' | 'MainTabs') => {
+      setReleasing(true);
+      try {
+        await releaseSeats(params.showId, params.seatIds);
+      } catch {
+        // best-effort — the hold will also expire server-side on its own
+      }
+      setReleasing(false);
+      if (destination === 'SeatSelection') {
+        navigation.replace('SeatSelection', { showId: params.showId, movieId: params.movieId });
+      } else {
+        navigation.reset({ index: 0, routes: [{ name: 'MainTabs' }] });
+      }
+    },
+    [navigation, params.seatIds, params.showId, params.movieId],
+  );
 
   const handleSessionExpire = useCallback(() => {
     Alert.alert(
-      'Session Expired',
+      'Seat hold expired',
       'Your seat hold has expired. Please select your seats again.',
-      [{
-        text: 'OK',
-        onPress: () => navigation.reset({ index: 0, routes: [{ name: 'MainTabs' }] }),
-      }],
+      [{ text: 'OK', onPress: () => navigation.replace('SeatSelection', { showId: params.showId, movieId: params.movieId }) }],
     );
-  }, [navigation]);
+  }, [navigation, params.showId, params.movieId]);
+
+  const handleBack = () => {
+    Alert.alert('Cancel booking?', 'Your held seats will be released.', [
+      { text: 'Keep holding', style: 'cancel' },
+      { text: 'Release seats', style: 'destructive', onPress: () => releaseAndExit('SeatSelection') },
+    ]);
+  };
 
   async function applyPromo() {
     if (!promoCode.trim()) return;
     setChecking(true);
-    const result = await validateCoupon(promoCode.trim().toUpperCase(), subtotal);
+    const result: CouponValidation = await validateCoupon(promoCode.trim(), params.showId, subtotalWithFee);
     setChecking(false);
-    if (result.valid && result.offer) {
-      setAppliedOffer(result.offer);
+    if (result.valid && result.offerCode) {
+      setAppliedOffer({
+        offerCode: result.offerCode,
+        offerTitle: result.offerTitle ?? result.offerCode,
+        discountAmount: result.discountAmount ?? 0,
+      });
     } else {
       Alert.alert('Invalid Code', result.message ?? 'This promo code is not valid.');
     }
   }
 
+  function applyOfferCard(offer: Offer) {
+    setPromoCode(offer.code);
+    setChecking(true);
+    validateCoupon(offer.code, params.showId, subtotalWithFee)
+      .then(result => {
+        setChecking(false);
+        if (result.valid && result.offerCode) {
+          setAppliedOffer({
+            offerCode: result.offerCode,
+            offerTitle: result.offerTitle ?? offer.title,
+            discountAmount: result.discountAmount ?? 0,
+          });
+        } else {
+          Alert.alert('Offer not applicable', result.message ?? 'This offer cannot be applied to this order.');
+        }
+      })
+      .catch(() => setChecking(false));
+  }
+
+  function goToPayment() {
+    navigation.navigate('Payment', {
+      ...params,
+      offerCode: appliedOffer?.offerCode ?? null,
+      discountAmount,
+      grandTotal,
+    });
+  }
+
+  const applicableOffers = offers.filter(o => subtotalWithFee >= o.minOrderAmount);
+
   return (
     <SafeAreaView style={styles.screen}>
       <View style={styles.header}>
-        <Pressable style={styles.backBtn} onPress={() => navigation.goBack()}>
-          <ArrowLeft size={18} color={colors.textPrimary} />
+        <Pressable style={styles.backBtn} onPress={handleBack} disabled={releasing}>
+          {releasing ? <ActivityIndicator size="small" color={colors.textPrimary} /> : <ArrowLeft size={18} color={colors.textPrimary} />}
         </Pressable>
         <Heading3>Booking Summary</Heading3>
         <View style={styles.timerSlot}>
-          <CountdownTimer initialSeconds={300} onExpire={handleSessionExpire} />
+          <CountdownTimer initialSeconds={initialSeconds} onExpire={handleSessionExpire} />
         </View>
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
         <View style={styles.summaryCard}>
-          {selectedMovie?.posterUrl ? (
-            <Image source={{ uri: selectedMovie.posterUrl }} style={styles.poster} resizeMode="cover" />
+          {params.posterUrl ? (
+            <Image source={{ uri: params.posterUrl }} style={styles.poster} resizeMode="cover" />
           ) : (
             <View style={styles.poster} />
           )}
           <View style={styles.summaryInfo}>
-            <Heading3 numberOfLines={1}>{selectedMovie?.title ?? ''}</Heading3>
-            {selectedTheatre ? <BodySmall style={styles.muted}>{selectedTheatre.name}</BodySmall> : null}
-            {selectedShow ? (
-              <BodySmall style={styles.muted}>
-                {formatShowDate(selectedShow.date)} · {selectedShow.time}
-              </BodySmall>
-            ) : null}
+            <Heading3 numberOfLines={1}>{params.movieTitle}</Heading3>
+            <BodySmall style={styles.muted}>{params.cinemaName}{params.screenName ? ` · ${params.screenName}` : ''}</BodySmall>
+            <BodySmall style={styles.muted}>
+              {formatShowDate(params.showDate)} · {formatShowTime(params.startTime)} · {params.language}
+            </BodySmall>
           </View>
         </View>
 
         <View style={styles.card}>
-          <Caption style={styles.cardLabel}>SEATS ({selectedSeats.length})</Caption>
+          <Caption style={styles.cardLabel}>SEATS ({params.seatLabels.length})</Caption>
           <View style={styles.seatChips}>
-            {selectedSeats.map(s => (
-              <Badge key={s.id} label={`${s.row}${s.number}`} variant="accent" />
+            {params.seatLabels.map(label => (
+              <Badge key={label} label={label} variant="accent" />
             ))}
           </View>
         </View>
 
+        {applicableOffers.length > 0 && (
+          <View style={styles.card}>
+            <Caption style={styles.cardLabel}>OFFERS FOR YOU</Caption>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.offersRow}>
+              {applicableOffers.map(offer => {
+                const isApplied = appliedOffer?.offerCode === offer.code;
+                return (
+                  <Pressable
+                    key={offer.id}
+                    style={[styles.offerCard, isApplied && styles.offerCardActive]}
+                    onPress={() => applyOfferCard(offer)}
+                    disabled={checking}>
+                    <View style={styles.offerCodeRow}>
+                      <Tag size={12} color={colors.accent} />
+                      <Text style={styles.offerCode}>{offer.code}</Text>
+                    </View>
+                    <BodySmall style={styles.offerTitle} numberOfLines={2}>{offer.title}</BodySmall>
+                    {offer.hallScoped ? <Caption style={styles.offerHallBadge}>Hall Offer</Caption> : null}
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
+          </View>
+        )}
+
         <View style={styles.card}>
-          <PriceBreakdown subtotal={subtotal} convenienceFee={fee} gst={gst} discount={discount} />
+          <PriceBreakdown
+            subtotal={params.ticketTotal}
+            convenienceFee={convenienceTotal}
+            feeHint={`${formatPrice(feePerTicket)}/ticket`}
+            gst={gstAmount}
+            gstPercentage={gstPercentage}
+            discount={discountAmount}
+          />
         </View>
 
         <View style={styles.promoRow}>
           <TextInput
             value={promoCode}
             onChangeText={setPromoCode}
-            placeholder="Promo code (try FIRST50)"
+            placeholder="Enter promo code"
             placeholderTextColor={colors.textMuted}
             autoCapitalize="characters"
             style={styles.promoInput}
           />
           <Pressable style={styles.applyBtn} onPress={applyPromo} disabled={checking}>
-            <Body style={styles.applyText}>{appliedOffer ? 'Applied' : 'Apply'}</Body>
+            {checking ? (
+              <ActivityIndicator size="small" color={colors.textPrimary} />
+            ) : (
+              <Body style={styles.applyText}>{appliedOffer ? 'Applied' : 'Apply'}</Body>
+            )}
           </Pressable>
         </View>
       </ScrollView>
 
       <View style={styles.cta}>
-        <Button
-          label={`Pay Now · ₹${grandTotal.toLocaleString('en-IN')}`}
-          onPress={() => navigation.navigate('Payment')}
-          fullWidth
-          size="lg"
-        />
+        <Button label={`Pay Now · ${formatPrice(grandTotal)}`} onPress={goToPayment} fullWidth size="lg" />
       </View>
     </SafeAreaView>
   );
@@ -188,6 +298,21 @@ const makeStyles = (Colors: ColorTokens) =>
     },
     cardLabel: { fontWeight: FontWeight.semibold, marginBottom: Spacing.sm },
     seatChips: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm },
+    offersRow: { gap: Spacing.sm },
+    offerCard: {
+      width: 160,
+      borderWidth: 1,
+      borderColor: Colors.border,
+      borderRadius: Radius.md,
+      padding: Spacing.sm,
+      backgroundColor: Colors.surfaceElevated,
+      gap: 4,
+    },
+    offerCardActive: { borderColor: Colors.accent, backgroundColor: Colors.accentLight },
+    offerCodeRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+    offerCode: { color: Colors.accent, fontWeight: FontWeight.bold, fontSize: FontSize.xs },
+    offerTitle: { color: Colors.textPrimary },
+    offerHallBadge: { color: Colors.textMuted, fontSize: FontSize.xs - 1 },
     promoRow: { flexDirection: 'row', gap: Spacing.sm },
     promoInput: {
       flex: 1,
@@ -202,6 +327,7 @@ const makeStyles = (Colors: ColorTokens) =>
     },
     applyBtn: {
       height: 46,
+      minWidth: 80,
       paddingHorizontal: Spacing.lg,
       borderRadius: Radius.md,
       backgroundColor: Colors.secondary,
