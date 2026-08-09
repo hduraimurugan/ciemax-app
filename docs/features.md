@@ -73,7 +73,7 @@ A "Clear" link appears in the modal header once a location is already set, calli
 ### MoviesScreen
 
 - Location-aware: prefers `GET /api/user/movies/location/movies?district&state` once a location is set (city chip opens `LocationModal`), falls back to the global `status=now_showing|upcoming` list otherwise.
-- On fetch failure, `useMovies()`'s `error` state renders a "Refresh" button (calls `refresh()`, which bumps the hook's retry tick) instead of a dead-end error message.
+- Pull-to-refresh on the main `ScrollView` and, on fetch failure, `useMovies()`'s `error` state renders a "Refresh" button — both call the same `refresh()` (bumps the hook's retry tick) instead of leaving a dead-end error message.
 - Ad banner: `GET /api/ads/active?placement=banner`, tap records a click via `POST /api/ads/click/:id`. The banner is rendered at the Home content width with a 3.5:1 aspect ratio, autoplay dots, and a visible `AD` corner label.
 - A `Clapperboard` icon in the header opens `Theatres` — the app's other entry point into the hall-first browse flow.
 

@@ -4,6 +4,7 @@ import {
   Dimensions,
   Image,
   Pressable,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
@@ -117,7 +118,11 @@ export function MoviesScreen({ navigation }: Props) {
         </View>
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={loading} onRefresh={refresh} tintColor={colors.accent} />
+        }>
         {heroMovie && (
           <Pressable style={styles.hero} onPress={() => handleMoviePress(heroMovie)}>
             <Image source={{ uri: heroMovie.backdropUrl }} style={StyleSheet.absoluteFill} resizeMode="cover" />
