@@ -133,7 +133,7 @@ export function ShowtimesScreen({ navigation, route }: Props) {
       {showSkeleton ? (
         <TheatreListSkeleton />
       ) : (
-      <ScrollView contentContainerStyle={styles.cinemaList} showsVerticalScrollIndicator={false}>
+      <ScrollView style={styles.cinemaListScroll} contentContainerStyle={styles.cinemaList} showsVerticalScrollIndicator={false}>
         {theatres.length === 0 && (
           <Body style={styles.empty}>No showtimes available for this movie yet.</Body>
         )}
@@ -243,6 +243,7 @@ const makeStyles = (Colors: ColorTokens) =>
       marginTop: 2,
     },
     dateTextActive: { color: '#fff' },
+    cinemaListScroll: { flex: 1 },
     cinemaList: { paddingHorizontal: Spacing.lg, paddingBottom: Spacing.xl, gap: Spacing.md },
     empty: { textAlign: 'center', marginTop: Spacing.xl },
     cinemaCard: {

@@ -211,7 +211,7 @@ const makeStyles = (Colors: ColorTokens) =>
       justifyContent: 'center',
     },
 
-    body: { padding: Spacing.lg, marginTop: -Spacing.lg },
+    body: { padding: Spacing.lg },
     title: { marginBottom: Spacing.md },
     pillRow: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm, marginBottom: Spacing.md },
     synopsis: { marginBottom: Spacing.xs, lineHeight: FontSize.sm * 1.6 },

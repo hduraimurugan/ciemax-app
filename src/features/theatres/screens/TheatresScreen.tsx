@@ -132,7 +132,7 @@ export function TheatresScreen({ navigation }: Props) {
           {loading ? (
             <TheatreListSkeleton />
           ) : (
-            <ScrollView contentContainerStyle={styles.list} showsVerticalScrollIndicator={false}>
+            <ScrollView style={styles.listScroll} contentContainerStyle={styles.list} showsVerticalScrollIndicator={false}>
               {halls.length === 0 && (
                 <Body style={styles.empty}>No theatres found near {district}.</Body>
               )}
@@ -236,6 +236,7 @@ const makeStyles = (Colors: ColorTokens) =>
       marginTop: 2,
     },
     dateTextActive: { color: '#fff' },
+    listScroll: { flex: 1 },
     list: { padding: Spacing.lg, paddingTop: 0, gap: Spacing.md, paddingBottom: Spacing.xl },
     empty: { textAlign: 'center', marginTop: Spacing.xl },
     hallCard: {

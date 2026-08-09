@@ -37,7 +37,7 @@ export function MovieDetailBodySkeleton() {
 }
 
 const styles = StyleSheet.create({
-  body: { padding: Spacing.lg, marginTop: -Spacing.lg, gap: Spacing.md },
+  body: { padding: Spacing.lg, gap: Spacing.md },
   title: { marginBottom: 0 },
   pillRow: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm },
   synopsis: { marginBottom: 0 },
