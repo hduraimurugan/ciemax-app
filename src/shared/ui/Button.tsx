@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -6,7 +6,8 @@ import {
   Text,
   ViewStyle,
 } from 'react-native';
-import { Colors, FontSize, FontWeight, Radius, Spacing } from '@constants/theme';
+import { ColorTokens, FontSize, FontWeight, Radius, Spacing } from '@constants/theme';
+import { useTheme } from '@hooks/useTheme';
 
 type Variant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'emerald';
 type Size = 'sm' | 'md' | 'lg';
@@ -34,6 +35,8 @@ export function Button({
   style,
   leftIcon,
 }: ButtonProps) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const isDisabled = disabled || loading;
 
   return (
@@ -52,7 +55,7 @@ export function Button({
       {loading ? (
         <ActivityIndicator
           size="small"
-          color={variant === 'primary' || variant === 'danger' || variant === 'emerald' ? Colors.textPrimary : Colors.accent}
+          color={variant === 'primary' || variant === 'danger' || variant === 'emerald' ? colors.textPrimary : colors.accent}
         />
       ) : (
         <>
@@ -72,73 +75,74 @@ export function Button({
   );
 }
 
-const styles = StyleSheet.create({
-  base: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: Radius.md,
-    borderWidth: 1,
-    borderColor: Colors.transparent,
-  },
-  fullWidth: {
-    width: '100%',
-  },
-  pressed: {
-    opacity: 0.8,
-  },
-  disabled: {
-    opacity: 0.4,
-  },
+const makeStyles = (Colors: ColorTokens) =>
+  StyleSheet.create({
+    base: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderRadius: Radius.md,
+      borderWidth: 1,
+      borderColor: Colors.transparent,
+    },
+    fullWidth: {
+      width: '100%',
+    },
+    pressed: {
+      opacity: 0.8,
+    },
+    disabled: {
+      opacity: 0.4,
+    },
 
-  // Variants
-  primary: {
-    backgroundColor: Colors.accent,
-  },
-  secondary: {
-    backgroundColor: Colors.transparent,
-    borderColor: Colors.accent,
-  },
-  ghost: {
-    backgroundColor: Colors.transparent,
-    borderColor: Colors.transparent,
-  },
-  danger: {
-    backgroundColor: Colors.error,
-  },
-  emerald: {
-    backgroundColor: Colors.emerald,
-  },
+    // Variants
+    primary: {
+      backgroundColor: Colors.accent,
+    },
+    secondary: {
+      backgroundColor: Colors.transparent,
+      borderColor: Colors.accent,
+    },
+    ghost: {
+      backgroundColor: Colors.transparent,
+      borderColor: Colors.transparent,
+    },
+    danger: {
+      backgroundColor: Colors.error,
+    },
+    emerald: {
+      backgroundColor: Colors.emerald,
+    },
 
-  // Sizes
-  size_sm: {
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.xs + 2,
-    borderRadius: Radius.sm,
-  },
-  size_md: {
-    paddingHorizontal: Spacing.lg,
-    paddingVertical: Spacing.sm + 4,
-  },
-  size_lg: {
-    paddingHorizontal: Spacing.xl,
-    paddingVertical: Spacing.md,
-    borderRadius: Radius.lg,
-  },
+    // Sizes
+    size_sm: {
+      paddingHorizontal: Spacing.md,
+      paddingVertical: Spacing.xs + 2,
+      borderRadius: Radius.sm,
+    },
+    size_md: {
+      paddingHorizontal: Spacing.lg,
+      paddingVertical: Spacing.sm + 4,
+    },
+    size_lg: {
+      paddingHorizontal: Spacing.xl,
+      paddingVertical: Spacing.md,
+      borderRadius: Radius.lg,
+    },
 
-  // Label base
-  label: {
-    fontWeight: FontWeight.semibold,
-    letterSpacing: 0.3,
-  },
-  label_primary: { color: Colors.textPrimary },
-  label_secondary: { color: Colors.accent },
-  label_ghost: { color: Colors.textSecondary },
-  label_danger: { color: Colors.textPrimary },
-  label_emerald: { color: Colors.textPrimary },
+    // Label base
+    label: {
+      fontWeight: FontWeight.semibold,
+      letterSpacing: 0.3,
+    },
+    label_primary: { color: Colors.textPrimary },
+    label_secondary: { color: Colors.accent },
+    label_ghost: { color: Colors.textSecondary },
+    label_danger: { color: Colors.textPrimary },
+    label_emerald: { color: Colors.textPrimary },
 
-  // Label sizes
-  labelSize_sm: { fontSize: FontSize.xs + 1 },
-  labelSize_md: { fontSize: FontSize.sm },
-  labelSize_lg: { fontSize: FontSize.md },
-});
+    // Label sizes
+    labelSize_sm: { fontSize: FontSize.xs + 1 },
+    labelSize_md: { fontSize: FontSize.sm },
+    labelSize_lg: { fontSize: FontSize.md },
+  });

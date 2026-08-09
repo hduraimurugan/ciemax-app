@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   Pressable,
   ScrollView,
@@ -6,10 +6,11 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '@ctypes/navigation';
 import { Show } from '@ctypes/models';
-import { Colors, Spacing } from '@constants/theme';
+import { ColorTokens, Spacing } from '@constants/theme';
+import { useTheme } from '@hooks/useTheme';
 import { Button, Loader } from '@shared/ui';
 import { Heading2, Heading3, Body, Label } from '@shared/ui';
 import { useShowsForMovieTheatre } from '@hooks/useTheatres';
@@ -17,10 +18,18 @@ import { useBookingStore } from '@store/bookingStore';
 import { formatShowDate } from '@shared/utils';
 import { ShowTimeChip } from '../components/ShowTimeChip';
 
-type Props = NativeStackScreenProps<RootStackParamList, 'ShowSelection'>;
+// NOTE: superseded by ShowtimesScreen.tsx (merges theatre + showtime selection into
+// one screen per the CineHall design) and no longer routed in RootNavigator. Kept
+// on disk, unrouted, rather than deleted.
+type Props = {
+  navigation: NativeStackNavigationProp<RootStackParamList>;
+  route: { params: { movieId: string; theatreId: string } };
+};
 
 export function ShowSelectionScreen({ navigation, route }: Props) {
   const { movieId, theatreId } = route.params;
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const { shows, loading } = useShowsForMovieTheatre(movieId, theatreId);
   const [selectedShow, setSelectedShow] = useState<Show | null>(null);
   const storeSetSelectedShow = useBookingStore(s => s.setSelectedShow);
@@ -44,7 +53,6 @@ export function ShowSelectionScreen({ navigation, route }: Props) {
   return (
     <SafeAreaView style={styles.screen}>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        {/* Header */}
         <View style={styles.header}>
           <Pressable onPress={() => navigation.goBack()}>
             <Body style={styles.back}>← Back</Body>
@@ -55,7 +63,6 @@ export function ShowSelectionScreen({ navigation, route }: Props) {
           ) : null}
         </View>
 
-        {/* Shows grouped by date */}
         {Object.entries(showsByDate).map(([date, dayShows]) => (
           <View key={date} style={styles.dateSection}>
             <Heading3>{formatShowDate(date)}</Heading3>
@@ -94,28 +101,29 @@ export function ShowSelectionScreen({ navigation, route }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: Colors.background },
-  content: { padding: Spacing.md, paddingBottom: 120, gap: Spacing.lg },
-  header: { gap: Spacing.xs },
-  back: { color: Colors.accent, marginBottom: Spacing.xs },
-  dateSection: { gap: Spacing.md },
-  chipsRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: Spacing.sm,
-  },
-  empty: { textAlign: 'center', marginTop: Spacing.xl },
-  cta: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    padding: Spacing.md,
-    backgroundColor: Colors.surface,
-    borderTopWidth: 1,
-    borderTopColor: Colors.border,
-    gap: Spacing.sm,
-  },
-  ctaLabel: { textAlign: 'center' },
-});
+const makeStyles = (Colors: ColorTokens) =>
+  StyleSheet.create({
+    screen: { flex: 1, backgroundColor: Colors.background },
+    content: { padding: Spacing.md, paddingBottom: 120, gap: Spacing.lg },
+    header: { gap: Spacing.xs },
+    back: { color: Colors.accent, marginBottom: Spacing.xs },
+    dateSection: { gap: Spacing.md },
+    chipsRow: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: Spacing.sm,
+    },
+    empty: { textAlign: 'center', marginTop: Spacing.xl },
+    cta: {
+      position: 'absolute',
+      bottom: 0,
+      left: 0,
+      right: 0,
+      padding: Spacing.md,
+      backgroundColor: Colors.surface,
+      borderTopWidth: 1,
+      borderTopColor: Colors.border,
+      gap: Spacing.sm,
+    },
+    ctaLabel: { textAlign: 'center' },
+  });

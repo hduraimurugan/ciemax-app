@@ -1,70 +1,171 @@
-export const Colors = {
-  // Backgrounds — dark navy palette (matches cinema-hall-users oklch dark tokens)
-  background: '#141A21',       // oklch(0.14 0.01 240) — almost-black with navy tint
-  surface: '#1C2330',          // oklch(0.18 0.01 240) — card surface
-  surfaceElevated: '#242D3A',  // oklch(0.22 0.01 240) — elevated surface / input bg
-  surfaceHighlight: '#303D4F', // oklch(0.3 0.01 250)  — muted highlight surface
-  secondary: '#343E4E',        // oklch(0.3 0.02 240)  — cool gray-blue secondary surface
+// Design tokens for CineHall. Theme-dependent colors live in DarkColors/LightColors
+// below (see src/store/themeStore.ts + src/hooks/useTheme.ts for how a component
+// reads the active palette). Keys mirror the CineHall.dc.html design's getTheme(mode).
+export interface ColorTokens {
+  background: string;
+  surface: string;
+  surfaceElevated: string;
+  surfaceHighlight: string;
+  secondary: string;
 
-  // Brand — cinema red (primary)
-  accent: '#E50914',
-  accentDim: '#B20710',
-  accentLight: 'rgba(229, 9, 20, 0.15)',
+  accent: string;
+  accentDim: string;
+  accentLight: string;
 
-  // Glass surfaces (web .glass-effect equivalent)
-  glassSurface: 'rgba(28, 35, 48, 0.80)', // card at 80% opacity
+  glassSurface: string;
+  glassBorder: string;
+
+  gold: string;
+  goldDim: string;
+  silver: string;
+  silverDim: string;
+
+  textPrimary: string;
+  textSecondary: string;
+  textMuted: string;
+  textInverse: string;
+
+  success: string;
+  successDim: string;
+  error: string;
+  errorDim: string;
+  warning: string;
+  info: string;
+
+  border: string;
+  borderFocus: string;
+  divider: string;
+  overlay: string;
+
+  seatAvailable: string;
+  seatSelected: string;
+  seatBooked: string;
+  seatBookedBorder: string;
+
+  star: string;
+
+  emerald: string;
+  emeraldDim: string;
+
+  violet: string;
+  violetDim: string;
+
+  zinc: string;
+  zincSurface: string;
+
+  navbarBorder: string;
+  transparent: string;
+}
+
+export const DarkColors: ColorTokens = {
+  background: '#16171B',
+  surface: '#1F2024',
+  surfaceElevated: '#26282E',
+  surfaceHighlight: '#303138',
+  secondary: '#383A42',
+
+  accent: '#E6474E',
+  accentDim: '#C93940',
+  accentLight: 'rgba(230, 71, 78, 0.45)',
+
+  glassSurface: 'rgba(31, 32, 36, 0.80)',
   glassBorder: 'rgba(255, 255, 255, 0.08)',
 
-  // Seat sections
-  gold: '#FFD700',
-  goldDim: 'rgba(255, 215, 0, 0.15)',
+  gold: '#D9A24A',
+  goldDim: 'rgba(217, 162, 74, 0.15)',
   silver: '#C0C0C0',
   silverDim: 'rgba(192, 192, 192, 0.15)',
 
-  // Text — blue-tinted tones (oklch foreground tokens)
-  textPrimary: '#F4F6F9',    // oklch(0.98 0.01 240) — soft white with cool tint
-  textSecondary: '#8895A6',  // oklch(0.68 0.02 250) — blue-gray secondary
-  textMuted: '#636D7A',      // oklch(0.55 0.02 250) — muted blue-gray
-  textInverse: '#141A21',
+  textPrimary: '#F8F9FB',
+  textSecondary: '#A6A9B4',
+  textMuted: '#A6A9B4',
+  textInverse: '#16171B',
 
-  // Semantic
-  success: '#22C55E',
-  successDim: 'rgba(34, 197, 94, 0.15)',
-  error: '#EF4444',          // oklch(0.7 0.21 27) — destructive
-  errorDim: 'rgba(239, 68, 68, 0.15)',
-  warning: '#F59E0B',
-  info: '#3B82F6',
+  success: '#4FB878',
+  successDim: 'rgba(79, 184, 120, 0.15)',
+  error: '#F2564A',
+  errorDim: 'rgba(242, 86, 74, 0.15)',
+  warning: '#E3A75E',
+  info: '#6C9CEB',
 
-  // UI chrome — translucent borders (oklch(1 0 0 / 10%))
   border: 'rgba(255, 255, 255, 0.10)',
-  borderFocus: '#E50914',
+  borderFocus: '#E6474E',
   divider: 'rgba(255, 255, 255, 0.08)',
   overlay: 'rgba(0, 0, 0, 0.7)',
 
-  // Seat states
-  seatAvailable: '#2D3748',
-  seatSelected: '#E50914',
-  seatBooked: '#1A2332',
-  seatBookedBorder: '#2D3748',
+  seatAvailable: '#26282E',
+  seatSelected: '#E6474E',
+  seatBooked: '#383A42',
+  seatBookedBorder: '#383A42',
 
-  // Stars / rating
-  star: '#FFD700',
+  star: '#D9A24A',
 
-  // Emerald — selected seats, seat CTA, booking success accents
-  emerald: '#10B981',
-  emeraldDim: 'rgba(16, 185, 129, 0.12)',
+  emerald: '#4FB878',
+  emeraldDim: 'rgba(79, 184, 120, 0.12)',
 
-  // Violet — offer card accents
-  violet: '#8B5CF6',
-  violetDim: 'rgba(139, 92, 246, 0.12)',
+  violet: '#A97EE0',
+  violetDim: 'rgba(169, 126, 224, 0.12)',
 
-  // Zinc — seat pills on ticket card
-  zinc: '#71717A',
-  zincSurface: '#27272A',
+  zinc: '#A6A9B4',
+  zincSurface: '#26282E',
 
-  // Navbar border — slightly darker than border
   navbarBorder: 'rgba(255, 255, 255, 0.06)',
+  transparent: 'transparent',
+};
 
+export const LightColors: ColorTokens = {
+  background: '#F9FAFC',
+  surface: '#F1F2F5',
+  surfaceElevated: '#E7E9EE',
+  surfaceHighlight: '#DDE0E6',
+  secondary: '#DEE1EA',
+
+  accent: '#D93C43',
+  accentDim: '#B32E34',
+  accentLight: 'rgba(217, 60, 67, 0.25)',
+
+  glassSurface: 'rgba(241, 242, 245, 0.85)',
+  glassBorder: 'rgba(0, 0, 0, 0.08)',
+
+  gold: '#D9A24A',
+  goldDim: 'rgba(217, 162, 74, 0.15)',
+  silver: '#9AA0AC',
+  silverDim: 'rgba(154, 160, 172, 0.15)',
+
+  textPrimary: '#1D1F23',
+  textSecondary: '#6B6F7A',
+  textMuted: '#6B6F7A',
+  textInverse: '#F9FAFC',
+
+  success: '#4FB878',
+  successDim: 'rgba(79, 184, 120, 0.15)',
+  error: '#F2564A',
+  errorDim: 'rgba(242, 86, 74, 0.15)',
+  warning: '#E3A75E',
+  info: '#6C9CEB',
+
+  border: '#CCCFD6',
+  borderFocus: '#D93C43',
+  divider: '#E2E4E9',
+  overlay: 'rgba(0, 0, 0, 0.5)',
+
+  seatAvailable: '#E7E9EE',
+  seatSelected: '#D93C43',
+  seatBooked: '#DEE1EA',
+  seatBookedBorder: '#DEE1EA',
+
+  star: '#D9A24A',
+
+  emerald: '#4FB878',
+  emeraldDim: 'rgba(79, 184, 120, 0.12)',
+
+  violet: '#A97EE0',
+  violetDim: 'rgba(169, 126, 224, 0.12)',
+
+  zinc: '#6B6F7A',
+  zincSurface: '#E7E9EE',
+
+  navbarBorder: 'rgba(0, 0, 0, 0.06)',
   transparent: 'transparent',
 };
 
@@ -80,12 +181,12 @@ export const Spacing = {
 };
 
 export const Radius = {
-  xs: 6,    // --radius-sm = base - 4px  (0.225rem ≈ 6px)
-  sm: 8,    // --radius-md = base - 2px  (0.425rem ≈ 8px)
-  md: 10,   // --radius    = 0.625rem    (10px base)
-  lg: 14,   // --radius-xl = base + 4px  (14px)
-  xl: 18,   // --radius-2xl= base + 8px  (18px)
-  xxl: 22,  // --radius-3xl= base + 12px (22px)
+  xs: 6,
+  sm: 8,
+  md: 10,
+  lg: 14,
+  xl: 18,
+  xxl: 22,
   full: 9999,
 };
 
@@ -107,6 +208,8 @@ export const FontWeight = {
   extrabold: '800' as const,
 };
 
+// Neutral shadows (not theme-dependent). The design's "neon" glow depends on the
+// active accent color, so it's computed per-render — see makeNeonShadow below.
 export const Shadow = {
   sm: {
     shadowColor: '#000',
@@ -129,15 +232,17 @@ export const Shadow = {
     shadowRadius: 12,
     elevation: 10,
   },
-  // cinema .neon-glow equivalent — cinema red radial glow
-  neon: {
-    shadowColor: '#E50914',
+};
+
+export function makeNeonShadow(colors: ColorTokens) {
+  return {
+    shadowColor: colors.accent,
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.6,
     shadowRadius: 10,
     elevation: 8,
-  },
-};
+  };
+}
 
 export const ZIndex = {
   base: 0,
@@ -147,8 +252,9 @@ export const ZIndex = {
   toast: 300,
 };
 
-// JetBrains Mono — matches cinema-hall-users --font-sans
-// Requires font files linked via react-native.config.js (see README)
+// JetBrains Mono — headings, labels, mono numerals/prices. Body text intentionally
+// has no fontFamily override (falls back to the platform system sans, close to the
+// design's Inter) since Inter .ttf files aren't linked in this project yet.
 export const FontFamily = {
   regular: 'JetBrainsMono-Regular',
   medium: 'JetBrainsMono-Medium',

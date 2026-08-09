@@ -1,6 +1,7 @@
-import React from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { Colors, FontSize, FontWeight, Radius, Spacing } from '@constants/theme';
+import React, { useMemo } from 'react';
+import { Pressable, ScrollView, StyleSheet, Text } from 'react-native';
+import { ColorTokens, FontSize, FontWeight, Radius, Spacing } from '@constants/theme';
+import { useTheme } from '@hooks/useTheme';
 import { MovieTab } from '../types';
 
 interface MovieFilterProps {
@@ -14,6 +15,8 @@ const TABS: { key: MovieTab; label: string }[] = [
 ];
 
 export function MovieFilter({ activeTab, onTabChange }: MovieFilterProps) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   return (
     <ScrollView
       horizontal
@@ -37,32 +40,33 @@ export function MovieFilter({ activeTab, onTabChange }: MovieFilterProps) {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm,
-    gap: Spacing.sm,
-    flexDirection: 'row',
-  },
-  tab: {
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.xs + 2,
-    borderRadius: Radius.full,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    backgroundColor: Colors.surface,
-  },
-  tabActive: {
-    backgroundColor: Colors.accent,
-    borderColor: Colors.accent,
-  },
-  tabText: {
-    fontSize: FontSize.sm,
-    fontWeight: FontWeight.medium,
-    color: Colors.textSecondary,
-  },
-  tabTextActive: {
-    color: Colors.textPrimary,
-    fontWeight: FontWeight.semibold,
-  },
-});
+const makeStyles = (Colors: ColorTokens) =>
+  StyleSheet.create({
+    container: {
+      paddingHorizontal: Spacing.md,
+      paddingVertical: Spacing.sm,
+      gap: Spacing.sm,
+      flexDirection: 'row',
+    },
+    tab: {
+      paddingHorizontal: Spacing.md,
+      paddingVertical: Spacing.xs + 2,
+      borderRadius: Radius.full,
+      borderWidth: 1,
+      borderColor: Colors.border,
+      backgroundColor: Colors.surface,
+    },
+    tabActive: {
+      backgroundColor: Colors.accent,
+      borderColor: Colors.accent,
+    },
+    tabText: {
+      fontSize: FontSize.sm,
+      fontWeight: FontWeight.medium,
+      color: Colors.textSecondary,
+    },
+    tabTextActive: {
+      color: Colors.textPrimary,
+      fontWeight: FontWeight.semibold,
+    },
+  });

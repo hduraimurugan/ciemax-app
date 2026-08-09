@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Show, Theatre } from '@ctypes/models';
-import { getTheatresForMovie, getShowsForMovieAndTheatre } from '@services/theatresService';
+import { getTheatresForMovie, getShowsForMovieAndTheatre, getShowsForMovie } from '@services/theatresService';
 
 export function useTheatresForMovie(movieId: string) {
   const [theatres, setTheatres] = useState<Theatre[]>([]);
@@ -28,6 +28,34 @@ export function useTheatresForMovie(movieId: string) {
   }, [movieId]);
 
   return { theatres, loading, error };
+}
+
+export function useShowsForMovie(movieId: string) {
+  const [shows, setShows] = useState<Show[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function load() {
+      setLoading(true);
+      setError(null);
+      try {
+        const data = await getShowsForMovie(movieId);
+        if (!cancelled) setShows(data);
+      } catch {
+        if (!cancelled) setError('Failed to load showtimes.');
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+
+    if (movieId) load();
+    return () => { cancelled = true; };
+  }, [movieId]);
+
+  return { shows, loading, error };
 }
 
 export function useShowsForMovieTheatre(movieId: string, theatreId: string) {

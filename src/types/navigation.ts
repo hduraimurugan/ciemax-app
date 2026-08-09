@@ -1,21 +1,22 @@
 export type RootStackParamList = {
+  Splash: undefined;
+  Onboarding: undefined;
+  Login: undefined;
+  Otp: { email: string };
   MainTabs: undefined;
   MovieDetail: { movieId: string };
-  Theatres: { movieId: string };
-  ShowSelection: { movieId: string; theatreId: string };
+  Showtimes: { movieId: string };
   SeatSelection: { showId: string };
-  OrderSummary: undefined;
+  Checkout: undefined;
   Payment: undefined;
   BookingSuccess: { bookingId: string };
   BookingFailure: { error?: string };
-  Profile: undefined;
-  Login: undefined;
-  Register: undefined;
+  TicketDetail: { bookingId: string };
 };
 
 export type TabParamList = {
   Home: undefined;
-  TheatresTab: undefined;
-  OffersTab: undefined;
+  SearchTab: undefined;
   Bookings: undefined;
+  ProfileTab: undefined;
 };

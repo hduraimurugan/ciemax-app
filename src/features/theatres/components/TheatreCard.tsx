@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { Heart, Star, MapPin } from 'lucide-react-native';
 import { Show, Theatre } from '@ctypes/models';
-import { Colors, FontSize, FontWeight, Radius, Spacing } from '@constants/theme';
+import { ColorTokens, FontSize, FontWeight, Radius, Spacing } from '@constants/theme';
+import { useTheme } from '@hooks/useTheme';
 import { Heading3, Body, BodySmall, Caption } from '@shared/ui';
 import { Badge } from '@shared/ui';
 
@@ -14,6 +15,8 @@ interface TheatreCardProps {
 }
 
 export function TheatreCard({ theatre, onPress, shows, onShowPress }: TheatreCardProps) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const [isFav, setIsFav] = useState(false);
 
   return (
@@ -26,7 +29,7 @@ export function TheatreCard({ theatre, onPress, shows, onShowPress }: TheatreCar
           <Body numberOfLines={1} style={styles.address}>{theatre.address}</Body>
           {theatre.distance ? (
             <View style={styles.distanceRow}>
-              <MapPin size={11} color={Colors.info} />
+              <MapPin size={11} color={colors.info} />
               <Caption style={styles.distance}>{theatre.distance}</Caption>
             </View>
           ) : null}
@@ -40,12 +43,12 @@ export function TheatreCard({ theatre, onPress, shows, onShowPress }: TheatreCar
             }}>
             <Heart
               size={20}
-              color={isFav ? Colors.accent : Colors.textMuted}
-              fill={isFav ? Colors.accent : 'none'}
+              color={isFav ? colors.accent : colors.textMuted}
+              fill={isFav ? colors.accent : 'none'}
             />
           </Pressable>
           <View style={styles.ratingRow}>
-            <Star size={12} color={Colors.star} fill={Colors.star} />
+            <Star size={12} color={colors.star} fill={colors.star} />
             <BodySmall style={styles.rating}>{theatre.rating}</BodySmall>
           </View>
         </View>
@@ -57,7 +60,6 @@ export function TheatreCard({ theatre, onPress, shows, onShowPress }: TheatreCar
         ))}
       </View>
 
-      {/* Showtime buttons */}
       {shows && shows.length > 0 ? (
         <ScrollView
           horizontal
@@ -81,75 +83,75 @@ export function TheatreCard({ theatre, onPress, shows, onShowPress }: TheatreCar
   );
 }
 
-const styles = StyleSheet.create({
-  card: {
-    backgroundColor: Colors.surface,
-    borderRadius: Radius.lg,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    padding: Spacing.md,
-    marginBottom: Spacing.sm,
-    gap: Spacing.sm,
-  },
-  pressed: { opacity: 0.85 },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    gap: Spacing.sm,
-  },
-  titleBlock: { flex: 1, gap: 2 },
-  address: { color: Colors.textSecondary, fontSize: FontSize.sm },
-  right: { alignItems: 'flex-end', gap: 4 },
-  favBtn: {
-    padding: 4,
-  },
-  distanceRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 3,
-  },
-  distance: {
-    color: Colors.info,
-    fontSize: FontSize.xs,
-  },
-  ratingRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 3,
-  },
-  rating: {
-    color: Colors.star,
-    fontWeight: FontWeight.semibold,
-    fontSize: FontSize.xs,
-  },
-  amenities: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: Spacing.xs,
-  },
-  badge: {},
-  // Showtimes
-  showTimes: {
-    gap: Spacing.sm,
-    paddingTop: Spacing.xs,
-  },
-  showBtn: {
-    borderWidth: 1,
-    borderColor: Colors.success,
-    borderRadius: Radius.sm,
-    paddingHorizontal: Spacing.sm,
-    paddingVertical: Spacing.xs,
-    alignItems: 'center',
-    minWidth: 80,
-  },
-  showTime: {
-    color: Colors.success,
-    fontWeight: FontWeight.semibold,
-    fontSize: FontSize.sm,
-  },
-  showFormat: {
-    color: Colors.textMuted,
-    fontSize: FontSize.xs - 1,
-  },
-});
+const makeStyles = (Colors: ColorTokens) =>
+  StyleSheet.create({
+    card: {
+      backgroundColor: Colors.surface,
+      borderRadius: Radius.lg,
+      borderWidth: 1,
+      borderColor: Colors.border,
+      padding: Spacing.md,
+      marginBottom: Spacing.sm,
+      gap: Spacing.sm,
+    },
+    pressed: { opacity: 0.85 },
+    header: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'flex-start',
+      gap: Spacing.sm,
+    },
+    titleBlock: { flex: 1, gap: 2 },
+    address: { color: Colors.textSecondary, fontSize: FontSize.sm },
+    right: { alignItems: 'flex-end', gap: 4 },
+    favBtn: {
+      padding: 4,
+    },
+    distanceRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 3,
+    },
+    distance: {
+      color: Colors.info,
+      fontSize: FontSize.xs,
+    },
+    ratingRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 3,
+    },
+    rating: {
+      color: Colors.star,
+      fontWeight: FontWeight.semibold,
+      fontSize: FontSize.xs,
+    },
+    amenities: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: Spacing.xs,
+    },
+    badge: {},
+    showTimes: {
+      gap: Spacing.sm,
+      paddingTop: Spacing.xs,
+    },
+    showBtn: {
+      borderWidth: 1,
+      borderColor: Colors.success,
+      borderRadius: Radius.sm,
+      paddingHorizontal: Spacing.sm,
+      paddingVertical: Spacing.xs,
+      alignItems: 'center',
+      minWidth: 80,
+    },
+    showTime: {
+      color: Colors.success,
+      fontWeight: FontWeight.semibold,
+      fontSize: FontSize.sm,
+    },
+    showFormat: {
+      color: Colors.textMuted,
+      fontSize: FontSize.xs - 1,
+    },
+  });

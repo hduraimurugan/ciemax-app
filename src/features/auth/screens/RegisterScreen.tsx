@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   KeyboardAvoidingView,
   Platform,
@@ -11,16 +11,22 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { User, ShieldCheck } from 'lucide-react-native';
-import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '@ctypes/navigation';
-import { Colors, FontFamily, FontSize, FontWeight, Radius, Spacing } from '@constants/theme';
+import { ColorTokens, FontFamily, FontSize, FontWeight, Radius, Spacing } from '@constants/theme';
+import { useTheme } from '@hooks/useTheme';
 import { Button, Card, Input } from '@shared/ui';
 import { Heading2, Body, Caption } from '@shared/ui';
 
-type Props = NativeStackScreenProps<RootStackParamList, 'Register'>;
+// NOTE: not currently wired into RootNavigator — the CineHall design has no signup
+// screen (Login → Otp is the only auth path). Kept on disk, unrouted, in case a
+// standalone sign-up flow is reintroduced later.
+type Props = { navigation: NativeStackNavigationProp<RootStackParamList, 'Login'> };
 type Step = 'form' | 'otp';
 
 export function RegisterScreen({ navigation }: Props) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const [step, setStep] = useState<Step>('form');
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -59,7 +65,7 @@ export function RegisterScreen({ navigation }: Props) {
         <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
           {/* Logo */}
           <View style={styles.brandRow}>
-            <Text style={styles.logo}>CINEBOOK</Text>
+            <Text style={styles.logo}>CINEHALL</Text>
           </View>
 
           <Card variant="glass" padding="none" style={styles.formCard}>
@@ -77,10 +83,10 @@ export function RegisterScreen({ navigation }: Props) {
               <View style={styles.formBody}>
                 <View style={styles.iconRow}>
                   <View style={styles.iconCircle}>
-                    <User size={24} color={Colors.accent} />
+                    <User size={24} color={colors.accent} />
                   </View>
                   <Heading2 style={styles.formTitle}>Create Account</Heading2>
-                  <Body style={styles.formSub}>Join CineBook to start booking</Body>
+                  <Body style={styles.formSub}>Join CineHall to start booking</Body>
                 </View>
 
                 <Input label="Full Name" value={name} onChangeText={setName} placeholder="Your name" />
@@ -118,7 +124,7 @@ export function RegisterScreen({ navigation }: Props) {
               <View style={styles.formBody}>
                 <View style={styles.iconRow}>
                   <View style={styles.iconCircleGray}>
-                    <ShieldCheck size={24} color={Colors.textSecondary} />
+                    <ShieldCheck size={24} color={colors.textSecondary} />
                   </View>
                   <Heading2 style={styles.formTitle}>Verify Your Phone</Heading2>
                   <Body style={styles.formSub}>
@@ -176,118 +182,119 @@ export function RegisterScreen({ navigation }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: Colors.background },
-  kav: { flex: 1 },
-  scrollContent: {
-    flexGrow: 1,
-    justifyContent: 'center',
-    padding: Spacing.lg,
-    gap: Spacing.lg,
-  },
-  brandRow: { alignItems: 'center' },
-  logo: {
-    color: Colors.accent,
-    fontSize: FontSize.xxl,
-    fontFamily: FontFamily.bold,
-    fontWeight: FontWeight.bold,
-    letterSpacing: 2,
-  },
-  formCard: {},
-  tabs: {
-    flexDirection: 'row',
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
-  },
-  tab: {
-    flex: 1,
-    alignItems: 'center',
-    paddingVertical: Spacing.sm + 2,
-    borderBottomWidth: 2,
-    borderBottomColor: Colors.transparent,
-  },
-  tabActive: {
-    borderBottomColor: Colors.accent,
-  },
-  tabText: {
-    fontSize: FontSize.sm,
-    fontFamily: FontFamily.medium,
-    fontWeight: FontWeight.medium,
-    color: Colors.textMuted,
-  },
-  tabTextActive: {
-    color: Colors.textPrimary,
-  },
-  formBody: {
-    padding: Spacing.lg,
-    gap: Spacing.md,
-  },
-  iconRow: {
-    alignItems: 'center',
-    gap: Spacing.sm,
-    marginBottom: Spacing.sm,
-  },
-  iconCircle: {
-    width: 56,
-    height: 56,
-    borderRadius: Radius.full,
-    backgroundColor: Colors.accentLight,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  iconCircleGray: {
-    width: 56,
-    height: 56,
-    borderRadius: Radius.full,
-    backgroundColor: Colors.surfaceElevated,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  formTitle: {
-    textAlign: 'center',
-    color: Colors.textPrimary,
-  },
-  formSub: {
-    textAlign: 'center',
-    color: Colors.textSecondary,
-  },
-  // OTP
-  otpRow: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: Spacing.sm,
-  },
-  otpBox: {
-    width: 44,
-    height: 54,
-    borderRadius: Radius.md,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    backgroundColor: Colors.surfaceElevated,
-    color: Colors.textPrimary,
-    fontSize: FontSize.xl,
-    fontFamily: FontFamily.bold,
-    fontWeight: FontWeight.bold,
-    textAlign: 'center',
-  },
-  otpBoxFilled: {
-    borderColor: Colors.accent,
-  },
-  resendTimer: {
-    textAlign: 'center',
-    color: Colors.textMuted,
-  },
-  resendLink: {
-    textAlign: 'center',
-    color: Colors.accent,
-    textDecorationLine: 'underline',
-  },
-  footer: {
-    textAlign: 'center',
-    color: Colors.textMuted,
-  },
-  footerLink: {
-    color: Colors.accent,
-    textDecorationLine: 'underline',
-  },
-});
+const makeStyles = (Colors: ColorTokens) =>
+  StyleSheet.create({
+    screen: { flex: 1, backgroundColor: Colors.background },
+    kav: { flex: 1 },
+    scrollContent: {
+      flexGrow: 1,
+      justifyContent: 'center',
+      padding: Spacing.lg,
+      gap: Spacing.lg,
+    },
+    brandRow: { alignItems: 'center' },
+    logo: {
+      color: Colors.accent,
+      fontSize: FontSize.xxl,
+      fontFamily: FontFamily.bold,
+      fontWeight: FontWeight.bold,
+      letterSpacing: 2,
+    },
+    formCard: {},
+    tabs: {
+      flexDirection: 'row',
+      borderBottomWidth: 1,
+      borderBottomColor: Colors.border,
+    },
+    tab: {
+      flex: 1,
+      alignItems: 'center',
+      paddingVertical: Spacing.sm + 2,
+      borderBottomWidth: 2,
+      borderBottomColor: Colors.transparent,
+    },
+    tabActive: {
+      borderBottomColor: Colors.accent,
+    },
+    tabText: {
+      fontSize: FontSize.sm,
+      fontFamily: FontFamily.medium,
+      fontWeight: FontWeight.medium,
+      color: Colors.textMuted,
+    },
+    tabTextActive: {
+      color: Colors.textPrimary,
+    },
+    formBody: {
+      padding: Spacing.lg,
+      gap: Spacing.md,
+    },
+    iconRow: {
+      alignItems: 'center',
+      gap: Spacing.sm,
+      marginBottom: Spacing.sm,
+    },
+    iconCircle: {
+      width: 56,
+      height: 56,
+      borderRadius: Radius.full,
+      backgroundColor: Colors.accentLight,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    iconCircleGray: {
+      width: 56,
+      height: 56,
+      borderRadius: Radius.full,
+      backgroundColor: Colors.surfaceElevated,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    formTitle: {
+      textAlign: 'center',
+      color: Colors.textPrimary,
+    },
+    formSub: {
+      textAlign: 'center',
+      color: Colors.textSecondary,
+    },
+    // OTP
+    otpRow: {
+      flexDirection: 'row',
+      justifyContent: 'center',
+      gap: Spacing.sm,
+    },
+    otpBox: {
+      width: 44,
+      height: 54,
+      borderRadius: Radius.md,
+      borderWidth: 1,
+      borderColor: Colors.border,
+      backgroundColor: Colors.surfaceElevated,
+      color: Colors.textPrimary,
+      fontSize: FontSize.xl,
+      fontFamily: FontFamily.bold,
+      fontWeight: FontWeight.bold,
+      textAlign: 'center',
+    },
+    otpBoxFilled: {
+      borderColor: Colors.accent,
+    },
+    resendTimer: {
+      textAlign: 'center',
+      color: Colors.textMuted,
+    },
+    resendLink: {
+      textAlign: 'center',
+      color: Colors.accent,
+      textDecorationLine: 'underline',
+    },
+    footer: {
+      textAlign: 'center',
+      color: Colors.textMuted,
+    },
+    footerLink: {
+      color: Colors.accent,
+      textDecorationLine: 'underline',
+    },
+  });

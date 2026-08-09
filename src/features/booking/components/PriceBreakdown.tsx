@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { StyleSheet, View } from 'react-native';
-import { Colors, FontSize, FontWeight, Spacing } from '@constants/theme';
+import { ColorTokens, FontSize, FontWeight, Spacing } from '@constants/theme';
+import { useTheme } from '@hooks/useTheme';
 import { Body, BodySmall, Heading2, Label } from '@shared/ui';
 import { formatPrice } from '@shared/utils';
 
@@ -17,6 +18,8 @@ export function PriceBreakdown({
   gst = 0,
   discount = 0,
 }: PriceBreakdownProps) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const total = subtotal + convenienceFee + gst - discount;
 
   return (
@@ -24,14 +27,15 @@ export function PriceBreakdown({
       <Label>Price Breakdown</Label>
 
       <View style={styles.rows}>
-        <Row label="Ticket Price" value={formatPrice(subtotal)} />
-        <Row label={`Convenience Fee`} value={formatPrice(convenienceFee)} hint="₹15 per seat" />
-        {gst > 0 && <Row label="GST (18%)" value={formatPrice(gst)} />}
+        <Row label="Ticket Price" value={formatPrice(subtotal)} colors={colors} />
+        <Row label="Convenience Fee" value={formatPrice(convenienceFee)} hint="₹30 per seat" colors={colors} />
+        {gst > 0 && <Row label="GST (18%)" value={formatPrice(gst)} colors={colors} />}
         {discount > 0 && (
           <Row
             label="Discount"
             value={`-${formatPrice(discount)}`}
-            valueColor={Colors.success}
+            valueColor={colors.success}
+            colors={colors}
           />
         )}
         <View style={styles.divider} />
@@ -49,12 +53,15 @@ function Row({
   value,
   valueColor,
   hint,
+  colors,
 }: {
   label: string;
   value: string;
   valueColor?: string;
   hint?: string;
+  colors: ColorTokens;
 }) {
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   return (
     <View style={styles.row}>
       <View style={styles.rowLeft}>
@@ -68,37 +75,38 @@ function Row({
   );
 }
 
-const styles = StyleSheet.create({
-  container: { gap: Spacing.md },
-  rows: { gap: Spacing.sm },
-  row: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  rowLeft: { flex: 1 },
-  hint: {
-    color: Colors.textMuted,
-    fontSize: FontSize.xs,
-  },
-  value: { color: Colors.textPrimary },
-  divider: {
-    height: 1,
-    backgroundColor: Colors.border,
-    marginVertical: Spacing.xs,
-  },
-  totalRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  totalLabel: {
-    color: Colors.textPrimary,
-    fontWeight: FontWeight.semibold,
-  },
-  totalAmount: {
-    color: Colors.accent,
-    fontSize: FontSize.xl,
-    fontWeight: FontWeight.bold,
-  },
-});
+const makeStyles = (Colors: ColorTokens) =>
+  StyleSheet.create({
+    container: { gap: Spacing.md },
+    rows: { gap: Spacing.sm },
+    row: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+    },
+    rowLeft: { flex: 1 },
+    hint: {
+      color: Colors.textMuted,
+      fontSize: FontSize.xs,
+    },
+    value: { color: Colors.textPrimary },
+    divider: {
+      height: 1,
+      backgroundColor: Colors.border,
+      marginVertical: Spacing.xs,
+    },
+    totalRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+    },
+    totalLabel: {
+      color: Colors.textPrimary,
+      fontWeight: FontWeight.semibold,
+    },
+    totalAmount: {
+      color: Colors.accent,
+      fontSize: FontSize.xl,
+      fontWeight: FontWeight.bold,
+    },
+  });

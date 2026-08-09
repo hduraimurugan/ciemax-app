@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Seat, SeatLayout, SeatRow, SeatSection } from '@ctypes/models';
-import { Colors, FontSize, FontWeight, Spacing } from '@constants/theme';
+import { ColorTokens, FontSize, FontWeight, Spacing } from '@constants/theme';
+import { useTheme } from '@hooks/useTheme';
 import { SeatItem } from './SeatItem';
 import { SectionHeader } from './SectionHeader';
 import { SeatLegend } from './SeatLegend';
@@ -28,10 +29,12 @@ function RowRenderer({
   row,
   selectedSeatIds,
   onSeatPress,
+  styles,
 }: {
   row: SeatRow;
   selectedSeatIds: Set<string>;
   onSeatPress: (seat: Seat) => void;
+  styles: ReturnType<typeof makeStyles>;
 }) {
   return (
     <View style={styles.row}>
@@ -59,12 +62,15 @@ function SectionRenderer({
   rows,
   selectedSeatIds,
   onSeatPress,
+  styles,
 }: {
   section: SeatSection;
   rows: SeatRow[];
   selectedSeatIds: Set<string>;
   onSeatPress: (seat: Seat) => void;
+  styles: ReturnType<typeof makeStyles>;
 }) {
+  if (rows.length === 0) return null;
   return (
     <View>
       <SectionHeader section={section} />
@@ -74,6 +80,7 @@ function SectionRenderer({
           row={row}
           selectedSeatIds={selectedSeatIds}
           onSeatPress={onSeatPress}
+          styles={styles}
         />
       ))}
     </View>
@@ -81,6 +88,9 @@ function SectionRenderer({
 }
 
 export function SeatGrid({ layout, selectedSeatIds, onSeatPress }: SeatGridProps) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
+
   return (
     <ScrollView
       horizontal
@@ -92,8 +102,8 @@ export function SeatGrid({ layout, selectedSeatIds, onSeatPress }: SeatGridProps
         contentContainerStyle={styles.gridContent}>
         {/* Screen indicator */}
         <View style={styles.screenWrapper}>
-          <View style={styles.screenBar} />
-          <Text style={styles.screenLabel}>SCREEN</Text>
+          <View style={styles.screenArc} />
+          <Text style={styles.screenLabel}>SCREEN THIS WAY</Text>
         </View>
 
         <SeatLegend />
@@ -103,68 +113,72 @@ export function SeatGrid({ layout, selectedSeatIds, onSeatPress }: SeatGridProps
           rows={layout.sections.premium}
           selectedSeatIds={selectedSeatIds}
           onSeatPress={onSeatPress}
+          styles={styles}
         />
         <SectionRenderer
           section="gold"
           rows={layout.sections.gold}
           selectedSeatIds={selectedSeatIds}
           onSeatPress={onSeatPress}
+          styles={styles}
         />
         <SectionRenderer
           section="silver"
           rows={layout.sections.silver}
           selectedSeatIds={selectedSeatIds}
           onSeatPress={onSeatPress}
+          styles={styles}
         />
       </ScrollView>
     </ScrollView>
   );
 }
 
-const styles = StyleSheet.create({
-  scrollContent: {
-    flexGrow: 1,
-    justifyContent: 'center',
-  },
-  gridContent: {
-    paddingHorizontal: Spacing.md,
-    paddingBottom: Spacing.xl,
-  },
-  screenWrapper: {
-    alignItems: 'center',
-    marginBottom: Spacing.md,
-    gap: Spacing.xs,
-  },
-  screenBar: {
-    width: '70%',
-    height: 4,
-    backgroundColor: Colors.info,
-    borderRadius: 2,
-    shadowColor: Colors.info,
-    shadowOpacity: 0.8,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  screenLabel: {
-    color: Colors.textMuted,
-    fontSize: FontSize.xs,
-    letterSpacing: 3,
-    fontWeight: FontWeight.semibold,
-  },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 2,
-  },
-  rowLabel: {
-    width: 20,
-    textAlign: 'center',
-    color: Colors.textMuted,
-    fontSize: FontSize.xs,
-    fontWeight: FontWeight.semibold,
-  },
-  seats: {
-    flexDirection: 'row',
-    flexWrap: 'nowrap',
-  },
-});
+const makeStyles = (Colors: ColorTokens) =>
+  StyleSheet.create({
+    scrollContent: {
+      flexGrow: 1,
+      justifyContent: 'center',
+    },
+    gridContent: {
+      paddingHorizontal: Spacing.md,
+      paddingBottom: Spacing.xl,
+    },
+    screenWrapper: {
+      alignItems: 'center',
+      marginBottom: Spacing.md,
+      gap: Spacing.xs,
+    },
+    screenArc: {
+      width: '70%',
+      height: 34,
+      marginHorizontal: 30,
+      backgroundColor: Colors.accentLight,
+      borderTopLeftRadius: 200,
+      borderTopRightRadius: 200,
+      borderBottomLeftRadius: 6,
+      borderBottomRightRadius: 6,
+    },
+    screenLabel: {
+      color: Colors.textMuted,
+      fontSize: FontSize.xs,
+      letterSpacing: 3,
+      fontWeight: FontWeight.semibold,
+    },
+    row: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginBottom: 2,
+    },
+    rowLabel: {
+      width: 20,
+      textAlign: 'center',
+      color: Colors.textMuted,
+      fontSize: FontSize.xs,
+      fontWeight: FontWeight.semibold,
+    },
+    seats: {
+      flexDirection: 'row',
+      flexWrap: 'nowrap',
+    },
+  });

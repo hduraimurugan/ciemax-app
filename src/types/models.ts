@@ -1,5 +1,10 @@
 // ─── Movie ──────────────────────────────────────────────────────────────────
 
+export interface CastMember {
+  name: string;
+  initials: string;
+}
+
 export interface Movie {
   id: string;
   title: string;
@@ -11,7 +16,7 @@ export interface Movie {
   language: string;
   releaseDate: string; // ISO date string
   synopsis: string;
-  cast: string[];
+  cast: CastMember[];
   director: string;
   format: ShowFormat[];
   isNowShowing: boolean;

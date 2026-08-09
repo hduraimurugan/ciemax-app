@@ -1,113 +1,159 @@
 # Design System
 
-The design system is a **custom, hand-crafted layer** that mirrors the visual identity of the `cinema-hall-users` web app (Tailwind CSS v4 + oklch color tokens), adapted for React Native's styling constraints. All tokens and components are tailored to the cinema booking domain.
+The design system is implemented from the **CineHall** design (`CineHall.dc.html`, a claude.ai/design prototype) — a 15-screen mobile UI kit with its own dark **and** light palette, typography, and component set. Unlike the previous single-dark-theme version of this app, every token now has two values and the active one is read reactively via a hook, not imported as a static constant.
 
-Source: [`src/constants/theme.ts`](../src/constants/theme.ts) and [`src/shared/ui/`](../src/shared/ui/)
+Source: [`src/constants/theme.ts`](../src/constants/theme.ts), [`src/store/themeStore.ts`](../src/store/themeStore.ts), [`src/hooks/useTheme.ts`](../src/hooks/useTheme.ts), and [`src/shared/ui/`](../src/shared/ui/)
 
 ---
 
 ## Design Principles
 
-1. **Dark-first** — cinema-native: dark environments, high contrast, accent-forward
-2. **Token-only styling** — no hardcoded hex values in components; everything references `Colors.*`, `Spacing.*`, etc.
-3. **Web parity** — color palette, radius scale, font, and utility effects directly mirror `cinema-hall-users/src/index.css`
+1. **Theme-aware, not dark-only** — every screen and shared component renders correctly in both dark and light mode; there is no hardcoded assumption of a dark background anywhere
+2. **Token-only styling** — no hardcoded hex values in components; everything references `colors.*` (from `useTheme()`), `Spacing.*`, etc.
+3. **Design parity** — palette, radius scale, and component shapes mirror `CineHall.dc.html`'s `getTheme(mode)` function
 4. **Primitive composition** — complex UI is built by composing small primitives (Typography + Card + Badge), never by writing monolithic styled blobs
 5. **Consistent spacing scale** — all padding/margin uses `Spacing.*` multiples of 4px
 
 ---
 
+## Theming Architecture
+
+### Why a static `Colors` object doesn't work
+
+`StyleSheet.create({ screen: { backgroundColor: Colors.background } })` evaluates `Colors.background` once, at module load, and bakes the resulting string into the style object. Mutating `Colors.background` afterward does not retroactively update already-created styles — a real toggle needs styles **recomputed at render time**.
+
+### The three pieces
+
+1. **`src/constants/theme.ts`** — exports `interface ColorTokens` plus two concrete palettes, `DarkColors: ColorTokens` and `LightColors: ColorTokens`. There is **no flat `Colors` export** — every file that still imports one fails `tsc` immediately, which was used as a build-until-clean checklist while migrating every screen.
+
+2. **`src/store/themeStore.ts`** — a Zustand store (consistent with the existing `bookingStore` convention, no React Context) with `persist` middleware backed by AsyncStorage:
+   ```ts
+   interface ThemeState {
+     mode: 'dark' | 'light';
+     colors: ColorTokens;
+     toggleTheme: () => void;
+     setTheme: (mode: 'dark' | 'light') => void;
+   }
+   ```
+   Only `mode` is persisted (`partialize`); `colors` is re-derived from `mode` on rehydration.
+
+3. **`src/hooks/useTheme.ts`** — the only way components should read colors:
+   ```ts
+   export const useTheme = () =>
+     useThemeStore(s => ({ colors: s.colors, mode: s.mode, toggleTheme: s.toggleTheme }));
+   ```
+
+### The conversion pattern
+
+Every themed file wraps its `StyleSheet.create` in a factory function and calls it with `useMemo`:
+
+```tsx
+import { ColorTokens } from '@constants/theme';
+import { useTheme } from '@hooks/useTheme';
+
+export function Screen() {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
+  return <View style={styles.screen} />;
+}
+
+const makeStyles = (Colors: ColorTokens) =>
+  StyleSheet.create({
+    screen: { backgroundColor: Colors.background },
+  });
+```
+
+This is a **pure wrap** — the body of each style object is untouched from the pre-theming version. Applied to all 11 files in `src/shared/ui/` plus every screen.
+
+### Toggling the theme
+
+The only in-app control is **Profile → Dark Mode** (a `Switch` bound to `toggleTheme`). The CineHall design's own theme toggle is dev-tool sidebar chrome (part of the design-preview shell, not an app screen), so this is a considered addition beyond the literal 15 screens, needed to satisfy a real user-facing toggle.
+
+---
+
 ## Color Tokens
 
-All defined in `Colors` in `src/constants/theme.ts`. The palette is derived from the web app's `oklch` dark-mode tokens converted to hex.
+Both palettes share the same key names (`ColorTokens` interface) so call sites never need renaming — only values change per mode.
 
 ### Backgrounds
 
-| Token | Hex | Web source (`oklch` dark) | Usage |
+| Token | Dark | Light | Usage |
 |---|---|---|---|
-| `Colors.background` | `#141A21` | `oklch(0.14 0.01 240)` | Screen root background |
-| `Colors.surface` | `#1C2330` | `oklch(0.18 0.01 240)` | Cards, tab bar, bottom sheets |
-| `Colors.surfaceElevated` | `#242D3A` | `oklch(0.22 0.01 240)` | Inputs, raised cards |
-| `Colors.surfaceHighlight` | `#303D4F` | `oklch(0.30 0.01 250)` | Pressed / hover elevated state |
-| `Colors.secondary` | `#343E4E` | `oklch(0.30 0.02 240)` | Cool gray-blue secondary surface |
-
-> All backgrounds carry a subtle navy/blue tint (hue 240–250) — this is the defining characteristic of the cinema-hall-users dark theme vs. a pure black palette.
+| `background` | `#16171B` | `#F9FAFC` | Screen root background |
+| `surface` | `#1F2024` | `#F1F2F5` | Cards, tab bar, bottom sheets |
+| `surfaceElevated` | `#26282E` | `#E7E9EE` | Inputs, raised cards |
+| `surfaceHighlight` | `#303138` | `#DDE0E6` | Pressed / hover elevated state |
+| `secondary` | `#383A42` | `#DEE1EA` | Cool gray-blue secondary surface, booked seats |
 
 ### Brand
 
-| Token | Hex | Usage |
-|---|---|---|
-| `Colors.accent` | `#E50914` | Primary CTA, selected seats, active tab (`--primary` cinema red) |
-| `Colors.accentDim` | `#B20710` | Pressed state of accent |
-| `Colors.accentLight` | `rgba(229,9,20,0.15)` | Badge background, selected chip bg |
+| Token | Dark | Light | Usage |
+|---|---|---|---|
+| `accent` | `#E6474E` | `#D93C43` | Primary CTA, selected seats, active tab |
+| `accentDim` | `#C93940` | `#B32E34` | Pressed state of accent |
+| `accentLight` | `rgba(230,71,78,0.45)` | `rgba(217,60,67,0.25)` | Glow shadows, badge background |
 
 ### Glass Surfaces
 
-Web equivalent of `.glass-effect { backdrop-filter: blur(12px); background: card/80% }`.
-
-| Token | Value | Usage |
-|---|---|---|
-| `Colors.glassSurface` | `rgba(28,35,48,0.80)` | Semi-transparent card overlay |
-| `Colors.glassBorder` | `rgba(255,255,255,0.08)` | Glass border stroke |
+| Token | Dark | Light | Usage |
+|---|---|---|---|
+| `glassSurface` | `rgba(31,32,36,0.80)` | `rgba(241,242,245,0.85)` | Semi-transparent card overlay (auth screens) |
+| `glassBorder` | `rgba(255,255,255,0.08)` | `rgba(0,0,0,0.08)` | Glass border stroke |
 
 ### Seat Sections
 
-| Token | Hex | Usage |
-|---|---|---|
-| `Colors.gold` | `#FFD700` | Gold section label, border |
-| `Colors.goldDim` | `rgba(255,215,0,0.15)` | Gold badge background |
-| `Colors.silver` | `#C0C0C0` | Silver section label |
-| `Colors.silverDim` | `rgba(192,192,192,0.15)` | Silver badge background |
+| Token | Dark | Light | Usage |
+|---|---|---|---|
+| `gold` | `#D9A24A` | `#D9A24A` | Premium seat section, star ratings |
+| `goldDim` | `rgba(217,162,74,0.15)` | same | Premium badge/seat background |
+| `silver` | `#C0C0C0` | `#9AA0AC` | Unused seat tier (kept for type compatibility) |
+| `silverDim` | `rgba(192,192,192,0.15)` | `rgba(154,160,172,0.15)` | — |
 
 ### Text
 
-| Token | Hex | Web source (`oklch` dark) | Usage |
+| Token | Dark | Light | Usage |
 |---|---|---|---|
-| `Colors.textPrimary` | `#F4F6F9` | `oklch(0.98 0.01 240)` | Headings, values — cool off-white |
-| `Colors.textSecondary` | `#8895A6` | `oklch(0.68 0.02 250)` | Body text, descriptions |
-| `Colors.textMuted` | `#636D7A` | `oklch(0.55 0.02 250)` | Captions, placeholders |
-| `Colors.textInverse` | `#141A21` | — | Text on light backgrounds |
+| `textPrimary` | `#F8F9FB` | `#1D1F23` | Headings, values |
+| `textSecondary` / `textMuted` | `#A6A9B4` | `#6B6F7A` | Body text, captions, placeholders |
+| `textInverse` | `#16171B` | `#F9FAFC` | Text on colored/inverse surfaces |
 
 ### Semantic
 
-| Token | Hex | Usage |
-|---|---|---|
-| `Colors.success` | `#22C55E` | Confirmed booking, available |
-| `Colors.successDim` | `rgba(34,197,94,0.15)` | Success badge background |
-| `Colors.error` | `#EF4444` | Errors, destructive (`oklch(0.7 0.21 27)`) |
-| `Colors.errorDim` | `rgba(239,68,68,0.15)` | Error badge/icon background |
-| `Colors.warning` | `#F59E0B` | Fast filling, notification bell |
-| `Colors.info` | `#3B82F6` | Distance, info text, screen indicator bar |
+| Token | Dark | Light | Usage |
+|---|---|---|---|
+| `success` | `#4FB878` | `#4FB878` | Confirmed booking, available seat/showtime |
+| `error` | `#F2564A` | `#F2564A` | Errors, destructive, cancel actions |
+| `warning` | `#E3A75E` | `#E3A75E` | Fast-filling showtime |
+| `info` | `#6C9CEB` | `#6C9CEB` | Info text, format badges |
 
 ### UI Chrome
 
-| Token | Value | Web source | Usage |
+| Token | Dark | Light | Usage |
 |---|---|---|---|
-| `Colors.border` | `rgba(255,255,255,0.10)` | `oklch(1 0 0 / 10%)` | All borders — white hairline |
-| `Colors.borderFocus` | `#E50914` | `--ring: --primary` | Input focus ring |
-| `Colors.divider` | `rgba(255,255,255,0.08)` | — | Section dividers |
-| `Colors.overlay` | `rgba(0,0,0,0.7)` | — | Modal scrim |
-| `Colors.navbarBorder` | `rgba(255,255,255,0.06)` | — | Header bottom border (subtler than `border`) |
+| `border` | `rgba(255,255,255,0.10)` | `#CCCFD6` | All borders — hairline |
+| `borderFocus` | `#E6474E` | `#D93C43` | Input focus ring (= accent) |
+| `divider` | `rgba(255,255,255,0.08)` | `#E2E4E9` | Section dividers |
+| `overlay` | `rgba(0,0,0,0.7)` | `rgba(0,0,0,0.5)` | Modal scrim |
+| `navbarBorder` | `rgba(255,255,255,0.06)` | `rgba(0,0,0,0.06)` | Header bottom border (subtler than `border`) |
 
 ### Seat States
 
-| Token | Hex | Usage |
-|---|---|---|
-| `Colors.seatAvailable` | `#2D3748` | Default seat colour |
-| `Colors.seatSelected` | `#E50914` | User-selected seat |
-| `Colors.seatBooked` | `#1A2332` | Pre-booked (not tappable) |
-| `Colors.seatBookedBorder` | `#2D3748` | Border around booked seat |
+| Token | Dark | Light | Usage |
+|---|---|---|---|
+| `seatAvailable` | `#26282E` | `#E7E9EE` | Default seat colour (= surfaceElevated) |
+| `seatSelected` | `#E6474E` | `#D93C43` | User-selected seat (= accent) |
+| `seatBooked` | `#383A42` | `#DEE1EA` | Pre-booked (not tappable, = secondary) |
+| `seatBookedBorder` | `#383A42` | `#DEE1EA` | Border around booked seat |
 
 ### Extended Palette
 
-| Token | Hex | Usage |
-|---|---|---|
-| `Colors.star` | `#FFD700` | Star rating icon fill |
-| `Colors.emerald` | `#10B981` | Selected seats (SeatItem), seat CTA button, booking success |
-| `Colors.emeraldDim` | `rgba(16,185,129,0.12)` | Selected showtime chip background |
-| `Colors.violet` | `#8B5CF6` | Offer card accent bar and badge |
-| `Colors.violetDim` | `rgba(139,92,246,0.12)` | Offer card background tint |
-| `Colors.zinc` | `#71717A` | Seat pill text/border on ticket |
-| `Colors.zincSurface` | `#27272A` | Seat pill background on ticket |
+| Token | Dark | Light | Usage |
+|---|---|---|---|
+| `star` | `#D9A24A` | `#D9A24A` | Star rating icon fill (= gold) |
+| `emerald` | `#4FB878` | `#4FB878` | Legacy `Button variant="emerald"` (= success) |
+| `violet` | `#A97EE0` | `#A97EE0` | Offer card accent bar and badge |
+| `zinc` | `#A6A9B4` | `#6B6F7A` | Seat pill text/border on ticket (= textMuted) |
+| `zincSurface` | `#26282E` | `#E7E9EE` | Seat pill background on ticket |
 
 ---
 
@@ -124,21 +170,19 @@ Spacing.xxxl        = 64
 Spacing.tabBarHeight = 64   // Bottom tab bar height — use for ScrollView bottom padding
 ```
 
-All component padding/margin uses these values. Never use raw numbers in component styles.
+Not theme-dependent — imported directly from `@constants/theme` as before.
 
 ---
 
 ## Border Radius Scale
 
-Aligned to the web app's `--radius: 0.625rem` (10px) base:
-
 ```ts
-Radius.xs   = 6    // --radius-sm  (base - 4px)
-Radius.sm   = 8    // --radius-md  (base - 2px)
-Radius.md   = 10   // --radius     (base = 10px)
-Radius.lg   = 14   // --radius-xl  (base + 4px)
-Radius.xl   = 18   // --radius-2xl (base + 8px)
-Radius.xxl  = 22   // --radius-3xl (base + 12px)
+Radius.xs   = 6
+Radius.sm   = 8
+Radius.md   = 10
+Radius.lg   = 14
+Radius.xl   = 18
+Radius.xxl  = 22
 Radius.full = 9999 // Pill / circle
 ```
 
@@ -146,9 +190,12 @@ Radius.full = 9999 // Pill / circle
 
 ## Typography
 
-### Font Family — JetBrains Mono
+### Font Family — JetBrains Mono + system fallback
 
-Matches the web app's `--font-sans: 'JetBrains Mono Variable', monospace`. Defined in `FontFamily` and applied in all `Typography` components.
+The CineHall design pairs **JetBrains Mono** (headings, mono numerals, prices) with **Inter** (body text). Inter `.ttf` files are not linked in this project, so the implementation makes a deliberate trade-off:
+
+- **Headings/labels/mono numerals/prices** — `FontFamily.*` still resolves to JetBrains Mono, exactly as before
+- **Body text** (`Body`, `BodySmall`, `BodyLarge`, `Caption` in `Typography.tsx`) — the explicit `fontFamily` was dropped, so React Native falls back to the platform system sans (San Francisco / Roboto), which reads visually close to Inter with zero new native linking or rebuild step
 
 ```ts
 FontFamily.regular   = 'JetBrainsMono-Regular'
@@ -158,13 +205,7 @@ FontFamily.bold      = 'JetBrainsMono-Bold'
 FontFamily.extrabold = 'JetBrainsMono-ExtraBold'
 ```
 
-**Font setup (one-time):**
-1. Download static TTF files from [JetBrains/JetBrainsMono releases](https://github.com/JetBrains/JetBrainsMono/releases)
-2. Place in `src/assets/fonts/`
-3. Run `npx react-native-asset` to link to Android/iOS
-4. Rebuild the app
-
-Until the font files are added, React Native falls back to the system font — all other tokens are active immediately.
+**If you later add Inter:** drop the `.ttf` files into `src/assets/fonts/`, add `FontFamily.interRegular` (etc.) entries, run `npx react-native-asset`, and swap the relevant lines back into `Typography.tsx`'s `body`/`bodySmall`/`bodyLarge`/`caption` styles. No architecture change is required.
 
 ### Type Scale
 
@@ -172,28 +213,29 @@ Defined in `FontSize` (px) and exposed as semantic components via [`src/shared/u
 
 | Component | Size | Weight | Font | Usage |
 |---|---|---|---|---|
-| `DisplayText` | 36 | 800 | ExtraBold | Hero numbers, booking confirmation |
-| `Heading1` | 28 | 700 | Bold | Screen titles |
-| `Heading2` | 22 | 700 | Bold | Section headings |
-| `Heading3` | 18 | 600 | SemiBold | Card titles, item names |
-| `BodyLarge` | 15 | 500 | Medium | Prominent descriptions |
-| `Body` | 13 | 400 | Regular | Standard body copy |
-| `BodySmall` | 12 | 400 | Regular | Supporting details |
-| `Caption` | 11 | 400 | Regular | Metadata, timestamps |
-| `Label` | 11 | 600 | SemiBold | UPPERCASE section labels |
+| `DisplayText` | 36 | 800 | JetBrains Mono ExtraBold | Hero numbers, booking confirmation |
+| `Heading1` | 28 | 700 | JetBrains Mono Bold | Screen titles |
+| `Heading2` | 22 | 700 | JetBrains Mono Bold | Section headings |
+| `Heading3` | 18 | 600 | JetBrains Mono SemiBold | Card titles, item names |
+| `BodyLarge` | 15 | 500 | System sans | Prominent descriptions |
+| `Body` | 13 | 400 | System sans | Standard body copy |
+| `BodySmall` | 12 | 400 | System sans | Supporting details |
+| `Caption` | 11 | 400 | System sans | Metadata, timestamps |
+| `Label` | 11 | 600 | JetBrains Mono SemiBold | UPPERCASE section labels |
 
 **Usage:**
 ```tsx
 import { Heading2, Body, Caption } from '@shared/ui';
 
-<Heading2>Select Theatre</Heading2>
-<Body>Choose your preferred location</Body>
-<Caption color={Colors.textMuted}>2.4 km away</Caption>
+<Heading2>Select Showtime</Heading2>
+<Body>Choose your preferred cinema</Body>
+<Caption color={colors.textMuted}>2.4 km away</Caption>
 ```
 
-The optional `color` prop overrides the default colour:
+The optional `color` prop overrides the default colour — pull it from `useTheme().colors`, not a static import:
 ```tsx
-<Body color={Colors.accent}>Fast Filling</Body>
+const { colors } = useTheme();
+<Body color={colors.accent}>Fast Filling</Body>
 ```
 
 ---
@@ -204,23 +246,24 @@ Icons use **`lucide-react-native`** — a React Native port of Lucide Icons back
 
 ```tsx
 import { ArrowLeft, Search, Ticket, Heart } from 'lucide-react-native';
+const { colors } = useTheme();
 
 // Basic usage
-<ArrowLeft size={18} color={Colors.textPrimary} />
+<ArrowLeft size={18} color={colors.textPrimary} />
 
 // Fill state (Heart, Star)
-<Heart size={20} color={Colors.accent} fill={isFav ? Colors.accent : 'none'} />
-<Star size={12} color={Colors.star} fill={Colors.star} />
+<Heart size={20} color={colors.accent} fill={isFav ? colors.accent : 'none'} />
+<Star size={12} color={colors.star} fill={colors.star} />
 ```
 
 **Standard sizes:**
 | Context | Size |
 |---|---|
 | Back buttons / header | `18` |
-| Header toolbar (Search, User) | `20` |
+| Header toolbar (Search, Bell) | `20` |
 | Tab bar | `22` (managed by React Navigation) |
-| Menu items | `20` |
-| Meta rows (Caption-level) | `11` |
+| Menu items | `18–20` |
+| Meta rows (Caption-level) | `11–14` |
 
 **Metro config note:** Metro 0.80+ picks up `package.json` `exports.browser` which points to an ESM-only build of `lucide-react-native` that Hermes cannot process. `metro.config.js` sets `resolver.unstable_enablePackageExports: false` to force Metro to use the `main` (CJS) field instead.
 
@@ -228,19 +271,21 @@ import { ArrowLeft, Search, Ticket, Heart } from 'lucide-react-native';
 
 ```tsx
 // ✅ Correct — named function outside the component
-function FilmIcon({ color, size }: { color: string; size: number }) {
-  return <Film color={color} size={size} />;
+function HomeIcon({ color, size }: { color: string; size: number }) {
+  return <Home color={color} size={size} />;
 }
 // Used as:
-options={{ tabBarIcon: FilmIcon }}
+options={{ tabBarIcon: HomeIcon }}
 
 // ❌ Incorrect — inline arrow function triggers lint warning
-options={{ tabBarIcon: ({ color, size }) => <Film color={color} size={size} /> }}
+options={{ tabBarIcon: ({ color, size }) => <Home color={color} size={size} /> }}
 ```
 
 ---
 
 ## UI Components
+
+All 11 components in `src/shared/ui/` follow the `useTheme()` + `makeStyles(colors)` pattern described above. Props/API are unchanged from before theming — only the color source changed.
 
 ### Button
 
@@ -267,8 +312,6 @@ import { Button } from '@shared/ui';
 | `fullWidth` | `boolean` | `false` | Stretches to container width |
 | `leftIcon` | `ReactNode` | — | Icon rendered before label |
 
-The `emerald` variant uses `backgroundColor: Colors.emerald` — used for the seat selection "Proceed" button.
-
 ---
 
 ### Card
@@ -293,8 +336,8 @@ import { Card } from '@shared/ui';
 | `onPress` | `() => void` | — | Makes card pressable |
 | `style` | `StyleProp<ViewStyle>` | — | Custom overrides (accepts arrays) |
 
-- `glass` — uses `Colors.glassSurface` background and `Colors.glassBorder` border
-- `neon` — applies `Shadow.neon` (cinema red glow)
+- `glass` — uses `colors.glassSurface` background and `colors.glassBorder` border
+- `neon` — applies `makeNeonShadow(colors)` (glow color follows the active `accent`, not hardcoded red)
 
 ---
 
@@ -306,27 +349,13 @@ import { Badge } from '@shared/ui';
 <Badge label="IMAX" variant="accent" />
 <Badge label="Confirmed" variant="success" />
 <Badge label="Cancelled" variant="error" />
-<Badge label="GOLD" variant="gold" />
+<Badge label="PREMIUM" variant="gold" />
 <Badge label="Tamil" variant="default" />
 <Badge label="Offer" variant="violet" />
 <Badge label="A4" variant="zinc" />
-<Badge label="Info" variant="info" />
 ```
 
 **Variants:** `default`, `accent`, `success`, `warning`, `error`, `gold`, `silver`, `premium`, `violet`, `zinc`, `info`
-
-| Variant | Color | Usage |
-|---|---|---|
-| `default` | `Colors.surface` | Format/language chips |
-| `accent` | `Colors.accentLight` / `Colors.accent` text | Genre, active filters |
-| `success` | `Colors.successDim` / `Colors.success` text | Confirmed status |
-| `error` | `Colors.errorDim` / `Colors.error` text | Cancelled, expired |
-| `warning` | Amber tint | Fast filling |
-| `gold` | `Colors.goldDim` | Gold section label |
-| `silver` | `Colors.silverDim` | Silver section label |
-| `violet` | `Colors.violetDim` / `Colors.violet` text | Offer cards |
-| `zinc` | `Colors.zincSurface` / `Colors.zinc` text | Seat pills on ticket |
-| `info` | Info tint | Distance, format info |
 
 ---
 
@@ -336,7 +365,7 @@ import { Badge } from '@shared/ui';
 import { Input } from '@shared/ui';
 
 <Input
-  label="Email"
+  label="EMAIL ADDRESS"
   value={email}
   onChangeText={setEmail}
   placeholder="you@example.com"
@@ -346,15 +375,15 @@ import { Input } from '@shared/ui';
 ```
 
 - Shows a red border + error text when `error` prop is set
-- Accent border on focus (`Colors.borderFocus`)
+- Accent border on focus (`colors.borderFocus`)
 - Supports `leftIcon` and `rightIcon` nodes
-- Background: `Colors.surfaceElevated`
+- Background: `colors.surfaceElevated`
 
 ---
 
 ### AdBanner
 
-Auto-playing image carousel used on the Movies home screen.
+Auto-playing image carousel.
 
 ```tsx
 import { AdBanner } from '@shared/ui';
@@ -365,28 +394,30 @@ import { AdBanner } from '@shared/ui';
 - Aspect ratio 5:1 (height = `Math.round(screenWidth / 5)`)
 - Autoplay every 3 seconds, loops
 - Dot indicators below the image
-- `borderRadius: Radius.lg` applied to wrapper
-- Gracefully handles 0–3 images (hides when empty)
+- Gracefully handles 0–5 images (hides when empty)
+
+Note: `MoviesScreen`'s CineHall-style hero banner (rating/tag/title overlay + segmented progress-bar dots) is a **separate**, screen-local implementation, not `AdBanner` — see [docs/features.md](features.md#movies).
 
 ---
 
 ### CountdownTimer
 
-Pulsing countdown used in the OrderSummary header to enforce session timeouts.
+Pulsing countdown, now built on the shared `useCountdown` hook.
 
 ```tsx
 import { CountdownTimer } from '@shared/ui';
 
 <CountdownTimer
-  initialSeconds={600}
+  initialSeconds={300}
   onExpire={() => navigation.reset({ index: 0, routes: [{ name: 'MainTabs' }] })}
 />
 ```
 
 - Displays `MM:SS` format
-- Text color: `Colors.warning` (amber) when > 60s remaining, `Colors.error` (red) when ≤ 60s
+- Text color: `colors.warning` (amber) when > 120s remaining, `colors.error` (red) when ≤ 120s
 - Pulses (opacity animation) when in the red zone
 - Calls `onExpire` when it reaches `00:00`
+- Used with `initialSeconds={300}` on `CheckoutScreen` (5-minute seat hold) and with the standalone `useCountdown` hook (not this component) for `OtpScreen`'s 30-second resend timer
 
 ---
 
@@ -397,12 +428,13 @@ Thin wrapper around `react-native-qrcode-svg`.
 ```tsx
 import { QRCode } from '@shared/ui';
 
-<QRCode value="BK1JKXZ4AB" size={90} />
+<QRCode value="CH20938" size={90} />
 ```
 
 - Default size: 90px
-- Dark background: `Colors.background`, light squares: `Colors.textPrimary`
-- Used on `BookingSuccessScreen` (90px) and in the MyBookings QR modal (150px)
+- Colors follow the active theme (`colors.textPrimary` squares on `colors.surface` background)
+- Falls back to the literal string `'CINEHALL'` if `value` is falsy
+- Used on `BookingSuccessScreen` (90px) and `TicketDetailScreen` (160px)
 
 ---
 
@@ -421,6 +453,7 @@ import { Modal } from '@shared/ui';
 
 - Tap outside (overlay) dismisses
 - `title` renders a header row with a divider
+- No longer used by `MyBookingsScreen` (its QR modal was replaced by `TicketDetailScreen`) — still available for other use cases
 
 ---
 
@@ -434,11 +467,10 @@ import { BottomSheet } from '@shared/ui';
   onClose={() => setShowFilters(false)}
   snapHeight={400}>
   <Heading3>Filter Shows</Heading3>
-  {/* filter content */}
 </BottomSheet>
 ```
 
-- Spring-animated slide-up using `Animated` API
+- Spring-animated slide-up using the `Animated` API
 - Default snap height: 55% of screen
 - Drag handle rendered automatically
 
@@ -449,10 +481,7 @@ import { BottomSheet } from '@shared/ui';
 ```tsx
 import { Loader } from '@shared/ui';
 
-// Full screen loading state
 <Loader fullScreen message="Loading movies..." />
-
-// Inline (inside a scroll view)
 <Loader size="small" />
 ```
 
@@ -477,31 +506,30 @@ import { SafeAreaView } from 'react-native';
 ## Shadow Tokens
 
 ```ts
-Shadow.sm   // elevation: 2  — subtle (chips, labels)
-Shadow.md   // elevation: 5  — default (elevated cards)
-Shadow.lg   // elevation: 10 — strong (modals, sheets)
-Shadow.neon // cinema red glow — web .neon-glow equivalent
+Shadow.sm   // elevation: 2  — subtle (chips, labels), not theme-dependent
+Shadow.md   // elevation: 5  — default (elevated cards), not theme-dependent
+Shadow.lg   // elevation: 10 — strong (modals, sheets), not theme-dependent
 ```
 
-**Neon glow** — apply to primary action elements (confirm buttons, selected state indicators):
-```tsx
-<View style={[styles.confirmBtn, Shadow.neon]}>
-```
+`sm`/`md`/`lg` are plain black shadows and can be spread directly. The design's "neon glow" depends on the active `accent` color, so it's computed per-render instead of being a static export:
 
-Apply any shadow to a `ViewStyle`:
-```tsx
-<View style={[styles.card, Shadow.md]}>
+```ts
+import { makeNeonShadow } from '@constants/theme';
+
+const { colors } = useTheme();
+<View style={[styles.confirmBtn, makeNeonShadow(colors)]}>
 ```
 
 ---
 
 ## Adding New Tokens
 
-Edit `src/constants/theme.ts` only. Never add one-off values inside component files.
+Edit `src/constants/theme.ts` only — add the key to `ColorTokens` and give it a value in **both** `DarkColors` and `LightColors`. Never add one-off hex values inside component files.
 
 ```ts
 // ✅ Good
-<View style={{ backgroundColor: Colors.surface }} />
+const { colors } = useTheme();
+<View style={{ backgroundColor: colors.surface }} />
 
 // ❌ Bad
 <View style={{ backgroundColor: '#1C2330' }} />
@@ -509,30 +537,14 @@ Edit `src/constants/theme.ts` only. Never add one-off values inside component fi
 
 ---
 
-## Web ↔ Native Token Mapping
+## Source: CineHall Design Tokens
 
-For reference when porting UI from `cinema-hall-users`:
+For reference, the raw tokens from `CineHall.dc.html`'s `getTheme(mode)` (mapped onto `ColorTokens` above):
 
-| Web CSS variable | React Native token |
-|---|---|
-| `--background` | `Colors.background` |
-| `--card` | `Colors.surface` |
-| `--input` | `Colors.surfaceElevated` |
-| `--muted` | `Colors.surfaceHighlight` |
-| `--secondary` | `Colors.secondary` |
-| `--primary` | `Colors.accent` |
-| `--foreground` | `Colors.textPrimary` |
-| `--muted-foreground` | `Colors.textSecondary` |
-| `--border` | `Colors.border` |
-| `--destructive` | `Colors.error` |
-| `.glass-effect` | `Colors.glassSurface` + `Colors.glassBorder` |
-| `.neon-glow` | `Shadow.neon` |
-| `--radius` (10px base) | `Radius.md` |
-| `--font-sans` (JetBrains Mono) | `FontFamily.*` |
-| `emerald-500` | `Colors.emerald` |
-| `violet-500` | `Colors.violet` |
-| `zinc-500` | `Colors.zinc` |
+**Dark:** `bg:#16171B, surface:#1F2024, surfaceAlt:#26282E, fg:#F8F9FB, muted:#A6A9B4, border:rgba(255,255,255,0.10), primary:#E6474E, primaryGlow:rgba(230,71,78,0.45), secondary:#383A42, destructive:#F2564A, success:#4FB878, warning:#E3A75E, info:#6C9CEB, offer:#A97EE0, gold:#D9A24A`
+
+**Light:** `bg:#F9FAFC, surface:#F1F2F5, surfaceAlt:#E7E9EE, fg:#1D1F23, muted:#6B6F7A, border:#CCCFD6, primary:#D93C43, primaryGlow:rgba(217,60,67,0.25), secondary:#DEE1EA, destructive:#F2564A, success:#4FB878, warning:#E3A75E, info:#6C9CEB, offer:#A97EE0, gold:#D9A24A`
 
 ---
 
-*Last updated: March 21, 2026 — added lucide-react-native icon system, emerald/violet/zinc/navbarBorder/star tokens, AdBanner/CountdownTimer/QRCode components, Button emerald variant, Badge violet/zinc/info variants, Card variant prop, SafeAreaView usage note.*
+*Last updated after the CineHall redesign — replaced the single static dark `Colors` object with `DarkColors`/`LightColors` + `useTheme()`, added the Profile Dark Mode toggle, dropped the Inter body-font requirement in favor of the system sans, and switched the neon shadow to be computed per-theme via `makeNeonShadow`.*

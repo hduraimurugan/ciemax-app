@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import {
   Modal as RNModal,
   Pressable,
@@ -6,7 +6,8 @@ import {
   View,
   ViewStyle,
 } from 'react-native';
-import { Colors, Radius, Spacing } from '@constants/theme';
+import { ColorTokens, Radius, Spacing } from '@constants/theme';
+import { useTheme } from '@hooks/useTheme';
 import { Heading3 } from './Typography';
 
 interface ModalProps {
@@ -18,6 +19,8 @@ interface ModalProps {
 }
 
 export function Modal({ visible, onClose, title, children, style }: ModalProps) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   return (
     <RNModal
       visible={visible}
@@ -39,25 +42,26 @@ export function Modal({ visible, onClose, title, children, style }: ModalProps) 
   );
 }
 
-const styles = StyleSheet.create({
-  overlay: {
-    flex: 1,
-    backgroundColor: Colors.overlay,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: Spacing.lg,
-  },
-  container: {
-    width: '100%',
-    backgroundColor: Colors.surface,
-    borderRadius: Radius.xl,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    overflow: 'hidden',
-  },
-  header: {
-    padding: Spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
-  },
-});
+const makeStyles = (Colors: ColorTokens) =>
+  StyleSheet.create({
+    overlay: {
+      flex: 1,
+      backgroundColor: Colors.overlay,
+      justifyContent: 'center',
+      alignItems: 'center',
+      padding: Spacing.lg,
+    },
+    container: {
+      width: '100%',
+      backgroundColor: Colors.surface,
+      borderRadius: Radius.xl,
+      borderWidth: 1,
+      borderColor: Colors.border,
+      overflow: 'hidden',
+    },
+    header: {
+      padding: Spacing.md,
+      borderBottomWidth: 1,
+      borderBottomColor: Colors.border,
+    },
+  });

@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Alert,
   Image,
@@ -10,13 +10,13 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ArrowLeft } from 'lucide-react-native';
-import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '@ctypes/navigation';
 import { Offer } from '@ctypes/models';
-import { Colors, FontFamily, FontSize, FontWeight, Radius, Spacing } from '@constants/theme';
+import { ColorTokens, DarkColors, FontFamily, FontSize, FontWeight, Radius, Spacing } from '@constants/theme';
+import { useTheme } from '@hooks/useTheme';
 import { Badge, Button, Card, CountdownTimer } from '@shared/ui';
 import {
-  Heading2,
   Heading3,
   Body,
   BodySmall,
@@ -24,13 +24,18 @@ import {
   Caption,
 } from '@shared/ui';
 import { useBookingStore } from '@store/bookingStore';
-import { formatPrice, formatSeatList, formatShowDate } from '@shared/utils';
+import { formatPrice, formatShowDate } from '@shared/utils';
 import { getOffers } from '@services/offersService';
 import { PriceBreakdown } from '../components/PriceBreakdown';
 
-type Props = NativeStackScreenProps<RootStackParamList, 'OrderSummary'>;
+// NOTE: superseded by CheckoutScreen.tsx (single promo-code input instead of an
+// offer carousel, matching the CineHall design) and no longer routed in
+// RootNavigator. Kept on disk, unrouted, rather than deleted.
+type Props = { navigation: NativeStackNavigationProp<RootStackParamList> };
 
 export function OrderSummaryScreen({ navigation }: Props) {
+  const { colors: Colors } = useTheme();
+  const styles = useMemo(() => makeStyles(Colors), [Colors]);
   const selectedMovie = useBookingStore(s => s.selectedMovie);
   const selectedTheatre = useBookingStore(s => s.selectedTheatre);
   const selectedShow = useBookingStore(s => s.selectedShow);
@@ -210,10 +215,10 @@ const detailStyles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingVertical: 4,
   },
-  value: { color: Colors.textPrimary, fontWeight: FontWeight.medium },
+  value: { color: DarkColors.textPrimary, fontWeight: FontWeight.medium },
 });
 
-const styles = StyleSheet.create({
+const makeStyles = (Colors: ColorTokens) => StyleSheet.create({
   screen: { flex: 1, backgroundColor: Colors.background },
   // Header
   header: {

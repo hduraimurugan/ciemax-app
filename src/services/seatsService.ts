@@ -3,34 +3,30 @@ import { SeatPricing } from '@constants/config';
 import { MockDelay } from '@constants/config';
 
 /**
- * Generates a realistic cinema seat layout for a given show.
- * Layout:
- *   Premium (rows A–C): 12 seats per row
- *   Gold    (rows D–G): 14 seats per row
- *   Silver  (rows H–L): 16 seats per row
+ * Cinema seat layout matching the CineHall design:
+ *   Premium (rows A–C): 12 seats/row, gold-tinted, ₹350
+ *   Standard (rows D–J): 12 seats/row, ₹220
+ *   Silver: unused (kept empty for SeatSection type compatibility)
  *
- * ~30% of seats are randomly pre-booked to simulate real occupancy.
+ * BOOKED mirrors the design's static occupancy list — the same seats are
+ * pre-booked for every show, matching the design's flat mock catalog.
  */
-function generateSeatLayout(showId: string): SeatLayout {
-  // Use showId as seed for deterministic "random" booking
-  const seed = showId.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
-  const pseudo = (n: number) => ((seed * 9301 + 49297) % 233280) / 233280 * n;
+const BOOKED = [
+  'A3', 'A4', 'B7', 'B8', 'C1',
+  'D5', 'D6', 'D7', 'E10', 'E11', 'F2', 'G9',
+  'H4', 'H5', 'I8', 'J1', 'J2', 'J12',
+];
 
-  const makeRow = (
-    rowLabel: string,
-    section: SeatSection,
-    count: number,
-    basePrice: number,
-    rowIndex: number,
-  ): SeatRow => ({
+function generateSeatLayout(showId: string): SeatLayout {
+  const makeRow = (rowLabel: string, section: SeatSection, basePrice: number): SeatRow => ({
     row: rowLabel,
     section,
-    seats: Array.from({ length: count }, (_, i) => {
+    seats: Array.from({ length: 12 }, (_, i) => {
       const seatNum = i + 1;
-      const hash = (seed + rowIndex * 13 + seatNum * 7) % 100;
-      const status: SeatStatus = hash < 28 ? 'booked' : 'available';
+      const code = `${rowLabel}${seatNum}`;
+      const status: SeatStatus = BOOKED.includes(code) ? 'booked' : 'available';
       return {
-        id: `${showId}-${rowLabel}${seatNum}`,
+        id: `${showId}-${code}`,
         row: rowLabel,
         number: seatNum,
         section,
@@ -40,25 +36,15 @@ function generateSeatLayout(showId: string): SeatLayout {
     }),
   });
 
-  const premiumRows: SeatRow[] = ['A', 'B', 'C'].map((r, i) =>
-    makeRow(r, 'premium', 12, SeatPricing.premium, i),
-  );
-  const goldRows: SeatRow[] = ['D', 'E', 'F', 'G'].map((r, i) =>
-    makeRow(r, 'gold', 14, SeatPricing.gold, i + 3),
-  );
-  const silverRows: SeatRow[] = ['H', 'I', 'J', 'K', 'L'].map((r, i) =>
-    makeRow(r, 'silver', 16, SeatPricing.silver, i + 7),
-  );
-
-  // suppress unused variable warning
-  void pseudo(0);
+  const premiumRows: SeatRow[] = ['A', 'B', 'C'].map(r => makeRow(r, 'premium', SeatPricing.premium));
+  const goldRows: SeatRow[] = ['D', 'E', 'F', 'G', 'H', 'I', 'J'].map(r => makeRow(r, 'gold', SeatPricing.gold));
 
   return {
     showId,
     sections: {
       premium: premiumRows,
       gold: goldRows,
-      silver: silverRows,
+      silver: [],
     },
   };
 }

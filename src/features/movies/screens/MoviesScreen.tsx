@@ -1,41 +1,62 @@
-import React from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
+  Animated,
+  Image,
   Pressable,
-  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Search, ChevronDown, User } from 'lucide-react-native';
-import { useNavigation } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { RootStackParamList } from '@ctypes/navigation';
+import { Search, ChevronDown, Bell, MapPin } from 'lucide-react-native';
+import { CompositeScreenProps } from '@react-navigation/native';
+import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
+import { RootStackParamList, TabParamList } from '@ctypes/navigation';
 import { Movie } from '@ctypes/models';
-import { Colors, FontFamily, FontSize, FontWeight, Radius, Spacing } from '@constants/theme';
-import { AdBanner, Loader } from '@shared/ui';
-import { Body, BodySmall, Caption } from '@shared/ui';
+import { AppConfig } from '@constants/config';
+import { ColorTokens, FontFamily, FontSize, FontWeight, Radius, Spacing } from '@constants/theme';
+import { useTheme } from '@hooks/useTheme';
+import { Loader } from '@shared/ui';
+import { Body, Heading2 } from '@shared/ui';
+import { formatRating } from '@shared/utils';
 import { useMovies } from '@hooks/useMovies';
 import { MovieCard } from '../components/MovieCard';
 
-type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
+type Props = CompositeScreenProps<
+  BottomTabScreenProps<TabParamList, 'Home'>,
+  NativeStackScreenProps<RootStackParamList>
+>;
 
-const NAV_TABS = ['Movies', 'Theatres', 'Offers', 'Bookings'];
+const HERO_ROTATE_MS = 4000;
 
-export function MoviesScreen() {
-  const navigation = useNavigation<NavigationProp>();
-  const { nowShowing, comingSoon, loading, error, refresh } = useMovies();
+export function MoviesScreen({ navigation }: Props) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
+  const { nowShowing, comingSoon, loading, error } = useMovies();
+  const [heroIdx, setHeroIdx] = useState(0);
+  const progress = useRef(new Animated.Value(0)).current;
+
+  const heroMovies = nowShowing.slice(0, 3);
+  const recommended = [...nowShowing, ...comingSoon].reverse().slice(0, 4);
+
+  useEffect(() => {
+    if (heroMovies.length <= 1) return;
+    progress.setValue(0);
+    Animated.timing(progress, {
+      toValue: 1,
+      duration: HERO_ROTATE_MS,
+      useNativeDriver: false,
+    }).start();
+    const t = setTimeout(() => setHeroIdx(i => (i + 1) % heroMovies.length), HERO_ROTATE_MS);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [heroIdx, heroMovies.length]);
 
   function handleMoviePress(movie: Movie) {
     navigation.navigate('MovieDetail', { movieId: movie.id });
   }
-
-  function handleAvatarPress() {
-    navigation.navigate('Profile');
-  }
-
-  const bannerUrls = nowShowing.slice(0, 3).map(m => m.backdropUrl).filter(Boolean);
 
   if (loading && nowShowing.length === 0) {
     return <Loader fullScreen message="Loading movies..." />;
@@ -49,85 +70,56 @@ export function MoviesScreen() {
     );
   }
 
+  const heroMovie = heroMovies[heroIdx];
+
   return (
     <SafeAreaView style={styles.screen}>
-      {/* Sticky header */}
       <View style={styles.header}>
-        <Text style={styles.logo}>CINEBOOK</Text>
-        <View style={styles.headerRight}>
-          <Search size={20} color={Colors.textSecondary} />
-          <View style={styles.locationRow}>
-            <Caption style={styles.location}>Mumbai</Caption>
-            <ChevronDown size={12} color={Colors.textMuted} />
-          </View>
-          <Pressable style={styles.avatar} onPress={handleAvatarPress}>
-            <User size={16} color={Colors.textSecondary} />
+        <View style={styles.locationRow}>
+          <MapPin size={14} color={colors.textPrimary} />
+          <Text style={styles.location}>{AppConfig.defaultCity}</Text>
+          <ChevronDown size={10} color={colors.textMuted} />
+        </View>
+        <View style={styles.headerActions}>
+          <Pressable onPress={() => navigation.navigate('SearchTab')} hitSlop={8}>
+            <Search size={20} color={colors.textPrimary} />
           </Pressable>
+          <Bell size={20} color={colors.textPrimary} />
         </View>
       </View>
 
-      {/* Secondary nav */}
-      <View style={styles.navBar}>
-        {NAV_TABS.map(tab => (
-          <View key={tab} style={[styles.navTab, tab === 'Movies' && styles.navTabActive]}>
-            <Text style={[styles.navTabText, tab === 'Movies' && styles.navTabTextActive]}>
-              {tab}
-            </Text>
-          </View>
-        ))}
-      </View>
-
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl
-            refreshing={loading}
-            onRefresh={refresh}
-            tintColor={Colors.accent}
-          />
-        }>
-        {/* Ad Banner */}
-        {bannerUrls.length > 0 && (
-          <View style={styles.bannerWrapper}>
-            <AdBanner imageUrls={bannerUrls} />
-          </View>
-        )}
-
-        {/* Now Showing section */}
-        {nowShowing.length > 0 && (
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Now Showing</Text>
-              <BodySmall style={styles.seeAll}>See all</BodySmall>
-            </View>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.horizontalList}>
-              {nowShowing.map(movie => (
-                <MovieCard key={movie.id} movie={movie} onPress={handleMoviePress} />
+      <ScrollView showsVerticalScrollIndicator={false}>
+        {heroMovie && (
+          <View style={styles.hero}>
+            <Image source={{ uri: heroMovie.backdropUrl }} style={StyleSheet.absoluteFill} resizeMode="cover" />
+            <View style={[StyleSheet.absoluteFill, styles.heroOverlay]} />
+            <View style={styles.heroDots}>
+              {heroMovies.map((_, i) => (
+                <View key={i} style={styles.heroDotTrack}>
+                  {i < heroIdx && <View style={[styles.heroDotFill, { width: '100%' }]} />}
+                  {i === heroIdx && (
+                    <Animated.View
+                      style={[
+                        styles.heroDotFill,
+                        {
+                          width: progress.interpolate({ inputRange: [0, 1], outputRange: ['0%', '100%'] }),
+                        },
+                      ]}
+                    />
+                  )}
+                </View>
               ))}
-            </ScrollView>
+            </View>
+            <View style={styles.heroTextBlock}>
+              <Text style={styles.heroTag}>★ {formatRating(heroMovie.rating)} · {heroMovie.isNowShowing ? 'Now Showing' : 'Coming Soon'}</Text>
+              <Text style={styles.heroTitle}>{heroMovie.title}</Text>
+            </View>
           </View>
         )}
 
-        {/* Coming Soon section */}
-        {comingSoon.length > 0 && (
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Coming Soon</Text>
-              <BodySmall style={styles.seeAll}>See all</BodySmall>
-            </View>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.horizontalList}>
-              {comingSoon.map(movie => (
-                <MovieCard key={movie.id} movie={movie} onPress={handleMoviePress} />
-              ))}
-            </ScrollView>
-          </View>
-        )}
+        <MovieRow title="Now Showing" movies={nowShowing} onPress={handleMoviePress} colors={colors} />
+        <MovieRow title="Coming Soon" movies={comingSoon} onPress={handleMoviePress} colors={colors} variant="soon" />
+        <MovieRow title="Recommended For You" movies={recommended} onPress={handleMoviePress} colors={colors} variant="plain" />
 
         <View style={styles.bottomPad} />
       </ScrollView>
@@ -135,111 +127,87 @@ export function MoviesScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-    backgroundColor: Colors.background,
-  },
-  // Sticky header
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm + 2,
-    backgroundColor: Colors.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.navbarBorder,
-  },
-  logo: {
-    color: Colors.accent,
-    fontSize: FontSize.md + 3,
-    fontFamily: FontFamily.bold,
-    fontWeight: FontWeight.bold,
-    letterSpacing: 1.5,
-    flex: 1,
-  },
-  headerRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.sm + 2,
-  },
-  locationRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 2,
-  },
-  location: {
-    color: Colors.textMuted,
-  },
-  avatar: {
-    width: 32,
-    height: 32,
-    borderRadius: Radius.full,
-    backgroundColor: Colors.surfaceElevated,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  // Secondary nav
-  navBar: {
-    flexDirection: 'row',
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
-    backgroundColor: Colors.surface,
-  },
-  navTab: {
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm + 2,
-    borderBottomWidth: 2,
-    borderBottomColor: Colors.transparent,
-  },
-  navTabActive: {
-    borderBottomColor: Colors.accent,
-  },
-  navTabText: {
-    fontSize: FontSize.sm,
-    fontFamily: FontFamily.medium,
-    fontWeight: FontWeight.medium,
-    color: Colors.textMuted,
-  },
-  navTabTextActive: {
-    color: Colors.textPrimary,
-  },
-  // Banner
-  bannerWrapper: {
-    marginHorizontal: Spacing.md,
-    marginVertical: Spacing.md,
-    borderRadius: Radius.lg,
-    overflow: 'hidden',
-  },
-  // Sections
-  section: {
-    marginBottom: Spacing.lg,
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: Spacing.md,
-    marginBottom: Spacing.sm,
-  },
-  sectionTitle: {
-    color: Colors.textPrimary,
-    fontSize: FontSize.lg,
-    fontFamily: FontFamily.bold,
-    fontWeight: FontWeight.bold,
-  },
-  seeAll: {
-    color: Colors.accent,
-  },
-  horizontalList: {
-    paddingHorizontal: Spacing.md,
-    gap: Spacing.sm,
-  },
-  errorText: {
-    textAlign: 'center',
-    margin: Spacing.xl,
-  },
-  bottomPad: {
-    height: Spacing.xl,
-  },
-});
+function MovieRow({
+  title,
+  movies,
+  onPress,
+  colors,
+  variant = 'rating',
+}: {
+  title: string;
+  movies: Movie[];
+  onPress: (m: Movie) => void;
+  colors: ColorTokens;
+  variant?: 'rating' | 'soon' | 'plain';
+}) {
+  const styles = useMemo(() => makeStyles(colors), [colors]);
+  if (movies.length === 0) return null;
+  return (
+    <View style={styles.section}>
+      <Heading2 style={styles.sectionTitle}>{title}</Heading2>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalList}>
+        {movies.map(movie => (
+          <MovieCard key={movie.id} movie={movie} onPress={onPress} variant={variant} />
+        ))}
+      </ScrollView>
+    </View>
+  );
+}
+
+const makeStyles = (Colors: ColorTokens) =>
+  StyleSheet.create({
+    screen: { flex: 1, backgroundColor: Colors.background },
+    header: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: Spacing.lg,
+      paddingTop: Spacing.sm,
+      paddingBottom: Spacing.sm,
+    },
+    locationRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+    location: {
+      fontSize: FontSize.md - 1,
+      fontWeight: FontWeight.semibold,
+      color: Colors.textPrimary,
+    },
+    headerActions: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md },
+    hero: {
+      marginHorizontal: Spacing.lg,
+      marginBottom: Spacing.lg,
+      height: 190,
+      borderRadius: Radius.xl,
+      overflow: 'hidden',
+    },
+    heroOverlay: { backgroundColor: 'rgba(0,0,0,0.35)' },
+    heroDots: {
+      position: 'absolute',
+      top: Spacing.sm + 4,
+      left: Spacing.md,
+      right: Spacing.md,
+      flexDirection: 'row',
+      gap: 5,
+    },
+    heroDotTrack: {
+      flex: 1,
+      height: 3,
+      borderRadius: 2,
+      backgroundColor: 'rgba(255,255,255,0.3)',
+      overflow: 'hidden',
+    },
+    heroDotFill: { height: '100%', backgroundColor: '#fff' },
+    heroTextBlock: { position: 'absolute', left: Spacing.md, right: Spacing.md, bottom: Spacing.md },
+    heroTag: {
+      fontFamily: FontFamily.medium,
+      fontSize: FontSize.xs - 1,
+      color: Colors.gold,
+      fontWeight: FontWeight.semibold,
+      marginBottom: 4,
+    },
+    heroTitle: { fontSize: FontSize.lg, fontWeight: FontWeight.bold, color: '#fff' },
+    section: { marginBottom: Spacing.lg },
+    sectionTitle: { paddingHorizontal: Spacing.lg, marginBottom: Spacing.sm, fontSize: FontSize.md + 1 },
+    horizontalList: { paddingHorizontal: Spacing.lg, gap: Spacing.sm },
+    errorText: { textAlign: 'center', margin: Spacing.xl },
+    bottomPad: { height: Spacing.xl },
+  });

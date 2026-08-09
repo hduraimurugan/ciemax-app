@@ -1,13 +1,14 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { Show } from '@ctypes/models';
 import {
-  Colors,
+  ColorTokens,
   FontSize,
   FontWeight,
   Radius,
   Spacing,
 } from '@constants/theme';
+import { useTheme } from '@hooks/useTheme';
 import { BodySmall, Caption } from '@shared/ui';
 import { formatAvailability, getAvailabilityColor } from '@shared/utils';
 
@@ -18,6 +19,8 @@ interface ShowTimeChipProps {
 }
 
 export function ShowTimeChip({ show, selected, onPress }: ShowTimeChipProps) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const isHousefull = show.availableSeats === 0;
   const availText = formatAvailability(show.availableSeats, show.totalSeats);
   const availColor = getAvailabilityColor(show.availableSeats, show.totalSeats);
@@ -50,35 +53,36 @@ function formatColor(format: string): string {
   }
 }
 
-const styles = StyleSheet.create({
-  chip: {
-    borderWidth: 1,
-    borderColor: Colors.border,
-    borderRadius: Radius.md,
-    padding: Spacing.sm,
-    alignItems: 'center',
-    gap: 3,
-    minWidth: 90,
-    backgroundColor: Colors.surface,
-  },
-  chipSelected: {
-    borderColor: Colors.success,
-    backgroundColor: Colors.emeraldDim,
-  },
-  chipDisabled: {
-    opacity: 0.4,
-  },
-  formatDot: {
-    width: 6,
-    height: 6,
-    borderRadius: Radius.full,
-  },
-  time: {
-    fontWeight: FontWeight.semibold,
-    fontSize: FontSize.sm,
-    color: Colors.textPrimary,
-  },
-  timeSelected: { color: Colors.success },
-  format: { color: Colors.textMuted },
-  avail: { fontSize: FontSize.xs - 1 },
-});
+const makeStyles = (Colors: ColorTokens) =>
+  StyleSheet.create({
+    chip: {
+      borderWidth: 1,
+      borderColor: Colors.border,
+      borderRadius: Radius.md,
+      padding: Spacing.sm,
+      alignItems: 'center',
+      gap: 3,
+      minWidth: 90,
+      backgroundColor: Colors.surface,
+    },
+    chipSelected: {
+      borderColor: Colors.success,
+      backgroundColor: Colors.emeraldDim,
+    },
+    chipDisabled: {
+      opacity: 0.4,
+    },
+    formatDot: {
+      width: 6,
+      height: 6,
+      borderRadius: Radius.full,
+    },
+    time: {
+      fontWeight: FontWeight.semibold,
+      fontSize: FontSize.sm,
+      color: Colors.textPrimary,
+    },
+    timeSelected: { color: Colors.success },
+    format: { color: Colors.textMuted },
+    avail: { fontSize: FontSize.xs - 1 },
+  });

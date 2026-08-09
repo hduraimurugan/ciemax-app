@@ -11,9 +11,10 @@ import { ArrowLeft } from 'lucide-react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '@ctypes/navigation';
 import { Seat } from '@ctypes/models';
-import { Colors, FontFamily, FontSize, FontWeight, Radius, Spacing } from '@constants/theme';
+import { ColorTokens, FontFamily, FontWeight, Radius, Spacing } from '@constants/theme';
+import { useTheme } from '@hooks/useTheme';
 import { Badge, Button, Loader } from '@shared/ui';
-import { Body, BodySmall, Caption, Heading2, Label } from '@shared/ui';
+import { Body, BodySmall, Caption, Heading2 } from '@shared/ui';
 import { useSeatLayout } from '@hooks/useSeatLayout';
 import { useBookingStore } from '@store/bookingStore';
 import { formatPrice } from '@shared/utils';
@@ -23,6 +24,8 @@ type Props = NativeStackScreenProps<RootStackParamList, 'SeatSelection'>;
 
 export function SeatSelectionScreen({ navigation, route }: Props) {
   const { showId } = route.params;
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const { layout, loading, error } = useSeatLayout(showId);
 
   const selectedSeats = useBookingStore(s => s.selectedSeats);
@@ -41,7 +44,7 @@ export function SeatSelectionScreen({ navigation, route }: Props) {
   }
 
   function handleContinue() {
-    navigation.navigate('OrderSummary');
+    navigation.navigate('Checkout');
   }
 
   if (loading) return <Loader fullScreen message="Loading seats..." />;
@@ -59,10 +62,9 @@ export function SeatSelectionScreen({ navigation, route }: Props) {
 
   return (
     <SafeAreaView style={styles.screen}>
-      {/* Sticky header */}
       <View style={styles.header}>
         <Pressable style={styles.backBtn} onPress={() => navigation.goBack()}>
-          <ArrowLeft size={18} color={Colors.textPrimary} />
+          <ArrowLeft size={18} color={colors.textPrimary} />
         </Pressable>
         {selectedMovie?.posterUrl ? (
           <Image source={{ uri: selectedMovie.posterUrl }} style={styles.poster} resizeMode="cover" />
@@ -79,7 +81,6 @@ export function SeatSelectionScreen({ navigation, route }: Props) {
         </View>
       </View>
 
-      {/* Seat Grid */}
       <View style={styles.gridWrapper}>
         <SeatGrid
           layout={layout}
@@ -88,7 +89,6 @@ export function SeatSelectionScreen({ navigation, route }: Props) {
         />
       </View>
 
-      {/* Bottom bar */}
       <View style={styles.bottomBar}>
         {hasSelection ? (
           <View style={styles.seatPills}>
@@ -109,7 +109,7 @@ export function SeatSelectionScreen({ navigation, route }: Props) {
             label={hasSelection ? 'Proceed' : 'Select a seat'}
             onPress={handleContinue}
             disabled={!hasSelection}
-            variant="emerald"
+            variant="primary"
             size="lg"
             style={styles.proceedBtn}
           />
@@ -119,82 +119,81 @@ export function SeatSelectionScreen({ navigation, route }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: Colors.background },
-  // Header
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: Spacing.md,
-    gap: Spacing.sm,
-    backgroundColor: Colors.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
-  },
-  backBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: Radius.sm,
-    backgroundColor: Colors.surfaceElevated,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  poster: {
-    width: 40,
-    height: 60,
-    borderRadius: Radius.xs,
-  },
-  headerInfo: {
-    flex: 1,
-    gap: 2,
-  },
-  movieTitle: {
-    color: Colors.textPrimary,
-    fontWeight: FontWeight.bold,
-    fontFamily: FontFamily.bold,
-  },
-  showInfo: {
-    color: Colors.textMuted,
-  },
-  gridWrapper: { flex: 1 },
-  center: { textAlign: 'center', margin: Spacing.xl },
-  // Bottom bar
-  bottomBar: {
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.md,
-    gap: Spacing.sm,
-    backgroundColor: Colors.surface,
-    borderTopWidth: 1,
-    borderTopColor: Colors.border,
-  },
-  seatPills: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.xs,
-  },
-  seatPillsLabel: {
-    color: Colors.textMuted,
-  },
-  pillScroll: {
-    flex: 1,
-  },
-  pill: {
-    marginRight: 4,
-  },
-  bottomRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  totalLabel: {
-    color: Colors.textMuted,
-  },
-  totalAmount: {
-    color: Colors.textPrimary,
-    fontWeight: FontWeight.bold,
-    fontFamily: FontFamily.bold,
-  },
-  proceedBtn: {
-    minWidth: 120,
-  },
-});
+const makeStyles = (Colors: ColorTokens) =>
+  StyleSheet.create({
+    screen: { flex: 1, backgroundColor: Colors.background },
+    header: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      padding: Spacing.md,
+      gap: Spacing.sm,
+      backgroundColor: Colors.surface,
+      borderBottomWidth: 1,
+      borderBottomColor: Colors.border,
+    },
+    backBtn: {
+      width: 36,
+      height: 36,
+      borderRadius: Radius.sm,
+      backgroundColor: Colors.surfaceElevated,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    poster: {
+      width: 40,
+      height: 60,
+      borderRadius: Radius.xs,
+    },
+    headerInfo: {
+      flex: 1,
+      gap: 2,
+    },
+    movieTitle: {
+      color: Colors.textPrimary,
+      fontWeight: FontWeight.bold,
+      fontFamily: FontFamily.bold,
+    },
+    showInfo: {
+      color: Colors.textMuted,
+    },
+    gridWrapper: { flex: 1 },
+    center: { textAlign: 'center', margin: Spacing.xl },
+    bottomBar: {
+      paddingHorizontal: Spacing.md,
+      paddingVertical: Spacing.md,
+      gap: Spacing.sm,
+      backgroundColor: Colors.surface,
+      borderTopWidth: 1,
+      borderTopColor: Colors.border,
+    },
+    seatPills: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: Spacing.xs,
+    },
+    seatPillsLabel: {
+      color: Colors.textMuted,
+    },
+    pillScroll: {
+      flex: 1,
+    },
+    pill: {
+      marginRight: 4,
+    },
+    bottomRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+    },
+    totalLabel: {
+      color: Colors.textMuted,
+    },
+    totalAmount: {
+      color: Colors.textPrimary,
+      fontWeight: FontWeight.bold,
+      fontFamily: FontFamily.bold,
+    },
+    proceedBtn: {
+      minWidth: 120,
+    },
+  });

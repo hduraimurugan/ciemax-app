@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Pressable, StyleProp, StyleSheet, View, ViewStyle } from 'react-native';
-import { Colors, Radius, Shadow, Spacing } from '@constants/theme';
+import { ColorTokens, Radius, Shadow, Spacing, makeNeonShadow } from '@constants/theme';
+import { useTheme } from '@hooks/useTheme';
 
 interface CardProps {
   children: React.ReactNode;
@@ -19,6 +20,9 @@ export function Card({
   padding = 'md',
   variant = 'default',
 }: CardProps) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
+
   const containerStyle = [
     styles.card,
     elevated && styles.elevated,
@@ -41,29 +45,30 @@ export function Card({
   return <View style={containerStyle}>{children}</View>;
 }
 
-const styles = StyleSheet.create({
-  card: {
-    backgroundColor: Colors.surface,
-    borderRadius: Radius.lg,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    overflow: 'hidden',
-  },
-  elevated: {
-    ...Shadow.md,
-    borderColor: Colors.surfaceElevated,
-  },
-  glass: {
-    backgroundColor: Colors.glassSurface,
-    borderColor: Colors.glassBorder,
-  },
-  neon: {
-    ...Shadow.neon,
-  },
-  pressed: {
-    opacity: 0.85,
-  },
-  pad_sm: { padding: Spacing.sm },
-  pad_md: { padding: Spacing.md },
-  pad_lg: { padding: Spacing.lg },
-});
+const makeStyles = (Colors: ColorTokens) =>
+  StyleSheet.create({
+    card: {
+      backgroundColor: Colors.surface,
+      borderRadius: Radius.lg,
+      borderWidth: 1,
+      borderColor: Colors.border,
+      overflow: 'hidden',
+    },
+    elevated: {
+      ...Shadow.md,
+      borderColor: Colors.surfaceElevated,
+    },
+    glass: {
+      backgroundColor: Colors.glassSurface,
+      borderColor: Colors.glassBorder,
+    },
+    neon: {
+      ...makeNeonShadow(Colors),
+    },
+    pressed: {
+      opacity: 0.85,
+    },
+    pad_sm: { padding: Spacing.sm },
+    pad_md: { padding: Spacing.md },
+    pad_lg: { padding: Spacing.lg },
+  });

@@ -1,26 +1,27 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   KeyboardAvoidingView,
   Platform,
-  Pressable,
   ScrollView,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Lock } from 'lucide-react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '@ctypes/navigation';
-import { Colors, FontFamily, FontSize, FontWeight, Radius, Spacing } from '@constants/theme';
-import { Button, Card, Input } from '@shared/ui';
-import { Heading2, Body, Caption } from '@shared/ui';
+import { ColorTokens, FontFamily, FontSize, FontWeight, Spacing } from '@constants/theme';
+import { useTheme } from '@hooks/useTheme';
+import { Button, Input } from '@shared/ui';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Login'>;
 
 export function LoginScreen({ navigation }: Props) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+
+  const continueWithEmail = () => navigation.navigate('Otp', { email });
 
   return (
     <SafeAreaView style={styles.screen}>
@@ -28,147 +29,63 @@ export function LoginScreen({ navigation }: Props) {
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.kav}>
         <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-          {/* Logo / brand */}
-          <View style={styles.brandRow}>
-            <Text style={styles.logo}>CINEBOOK</Text>
+          <Text style={styles.wordmark}>CineHall</Text>
+          <Text style={styles.subtitle}>Sign in to book your next show</Text>
+
+          <Input
+            label="EMAIL ADDRESS"
+            value={email}
+            onChangeText={setEmail}
+            placeholder="you@example.com"
+            keyboardType="email-address"
+            autoCapitalize="none"
+            containerStyle={styles.inputGap}
+          />
+
+          <Button label="Continue with Email" onPress={continueWithEmail} fullWidth size="lg" style={styles.continueBtn} />
+
+          <View style={styles.dividerRow}>
+            <View style={styles.dividerLine} />
+            <Text style={styles.dividerText}>OR</Text>
+            <View style={styles.dividerLine} />
           </View>
 
-          <Card variant="glass" padding="none" style={styles.formCard}>
-            {/* Tab bar */}
-            <View style={styles.tabs}>
-              <View style={[styles.tab, styles.tabActive]}>
-                <Text style={[styles.tabText, styles.tabTextActive]}>Login</Text>
-              </View>
-              <Pressable style={styles.tab} onPress={() => navigation.replace('Register')}>
-                <Text style={styles.tabText}>Sign Up</Text>
-              </Pressable>
-            </View>
-
-            <View style={styles.formBody}>
-              <View style={styles.iconRow}>
-                <View style={styles.iconCircle}>
-                  <Lock size={24} color={Colors.accent} />
-                </View>
-                <Heading2 style={styles.formTitle}>Welcome to CineBook</Heading2>
-                <Body style={styles.formSub}>Sign in to your account</Body>
-              </View>
-
-              <Input
-                label="Email"
-                value={email}
-                onChangeText={setEmail}
-                placeholder="you@example.com"
-                keyboardType="email-address"
-                autoCapitalize="none"
-              />
-              <Input
-                label="Password"
-                value={password}
-                onChangeText={setPassword}
-                placeholder="Enter password"
-                secureTextEntry
-              />
-
-              <Pressable>
-                <Caption style={styles.forgotLink}>Forgot password?</Caption>
-              </Pressable>
-
-              <Button label="Sign In" onPress={() => navigation.goBack()} fullWidth size="lg" />
-            </View>
-          </Card>
-
-          <Caption style={styles.footer}>
-            By continuing you agree to our{' '}
-            <Caption style={styles.footerLink}>Terms of Service</Caption>
-            {' & '}
-            <Caption style={styles.footerLink}>Privacy Policy</Caption>
-          </Caption>
+          <Button label="Continue with Google" onPress={() => {}} fullWidth size="lg" variant="secondary" />
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
 
-const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: Colors.background },
-  kav: { flex: 1 },
-  scrollContent: {
-    flexGrow: 1,
-    justifyContent: 'center',
-    padding: Spacing.lg,
-    gap: Spacing.lg,
-  },
-  brandRow: {
-    alignItems: 'center',
-  },
-  logo: {
-    color: Colors.accent,
-    fontSize: FontSize.xxl,
-    fontFamily: FontFamily.bold,
-    fontWeight: FontWeight.bold,
-    letterSpacing: 2,
-  },
-  formCard: {},
-  // Tabs
-  tabs: {
-    flexDirection: 'row',
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
-  },
-  tab: {
-    flex: 1,
-    alignItems: 'center',
-    paddingVertical: Spacing.sm + 2,
-    borderBottomWidth: 2,
-    borderBottomColor: Colors.transparent,
-  },
-  tabActive: {
-    borderBottomColor: Colors.accent,
-  },
-  tabText: {
-    fontSize: FontSize.sm,
-    fontFamily: FontFamily.medium,
-    fontWeight: FontWeight.medium,
-    color: Colors.textMuted,
-  },
-  tabTextActive: {
-    color: Colors.textPrimary,
-  },
-  formBody: {
-    padding: Spacing.lg,
-    gap: Spacing.md,
-  },
-  iconRow: {
-    alignItems: 'center',
-    gap: Spacing.sm,
-    marginBottom: Spacing.sm,
-  },
-  iconCircle: {
-    width: 56,
-    height: 56,
-    borderRadius: Radius.full,
-    backgroundColor: Colors.accentLight,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  formTitle: {
-    textAlign: 'center',
-    color: Colors.textPrimary,
-  },
-  formSub: {
-    textAlign: 'center',
-    color: Colors.textSecondary,
-  },
-  forgotLink: {
-    color: Colors.accent,
-    textAlign: 'right',
-  },
-  footer: {
-    textAlign: 'center',
-    color: Colors.textMuted,
-  },
-  footerLink: {
-    color: Colors.accent,
-    textDecorationLine: 'underline',
-  },
-});
+const makeStyles = (Colors: ColorTokens) =>
+  StyleSheet.create({
+    screen: { flex: 1, backgroundColor: Colors.background },
+    kav: { flex: 1 },
+    scrollContent: {
+      flexGrow: 1,
+      justifyContent: 'center',
+      padding: Spacing.xl,
+    },
+    wordmark: {
+      fontFamily: FontFamily.bold,
+      fontWeight: FontWeight.bold,
+      fontSize: FontSize.xl,
+      color: Colors.textPrimary,
+      marginBottom: Spacing.xs,
+    },
+    subtitle: {
+      fontSize: FontSize.sm,
+      color: Colors.textMuted,
+      marginBottom: Spacing.xxl,
+    },
+    inputGap: { marginBottom: Spacing.lg },
+    continueBtn: { marginTop: Spacing.sm, marginBottom: Spacing.md },
+    dividerRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: Spacing.sm + 2,
+      marginVertical: Spacing.sm,
+    },
+    dividerLine: { flex: 1, height: 1, backgroundColor: Colors.border },
+    dividerText: { fontSize: FontSize.xs, color: Colors.textMuted },
+  });

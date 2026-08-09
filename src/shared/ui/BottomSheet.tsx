@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useMemo, useRef } from 'react';
 import {
   Animated,
   Dimensions,
@@ -8,7 +8,8 @@ import {
   View,
   ViewStyle,
 } from 'react-native';
-import { Colors, Radius, Spacing } from '@constants/theme';
+import { ColorTokens, Radius, Spacing } from '@constants/theme';
+import { useTheme } from '@hooks/useTheme';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -27,6 +28,8 @@ export function BottomSheet({
   snapHeight = SCREEN_HEIGHT * 0.55,
   style,
 }: BottomSheetProps) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const translateY = useRef(new Animated.Value(snapHeight)).current;
 
   useEffect(() => {
@@ -70,31 +73,32 @@ export function BottomSheet({
   );
 }
 
-const styles = StyleSheet.create({
-  overlay: {
-    flex: 1,
-    backgroundColor: Colors.overlay,
-    justifyContent: 'flex-end',
-  },
-  sheet: {
-    backgroundColor: Colors.surface,
-    borderTopLeftRadius: Radius.xxl,
-    borderTopRightRadius: Radius.xxl,
-    borderTopWidth: 1,
-    borderLeftWidth: 1,
-    borderRightWidth: 1,
-    borderColor: Colors.border,
-  },
-  content: {
-    flex: 1,
-    padding: Spacing.md,
-  },
-  handle: {
-    width: 40,
-    height: 4,
-    borderRadius: Radius.full,
-    backgroundColor: Colors.border,
-    alignSelf: 'center',
-    marginBottom: Spacing.md,
-  },
-});
+const makeStyles = (Colors: ColorTokens) =>
+  StyleSheet.create({
+    overlay: {
+      flex: 1,
+      backgroundColor: Colors.overlay,
+      justifyContent: 'flex-end',
+    },
+    sheet: {
+      backgroundColor: Colors.surface,
+      borderTopLeftRadius: Radius.xxl,
+      borderTopRightRadius: Radius.xxl,
+      borderTopWidth: 1,
+      borderLeftWidth: 1,
+      borderRightWidth: 1,
+      borderColor: Colors.border,
+    },
+    content: {
+      flex: 1,
+      padding: Spacing.md,
+    },
+    handle: {
+      width: 40,
+      height: 4,
+      borderRadius: Radius.full,
+      backgroundColor: Colors.border,
+      alignSelf: 'center',
+      marginBottom: Spacing.md,
+    },
+  });

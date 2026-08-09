@@ -6,7 +6,7 @@ const delay = (ms: number) => new Promise<void>(resolve => setTimeout(resolve, m
 let mockBookings: Booking[] = [];
 
 function generateBookingId(): string {
-  return `BK${Date.now().toString(36).toUpperCase()}`;
+  return `CH${Math.floor(20000 + Math.random() * 9999)}`;
 }
 
 export async function createBooking(params: {
@@ -15,11 +15,14 @@ export async function createBooking(params: {
   show: Show;
   seats: Seat[];
   paymentMethod: PaymentMethod;
+  // Pre-computed by useBookingStore (getConvenienceFee/getGrandTotal) so the fee/GST
+  // formula lives in exactly one place instead of being re-derived here too.
+  convenienceFee: number;
+  totalAmount: number;
 }): Promise<Booking> {
   await delay(MockDelay * 2); // Simulate payment processing
 
   const subtotal = params.seats.reduce((sum, s) => sum + s.price, 0);
-  const convenienceFee = Math.round(subtotal * 0.05);
 
   const booking: Booking = {
     id: generateBookingId(),
@@ -33,8 +36,8 @@ export async function createBooking(params: {
     showFormat: params.show.format,
     seats: params.seats.map(s => ({ ...s, status: 'booked' })),
     subtotal,
-    convenienceFee,
-    totalAmount: subtotal + convenienceFee,
+    convenienceFee: params.convenienceFee,
+    totalAmount: params.totalAmount,
     bookingDate: new Date().toISOString(),
     status: 'confirmed',
     paymentMethod: params.paymentMethod,

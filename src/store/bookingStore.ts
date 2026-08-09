@@ -82,11 +82,14 @@ export const useBookingStore = create<BookingState>((set, get) => ({
   getTotalAmount: () =>
     get().selectedSeats.reduce((sum, s) => sum + s.price, 0),
 
-  // ₹15 per seat (matches cinema-hall-users)
-  getConvenienceFee: () => get().selectedSeats.length * 15,
+  // ₹30 per seat (matches CineHall design)
+  getConvenienceFee: () => get().selectedSeats.length * 30,
 
-  // 18% GST on convenience fee only
-  getGST: () => Math.round(get().getConvenienceFee() * 0.18),
+  // 18% GST on (subtotal + convenience fee), matching the CineHall design
+  getGST: () => {
+    const { getTotalAmount, getConvenienceFee } = get();
+    return Math.round((getTotalAmount() + getConvenienceFee()) * 0.18);
+  },
 
   getAppliedDiscount: () => {
     const { appliedOffer, getTotalAmount } = get();

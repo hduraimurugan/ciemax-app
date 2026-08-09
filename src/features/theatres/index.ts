@@ -1,3 +1,4 @@
+export { ShowtimesScreen } from './screens/ShowtimesScreen';
 export { TheatresScreen } from './screens/TheatresScreen';
 export { AllTheatresScreen } from './screens/AllTheatresScreen';
 export { ShowSelectionScreen } from './screens/ShowSelectionScreen';

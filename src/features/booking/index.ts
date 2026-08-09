@@ -1,3 +1,4 @@
+export { CheckoutScreen } from './screens/CheckoutScreen';
 export { OrderSummaryScreen } from './screens/OrderSummaryScreen';
 export { PaymentScreen } from './screens/PaymentScreen';
 export { BookingSuccessScreen } from './screens/BookingSuccessScreen';
