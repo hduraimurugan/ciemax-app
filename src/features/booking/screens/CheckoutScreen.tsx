@@ -19,11 +19,12 @@ import { useTheme } from '@hooks/useTheme';
 import { Badge, Button, CountdownTimer, Heading3 } from '@shared/ui';
 import { Body, BodySmall, Caption } from '@shared/ui';
 import { formatShowDate, formatShowTime, formatPrice } from '@shared/utils';
-import { getSettings } from '@services/settingsService';
-import { getOffers, validateCoupon, CouponValidation } from '@services/offersService';
+import { getSettings, getCachedSettings } from '@services/settingsService';
+import { getOffers, getCachedOffers, validateCoupon, CouponValidation } from '@services/offersService';
 import { releaseSeats } from '@services/bookingService';
 import { Offer } from '@ctypes/models';
 import { PriceBreakdown } from '../components/PriceBreakdown';
+import { PriceBreakdownSkeleton } from '../components/PriceBreakdownSkeleton';
 import { computeCheckoutPricing } from '../utils/pricing';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Checkout'>;
@@ -42,9 +43,13 @@ export function CheckoutScreen({ navigation, route }: Props) {
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
 
-  const [feePerTicket, setFeePerTicket] = useState(DEFAULT_FEE_PER_TICKET);
-  const [gstPercentage, setGstPercentage] = useState(DEFAULT_GST_PERCENTAGE);
-  const [offers, setOffers] = useState<Offer[]>([]);
+  // Seed from cache when available so the price rows don't render (then
+  // visibly jump from) the hardcoded defaults on a warm navigation.
+  const cachedSettings = getCachedSettings();
+  const [feePerTicket, setFeePerTicket] = useState(cachedSettings?.convenience_fee_per_ticket ?? DEFAULT_FEE_PER_TICKET);
+  const [gstPercentage, setGstPercentage] = useState(cachedSettings?.gst_percentage ?? DEFAULT_GST_PERCENTAGE);
+  const [settingsLoaded, setSettingsLoaded] = useState(!!cachedSettings);
+  const [offers, setOffers] = useState<Offer[]>(() => getCachedOffers() ?? []);
   const [appliedOffer, setAppliedOffer] = useState<AppliedOffer | null>(null);
   const [promoCode, setPromoCode] = useState('');
   const [checking, setChecking] = useState(false);
@@ -54,6 +59,7 @@ export function CheckoutScreen({ navigation, route }: Props) {
     getSettings().then(s => {
       setFeePerTicket(s.convenience_fee_per_ticket);
       setGstPercentage(s.gst_percentage);
+      setSettingsLoaded(true);
     });
     getOffers().then(setOffers);
   }, []);
@@ -215,14 +221,18 @@ export function CheckoutScreen({ navigation, route }: Props) {
         )}
 
         <View style={styles.card}>
-          <PriceBreakdown
-            subtotal={params.ticketTotal}
-            convenienceFee={convenienceTotal}
-            feeHint={`${formatPrice(feePerTicket)}/ticket`}
-            gst={gstAmount}
-            gstPercentage={gstPercentage}
-            discount={discountAmount}
-          />
+          {settingsLoaded ? (
+            <PriceBreakdown
+              subtotal={params.ticketTotal}
+              convenienceFee={convenienceTotal}
+              feeHint={`${formatPrice(feePerTicket)}/ticket`}
+              gst={gstAmount}
+              gstPercentage={gstPercentage}
+              discount={discountAmount}
+            />
+          ) : (
+            <PriceBreakdownSkeleton />
+          )}
         </View>
 
         <View style={styles.promoRow}>

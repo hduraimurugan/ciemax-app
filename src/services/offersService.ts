@@ -1,6 +1,7 @@
 import { Env } from '@constants/env';
 import { httpClient, errorMessage } from './httpClient';
 import { mapOffer } from './mappers';
+import { cachedFetch, getCached, CacheTTL } from './queryCache';
 import * as mock from './offersService.mock';
 import type { Offer } from '@ctypes/models';
 import type { GetOffersResponse, ValidateOfferResponse } from '@ctypes/api';
@@ -16,10 +17,28 @@ export interface CouponValidation {
   message?: string;
 }
 
+const OFFERS_KEY = 'offers:active';
+
 export async function getOffers(): Promise<Offer[]> {
   if (Env.USE_MOCKS) return mock.getOffers();
-  const res = await httpClient.get<GetOffersResponse>(`${BASE}/active`);
-  return res.offers.filter(o => o.is_active).map(mapOffer);
+  const { cached, promise } = cachedFetch(
+    OFFERS_KEY,
+    async () => {
+      const res = await httpClient.get<GetOffersResponse>(`${BASE}/active`);
+      return res.offers.filter(o => o.is_active).map(mapOffer);
+    },
+    CacheTTL.offers,
+  );
+  if (cached) {
+    promise.catch(() => {});
+    return cached;
+  }
+  return promise;
+}
+
+/** Synchronous cache peek — lets OffersScreen seed its initial state without waiting. */
+export function getCachedOffers(): Offer[] | undefined {
+  return getCached<Offer[]>(OFFERS_KEY, CacheTTL.offers);
 }
 
 /**

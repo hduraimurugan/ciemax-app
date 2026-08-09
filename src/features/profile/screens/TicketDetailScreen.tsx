@@ -7,10 +7,11 @@ import { RootStackParamList } from '@ctypes/navigation';
 import { Booking } from '@ctypes/models';
 import { ColorTokens, FontFamily, FontSize, FontWeight, Radius, Spacing } from '@constants/theme';
 import { useTheme } from '@hooks/useTheme';
-import { Heading3, Loader, QRCode } from '@shared/ui';
+import { Heading3, QRCode } from '@shared/ui';
 import { Body, Caption } from '@shared/ui';
-import { getBookingById } from '@services/bookingService';
+import { getBookingById, getCachedBooking } from '@services/bookingService';
 import { formatPrice, formatSeatList, formatShowDate } from '@shared/utils';
+import { TicketCardSkeleton } from '@features/booking';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'TicketDetail'>;
 
@@ -18,20 +19,27 @@ export function TicketDetailScreen({ navigation, route }: Props) {
   const { bookingId } = route.params;
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
-  const [booking, setBooking] = useState<Booking | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [booking, setBooking] = useState<Booking | null>(() => getCachedBooking(bookingId) ?? null);
+  // Distinguishes "still fetching" from "confirmed not found" now that there's
+  // no separate loading flag — starts settled when cache already seeded booking.
+  const [fetched, setFetched] = useState(() => !!getCachedBooking(bookingId));
 
   useEffect(() => {
     let cancelled = false;
-    getBookingById(bookingId).then(b => {
-      if (cancelled) return;
-      setBooking(b ?? null);
-      setLoading(false);
-    });
+    getBookingById(bookingId)
+      .then(b => {
+        if (cancelled) return;
+        setBooking(b ?? null);
+      })
+      .finally(() => {
+        if (!cancelled) setFetched(true);
+      });
     return () => {
       cancelled = true;
     };
   }, [bookingId]);
+
+  const loading = !fetched && !booking;
 
   function openDirections() {
     if (!booking) return;
@@ -49,17 +57,10 @@ export function TicketDetailScreen({ navigation, route }: Props) {
     ).catch(() => {});
   }
 
-  if (loading) return <Loader fullScreen />;
-  if (!booking) {
-    return (
-      <SafeAreaView style={styles.screen}>
-        <Body style={styles.notFound}>Booking not found.</Body>
-      </SafeAreaView>
-    );
-  }
-
-  const statusLabel = booking.status === 'confirmed' ? 'VALID FOR ENTRY' : booking.status === 'cancelled' ? 'CANCELLED' : 'BOOKING COMPLETED';
-  const hasRefund = !!booking.refundStatus;
+  const statusLabel = booking
+    ? booking.status === 'confirmed' ? 'VALID FOR ENTRY' : booking.status === 'cancelled' ? 'CANCELLED' : 'BOOKING COMPLETED'
+    : '';
+  const hasRefund = !!booking?.refundStatus;
 
   return (
     <SafeAreaView style={styles.screen}>
@@ -70,6 +71,13 @@ export function TicketDetailScreen({ navigation, route }: Props) {
         <Heading3>E-Ticket</Heading3>
       </View>
 
+      {loading ? (
+        <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+          <TicketCardSkeleton rows={4} />
+        </ScrollView>
+      ) : !booking ? (
+        <Body style={styles.notFound}>Booking not found.</Body>
+      ) : (
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.ticketCard}>
           <Text style={styles.statusLabel}>{statusLabel}</Text>
@@ -139,6 +147,7 @@ export function TicketDetailScreen({ navigation, route }: Props) {
           </Pressable>
         </View>
       </ScrollView>
+      )}
     </SafeAreaView>
   );
 }

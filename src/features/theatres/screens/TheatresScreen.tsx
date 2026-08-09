@@ -10,11 +10,12 @@ import { useTheme } from '@hooks/useTheme';
 import { useFavourites } from '@hooks/useFavourites';
 import { StorageKeys } from '@constants/config';
 import { useLocationStore } from '@store/locationStore';
-import { getTheatresWithShows } from '@services/theatresService';
+import { getTheatresWithShows, getCachedTheatresWithShows } from '@services/theatresService';
 import { mapShowSummary, mapTheatreListingMovie, mapTheatreHall } from '@services/mappers';
-import { Body, Heading2, Heading3, Loader } from '@shared/ui';
+import { Body, Heading2, Heading3 } from '@shared/ui';
 import { useBookingStore } from '@store/bookingStore';
 import { LocationModal } from '@features/location';
+import { TheatreListSkeleton } from '../components/TheatreCardSkeleton';
 import type { ApiTheatreHall } from '@ctypes/api';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Theatres'>;
@@ -47,11 +48,13 @@ export function TheatresScreen({ navigation }: Props) {
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
   const [dateIdx, setDateIdx] = useState(0);
-  const [halls, setHalls] = useState<ApiTheatreHall[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [locationModalVisible, setLocationModalVisible] = useState(false);
   const district = useLocationStore(s => s.district);
   const state = useLocationStore(s => s.state);
+  const [halls, setHalls] = useState<ApiTheatreHall[]>(() =>
+    district && state ? getCachedTheatresWithShows(district, state, DATE_LABELS[0].iso) ?? [] : [],
+  );
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [locationModalVisible, setLocationModalVisible] = useState(false);
   const { isFavourite, toggle } = useFavourites(StorageKeys.favouriteTheatres);
   const setSelectedMovie = useBookingStore(s => s.setSelectedMovie);
   const setSelectedTheatre = useBookingStore(s => s.setSelectedTheatre);
@@ -59,26 +62,30 @@ export function TheatresScreen({ navigation }: Props) {
 
   useEffect(() => {
     if (!district || !state) {
-      setLoading(false);
       setHalls([]);
       return;
     }
     let cancelled = false;
-    setLoading(true);
-    getTheatresWithShows(district, state, DATE_LABELS[dateIdx].iso)
+    const date = DATE_LABELS[dateIdx].iso;
+    const cached = getCachedTheatresWithShows(district, state, date);
+    if (cached) setHalls(cached);
+    setIsRefreshing(true);
+    getTheatresWithShows(district, state, date)
       .then(data => {
         if (!cancelled) setHalls(data);
       })
       .catch(() => {
-        if (!cancelled) setHalls([]);
+        if (!cancelled && !cached) setHalls([]);
       })
       .finally(() => {
-        if (!cancelled) setLoading(false);
+        if (!cancelled) setIsRefreshing(false);
       });
     return () => {
       cancelled = true;
     };
   }, [district, state, dateIdx]);
+
+  const loading = isRefreshing && halls.length === 0;
 
   function goSeats(hall: ApiTheatreHall, movie: ApiTheatreHall['movies'][number], showId: string) {
     const theatre = mapTheatreHall(hall);
@@ -123,7 +130,7 @@ export function TheatresScreen({ navigation }: Props) {
           </ScrollView>
 
           {loading ? (
-            <Loader fullScreen message="Finding theatres..." />
+            <TheatreListSkeleton />
           ) : (
             <ScrollView contentContainerStyle={styles.list} showsVerticalScrollIndicator={false}>
               {halls.length === 0 && (

@@ -21,7 +21,7 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '@ctypes/navigation';
 import { ColorTokens, FontFamily, FontSize, FontWeight, Radius, Shadow, Spacing } from '@constants/theme';
 import { useTheme } from '@hooks/useTheme';
-import { Badge, Button, Loader, QRCode } from '@shared/ui';
+import { Badge, Button, QRCode } from '@shared/ui';
 import {
   Heading1,
   Heading2,
@@ -32,6 +32,7 @@ import {
 import { Booking } from '@ctypes/models';
 import { getBookingByPaymentId } from '@services/bookingService';
 import { formatPrice, formatShowDate } from '@shared/utils';
+import { TicketCardSkeleton } from '../components/TicketCardSkeleton';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'BookingSuccess'>;
 
@@ -114,8 +115,6 @@ export function BookingSuccessScreen({ navigation, route }: Props) {
     }
   }
 
-  if (loading) return <Loader fullScreen message="Loading your ticket..." />;
-
   return (
     <SafeAreaView style={styles.screen}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
@@ -126,7 +125,9 @@ export function BookingSuccessScreen({ navigation, route }: Props) {
         <Heading1 style={styles.title}>Booking Confirmed!</Heading1>
         <Body style={styles.subtitle}>Your seats are locked in. Enjoy the show!</Body>
 
-        {booking ? (
+        {loading ? (
+          <TicketCardSkeleton showAmount rows={4} />
+        ) : booking ? (
           <ViewShot ref={viewShotRef} style={styles.ticketWrapper} options={{ format: 'png', quality: 0.92 }}>
             <View style={styles.ticketCard}>
               <View style={styles.ticketHeader}>

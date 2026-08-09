@@ -1,4 +1,5 @@
 import { httpClient } from './httpClient';
+import { invalidate } from './queryCache';
 import type { CreateOrderResponse, VerifyPaymentRequest, VerifyPaymentResponse } from '@ctypes/api';
 
 const BASE = '/api/payment';
@@ -22,5 +23,8 @@ export async function createOrder(
 
 /** Idempotent — safe to call once per successful Razorpay checkout. */
 export async function verifyPayment(payload: VerifyPaymentRequest): Promise<VerifyPaymentResponse> {
-  return httpClient.post<VerifyPaymentResponse>(`${BASE}/verify`, payload);
+  const result = await httpClient.post<VerifyPaymentResponse>(`${BASE}/verify`, payload);
+  // The new booking wouldn't show up in a still-fresh My Bookings cache otherwise.
+  invalidate('bookings');
+  return result;
 }

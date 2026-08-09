@@ -1,7 +1,7 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, AppState, Image, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect, useIsFocused } from '@react-navigation/native';
 import { ArrowLeft } from 'lucide-react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '@ctypes/navigation';
@@ -9,7 +9,7 @@ import { Seat } from '@ctypes/models';
 import { ColorTokens, FontFamily, FontWeight, Radius, Spacing } from '@constants/theme';
 import { useTheme } from '@hooks/useTheme';
 import { useRequireAuth } from '@hooks/useRequireAuth';
-import { Badge, Button, Loader } from '@shared/ui';
+import { Badge, Button } from '@shared/ui';
 import { Body, BodySmall, Caption, Heading2 } from '@shared/ui';
 import { useSeatLayout } from '@hooks/useSeatLayout';
 import { useBookingStore } from '@store/bookingStore';
@@ -17,6 +17,8 @@ import { formatPrice, formatShowTime } from '@shared/utils';
 import { holdSeats } from '@services/bookingService';
 import { errorMessage, isApiError } from '@services/httpClient';
 import { SeatGrid } from '../components/SeatGrid';
+import { SeatLegend } from '../components/SeatLegend';
+import { SeatGridSkeleton } from '../components/SeatGridSkeleton';
 import { SeatCountModal } from '../components/SeatCountModal';
 import { findBestAdjacentSeats } from '../utils/seatSelection';
 
@@ -28,6 +30,7 @@ export function SeatSelectionScreen({ navigation, route }: Props) {
   const styles = useMemo(() => makeStyles(colors), [colors]);
   const { layout, loading, error, refetch } = useSeatLayout(showId);
   const requireAuth = useRequireAuth();
+  const isFocused = useIsFocused();
 
   const selectedSeats = useBookingStore(s => s.selectedSeats);
   const seatCount = useBookingStore(s => s.seatCount);
@@ -46,18 +49,27 @@ export function SeatSelectionScreen({ navigation, route }: Props) {
 
   // Seat freshness is poll-only (the API has no realtime/sockets) — refetch
   // whenever this screen regains focus or the app comes back to foreground.
+  // The mount effect (inside useSeatLayout) already fetches once, so the
+  // *first* focus is skipped to avoid an immediate, redundant second request.
+  const hasFocusedOnce = useRef(false);
   useFocusEffect(
     useCallback(() => {
-      refetch();
+      if (hasFocusedOnce.current) {
+        refetch();
+      } else {
+        hasFocusedOnce.current = true;
+      }
     }, [refetch]),
   );
 
   useEffect(() => {
     const sub = AppState.addEventListener('change', state => {
-      if (state === 'active') refetch();
+      // Only poll on foreground if this screen is the one actually on screen —
+      // otherwise a background tab would also fire a refetch it doesn't need.
+      if (state === 'active' && isFocused) refetch();
     });
     return () => sub.remove();
-  }, [refetch]);
+  }, [refetch, isFocused]);
 
   function handleSeatCountSelect(count: number) {
     setSeatCount(count);
@@ -72,24 +84,27 @@ export function SeatSelectionScreen({ navigation, route }: Props) {
     setCountModalVisible(false);
   }
 
-  function handleSeatPress(seat: Seat) {
-    if (!layout) return;
-    if (selectedSeatIds.has(seat.id)) {
-      clearSeatSelection();
-      return;
-    }
-    if (!seatCount) {
-      setCountModalVisible(true);
-      return;
-    }
-    const block = findBestAdjacentSeats(seat, seatCount, layout.allSeats ?? []);
-    if (block.length === seatCount) {
-      setSelectedSeats(block);
-    } else {
-      Alert.alert('Not enough adjacent seats', `Unable to find ${seatCount} adjacent seats near your selection.`);
-      clearSeatSelection();
-    }
-  }
+  const handleSeatPress = useCallback(
+    (seat: Seat) => {
+      if (!layout) return;
+      if (selectedSeatIds.has(seat.id)) {
+        clearSeatSelection();
+        return;
+      }
+      if (!seatCount) {
+        setCountModalVisible(true);
+        return;
+      }
+      const block = findBestAdjacentSeats(seat, seatCount, layout.allSeats ?? []);
+      if (block.length === seatCount) {
+        setSelectedSeats(block);
+      } else {
+        Alert.alert('Not enough adjacent seats', `Unable to find ${seatCount} adjacent seats near your selection.`);
+        clearSeatSelection();
+      }
+    },
+    [layout, selectedSeatIds, seatCount, clearSeatSelection, setSelectedSeats],
+  );
 
   async function handleProceed() {
     if (selectedSeats.length === 0 || !layout) return;
@@ -135,18 +150,9 @@ export function SeatSelectionScreen({ navigation, route }: Props) {
     });
   }
 
-  if (loading) return <Loader fullScreen message="Loading seats..." />;
-
-  if (error || !layout) {
-    return (
-      <SafeAreaView style={styles.screen}>
-        <Body style={styles.center}>{error ?? 'Failed to load seats.'}</Body>
-      </SafeAreaView>
-    );
-  }
-
   const total = getTotalAmount();
   const hasSelection = selectedSeats.length > 0 && selectedSeats.length === seatCount;
+  const showError = !loading && (error || !layout);
 
   return (
     <SafeAreaView style={styles.screen}>
@@ -172,46 +178,61 @@ export function SeatSelectionScreen({ navigation, route }: Props) {
         </View>
       </View>
 
-      <View style={styles.gridWrapper}>
-        <SeatGrid layout={layout} selectedSeatIds={selectedSeatIds} onSeatPress={handleSeatPress} />
-      </View>
-
-      <View style={styles.bottomBar}>
-        {selectedSeats.length > 0 ? (
-          <View style={styles.seatPills}>
-            <Caption style={styles.seatPillsLabel}>
-              {selectedSeats.length}/{seatCount} Selected:{' '}
-            </Caption>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.pillScroll}>
-              {selectedSeats.map(s => (
-                <Badge key={s.id} label={s.label ?? `${s.row}${s.number}`} variant="zinc" style={styles.pill} />
-              ))}
-            </ScrollView>
+      {loading ? (
+        <>
+          <SeatLegend />
+          <View style={styles.gridWrapper}>
+            <SeatGridSkeleton />
           </View>
-        ) : null}
-        <View style={styles.bottomRow}>
-          <View>
-            <Caption style={styles.totalLabel}>Total Amount</Caption>
-            <Heading2 style={styles.totalAmount}>{formatPrice(total)}</Heading2>
-          </View>
-          <Button
-            label={holding ? 'Holding seats…' : hasSelection ? 'Proceed' : `Select ${seatCount || ''} seat${seatCount === 1 ? '' : 's'}`}
-            onPress={handleProceed}
-            disabled={!hasSelection || holding}
-            loading={holding}
-            variant="primary"
-            size="lg"
-            style={styles.proceedBtn}
-          />
+        </>
+      ) : showError ? (
+        <View style={styles.gridWrapper}>
+          <Body style={styles.center}>{error ?? 'Failed to load seats.'}</Body>
         </View>
-      </View>
+      ) : layout ? (
+        <>
+          <View style={styles.gridWrapper}>
+            <SeatGrid layout={layout} selectedSeatIds={selectedSeatIds} onSeatPress={handleSeatPress} />
+          </View>
 
-      <SeatCountModal
-        visible={countModalVisible}
-        layout={layout}
-        onSelect={handleSeatCountSelect}
-        onDismiss={handleSeatCountDismiss}
-      />
+          <View style={styles.bottomBar}>
+            {selectedSeats.length > 0 ? (
+              <View style={styles.seatPills}>
+                <Caption style={styles.seatPillsLabel}>
+                  {selectedSeats.length}/{seatCount} Selected:{' '}
+                </Caption>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.pillScroll}>
+                  {selectedSeats.map(s => (
+                    <Badge key={s.id} label={s.label ?? `${s.row}${s.number}`} variant="zinc" style={styles.pill} />
+                  ))}
+                </ScrollView>
+              </View>
+            ) : null}
+            <View style={styles.bottomRow}>
+              <View>
+                <Caption style={styles.totalLabel}>Total Amount</Caption>
+                <Heading2 style={styles.totalAmount}>{formatPrice(total)}</Heading2>
+              </View>
+              <Button
+                label={holding ? 'Holding seats…' : hasSelection ? 'Proceed' : `Select ${seatCount || ''} seat${seatCount === 1 ? '' : 's'}`}
+                onPress={handleProceed}
+                disabled={!hasSelection || holding}
+                loading={holding}
+                variant="primary"
+                size="lg"
+                style={styles.proceedBtn}
+              />
+            </View>
+          </View>
+
+          <SeatCountModal
+            visible={countModalVisible}
+            layout={layout}
+            onSelect={handleSeatCountSelect}
+            onDismiss={handleSeatCountDismiss}
+          />
+        </>
+      ) : null}
     </SafeAreaView>
   );
 }

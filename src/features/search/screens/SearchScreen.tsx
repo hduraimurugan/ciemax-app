@@ -1,6 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
-  ActivityIndicator,
   FlatList,
   Image,
   Pressable,
@@ -22,6 +21,7 @@ import { StorageKeys } from '@constants/config';
 import { BodySmall, Caption, Label } from '@shared/ui';
 import { Movie } from '@ctypes/models';
 import { searchMovies } from '@services/moviesService';
+import { SearchResultsSkeleton } from '../components/SearchResultsSkeleton';
 
 type Props = CompositeScreenProps<
   BottomTabScreenProps<TabParamList, 'SearchTab'>,
@@ -137,7 +137,7 @@ export function SearchScreen({ navigation }: Props) {
           </View>
         </View>
       ) : searching ? (
-        <ActivityIndicator style={styles.loader} color={colors.accent} />
+        <SearchResultsSkeleton />
       ) : noResults ? (
         <View style={styles.noResults}>
           <Caption>No results for &quot;{query}&quot;</Caption>

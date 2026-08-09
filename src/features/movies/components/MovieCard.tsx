@@ -15,7 +15,7 @@ interface MovieCardProps {
   variant?: 'rating' | 'soon' | 'plain';
 }
 
-export function MovieCard({ movie, onPress, variant = 'rating' }: MovieCardProps) {
+export const MovieCard = React.memo(function MovieCard({ movie, onPress, variant = 'rating' }: MovieCardProps) {
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
   return (
@@ -45,7 +45,7 @@ export function MovieCard({ movie, onPress, variant = 'rating' }: MovieCardProps
       </View>
     </Pressable>
   );
-}
+});
 
 const makeStyles = (Colors: ColorTokens) =>
   StyleSheet.create({

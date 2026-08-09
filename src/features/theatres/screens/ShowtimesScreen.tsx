@@ -10,10 +10,11 @@ import { useTheme } from '@hooks/useTheme';
 import { useTheatresForMovie, useShowsForMovie } from '@hooks/useTheatres';
 import { useFavourites } from '@hooks/useFavourites';
 import { StorageKeys } from '@constants/config';
-import { getMovieById } from '@services/moviesService';
-import { Body, Heading3, Loader } from '@shared/ui';
+import { getMovieById, getCachedMovie } from '@services/moviesService';
+import { Body, Heading3 } from '@shared/ui';
 import { useBookingStore } from '@store/bookingStore';
 import { LocationModal } from '@features/location';
+import { TheatreListSkeleton } from '../components/TheatreCardSkeleton';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Showtimes'>;
 type ShowStatus = 'available' | 'fast' | 'soldout';
@@ -58,7 +59,7 @@ export function ShowtimesScreen({ navigation, route }: Props) {
   const { movieId } = route.params;
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
-  const [movie, setMovie] = useState<Movie | null>(null);
+  const [movie, setMovie] = useState<Movie | null>(() => getCachedMovie(movieId) ?? null);
   const [dateIdx, setDateIdx] = useState(0);
   const [locationModalVisible, setLocationModalVisible] = useState(false);
   const selectedDate = DATE_LABELS[dateIdx]?.iso;
@@ -103,7 +104,7 @@ export function ShowtimesScreen({ navigation, route }: Props) {
     );
   }
 
-  if (theatresLoading || showsLoading) return <Loader fullScreen message="Loading showtimes..." />;
+  const showSkeleton = theatresLoading || showsLoading;
 
   return (
     <SafeAreaView style={styles.screen}>
@@ -129,6 +130,9 @@ export function ShowtimesScreen({ navigation, route }: Props) {
         ))}
       </ScrollView>
 
+      {showSkeleton ? (
+        <TheatreListSkeleton />
+      ) : (
       <ScrollView contentContainerStyle={styles.cinemaList} showsVerticalScrollIndicator={false}>
         {theatres.length === 0 && (
           <Body style={styles.empty}>No showtimes available for this movie yet.</Body>
@@ -184,6 +188,7 @@ export function ShowtimesScreen({ navigation, route }: Props) {
           );
         })}
       </ScrollView>
+      )}
     </SafeAreaView>
   );
 }

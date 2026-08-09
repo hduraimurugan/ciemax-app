@@ -2,6 +2,7 @@ import { Env } from '@constants/env';
 import { httpClient } from './httpClient';
 import { mapShowtimeHall, mapShowSummary, mapTheatreHall } from './mappers';
 import { getMovieShowtimesRaw } from './moviesService';
+import { cachedFetch, getCached, CacheTTL } from './queryCache';
 import * as mock from './theatresService.mock';
 import type { Show, Theatre } from '@ctypes/models';
 import type { ApiTheatreHall, GetTheatresWithShowsResponse } from '@ctypes/api';
@@ -46,17 +47,37 @@ export async function getShowsForMovieAndTheatre(
 
 // ─── Theatres tab (hall -> movies -> shows for a location/date) ────────────
 
+function theatresWithShowsKey(district: string, state: string, date?: string) {
+  return `theatres-with-shows:${district}:${state}:${date ?? ''}`;
+}
+
 /** Raw hall-grouped data for the Theatres screen (hall -> movies -> shows). */
 export async function getTheatresWithShows(
   district: string,
   state: string,
   date?: string,
 ): Promise<ApiTheatreHall[]> {
-  const res = await httpClient.get<GetTheatresWithShowsResponse>(`${MOVIES_BASE}/location/theatres`, {
-    skipAuth: true,
-    query: { district, state, date },
-  });
-  return res.cinema_halls;
+  const { cached, promise } = cachedFetch(
+    theatresWithShowsKey(district, state, date),
+    async () => {
+      const res = await httpClient.get<GetTheatresWithShowsResponse>(`${MOVIES_BASE}/location/theatres`, {
+        skipAuth: true,
+        query: { district, state, date },
+      });
+      return res.cinema_halls;
+    },
+    CacheTTL.theatres,
+  );
+  if (cached) {
+    promise.catch(() => {});
+    return cached;
+  }
+  return promise;
+}
+
+/** Synchronous cache peek — lets TheatresScreen seed its initial state without waiting. */
+export function getCachedTheatresWithShows(district: string, state: string, date?: string): ApiTheatreHall[] | undefined {
+  return getCached<ApiTheatreHall[]>(theatresWithShowsKey(district, state, date), CacheTTL.theatres);
 }
 
 export async function getAllTheatres(district: string, state: string): Promise<Theatre[]> {

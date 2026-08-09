@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import {
   FlatList,
   Image,
@@ -19,11 +19,12 @@ import { RootStackParamList, TabParamList } from '@ctypes/navigation';
 import { Booking } from '@ctypes/models';
 import { ColorTokens, FontFamily, FontSize, FontWeight, Radius, Spacing } from '@constants/theme';
 import { useTheme } from '@hooks/useTheme';
-import { Badge, Button, Loader } from '@shared/ui';
+import { Badge, Button } from '@shared/ui';
 import { Heading2, Heading3, Body, BodySmall, Caption, Label } from '@shared/ui';
-import { getUserBookings } from '@services/bookingService';
+import { getUserBookings, getCachedUserBookings } from '@services/bookingService';
 import { formatPrice, formatShowDate } from '@shared/utils';
 import { useAuthStore } from '@store/authStore';
+import { BookingListSkeleton } from '../components/BookingCardSkeleton';
 
 type Props = CompositeScreenProps<
   BottomTabScreenProps<TabParamList, 'Bookings'>,
@@ -35,32 +36,32 @@ export function MyBookingsScreen({ navigation }: Props) {
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
   const status = useAuthStore(s => s.status);
-  const [bookings, setBookings] = useState<Booking[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [bookings, setBookings] = useState<Booking[]>(() => getCachedUserBookings() ?? []);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState<ActiveTab>('upcoming');
 
   const load = useCallback(() => {
     if (status !== 'authed') {
-      setLoading(false);
+      setIsRefreshing(false);
       return;
     }
+    setIsRefreshing(true);
     return getUserBookings()
       .then(setBookings)
-      .finally(() => setLoading(false));
+      .finally(() => setIsRefreshing(false));
   }, [status]);
 
-  useEffect(() => {
-    setLoading(true);
-    load();
-  }, [load]);
-
+  // useFocusEffect already fires once on the screen's initial focus, so a
+  // separate mount effect would fetch the same data twice — it's dropped.
   // Refresh when returning from a new booking so it shows up immediately.
   useFocusEffect(
     useCallback(() => {
       if (status === 'authed') load();
     }, [load, status]),
   );
+
+  const loading = isRefreshing && bookings.length === 0;
 
   function onRefresh() {
     setRefreshing(true);
@@ -92,8 +93,6 @@ export function MyBookingsScreen({ navigation }: Props) {
     );
   }
 
-  if (loading) return <Loader fullScreen />;
-
   return (
     <SafeAreaView style={styles.screen}>
       <View style={styles.pageHeader}>
@@ -117,7 +116,9 @@ export function MyBookingsScreen({ navigation }: Props) {
         </Pressable>
       </View>
 
-      {displayed.length === 0 ? (
+      {loading ? (
+        <BookingListSkeleton />
+      ) : displayed.length === 0 ? (
         <View style={styles.empty}>
           <Ticket size={48} color={colors.textMuted} />
           <Body style={styles.emptyText}>
@@ -148,7 +149,7 @@ function openDirections(booking: Booking) {
   Linking.openURL(url).catch(() => {});
 }
 
-function BookingCard({ booking, onPress, colors }: { booking: Booking; onPress: () => void; colors: ColorTokens }) {
+const BookingCard = React.memo(function BookingCard({ booking, onPress, colors }: { booking: Booking; onPress: () => void; colors: ColorTokens }) {
   const styles = useMemo(() => makeStyles(colors), [colors]);
   const accentColor = booking.status === 'confirmed'
     ? colors.success
@@ -219,7 +220,7 @@ function BookingCard({ booking, onPress, colors }: { booking: Booking; onPress: 
       </View>
     </Pressable>
   );
-}
+});
 
 const makeStyles = (Colors: ColorTokens) =>
   StyleSheet.create({

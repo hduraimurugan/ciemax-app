@@ -1,6 +1,7 @@
 import { Env } from '@constants/env';
 import { httpClient } from './httpClient';
 import { mapMovie } from './mappers';
+import { dedupedFetch, getCached, CacheTTL } from './queryCache';
 import * as mock from './moviesService.mock';
 import type { Movie } from '@ctypes/models';
 import type {
@@ -59,6 +60,23 @@ export async function getComingSoonMovies(district?: string, state?: string): Pr
 
 export async function getMovieById(id: string): Promise<Movie | undefined> {
   if (Env.USE_MOCKS) return mock.getMovieById(id);
+  const key = `movie:${id}`;
+  const cached = getCached<Movie>(key, CacheTTL.movieDetail);
+  if (cached) {
+    // Serve the cached movie immediately; refresh in the background so a
+    // stale poster/synopsis self-heals without the caller waiting on it.
+    dedupedFetch(key, () => fetchMovieById(id)).catch(() => {});
+    return cached;
+  }
+  return dedupedFetch(key, () => fetchMovieById(id));
+}
+
+/** Synchronous cache peek — lets a screen seed its initial state without waiting on getMovieById. */
+export function getCachedMovie(id: string): Movie | undefined {
+  return getCached<Movie>(`movie:${id}`, CacheTTL.movieDetail);
+}
+
+async function fetchMovieById(id: string): Promise<Movie> {
   const res = await httpClient.get<GetMovieByIdResponse>(`${BASE}/${id}`, { skipAuth: true });
   return mapMovie(res.movie);
 }
@@ -93,9 +111,15 @@ export async function getMovieShowtimesRaw(
   state: string,
   date?: string,
 ): Promise<{ movie: Movie; halls: ApiShowtimeHall[] }> {
-  const res = await httpClient.get<GetMovieShowtimesResponse>(`${BASE}/${movieId}/showtimes`, {
-    skipAuth: true,
-    query: { district, state, date },
+  // theatresService derives BOTH getTheatresForMovie and getShowsForMovie from
+  // this same call, and ShowtimesScreen calls both hooks on the same mount —
+  // dedup here (not just at the hook level) collapses that into one request.
+  const key = `showtimes-raw:${movieId}:${district}:${state}:${date ?? ''}`;
+  return dedupedFetch(key, async () => {
+    const res = await httpClient.get<GetMovieShowtimesResponse>(`${BASE}/${movieId}/showtimes`, {
+      skipAuth: true,
+      query: { district, state, date },
+    });
+    return { movie: mapMovie(res.movie), halls: res.cinema_halls };
   });
-  return { movie: mapMovie(res.movie), halls: res.cinema_halls };
 }

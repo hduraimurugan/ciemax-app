@@ -14,11 +14,12 @@ import { RootStackParamList } from '@ctypes/navigation';
 import { Offer } from '@ctypes/models';
 import { ColorTokens, FontFamily, FontSize, FontWeight, Radius, Spacing } from '@constants/theme';
 import { useTheme } from '@hooks/useTheme';
-import { Badge, Body, Button, Loader } from '@shared/ui';
+import { Badge, Body, Button } from '@shared/ui';
 import { Heading2, BodySmall, Caption } from '@shared/ui';
-import { getOffers } from '@services/offersService';
+import { getOffers, getCachedOffers } from '@services/offersService';
 import { formatDate } from '@shared/utils';
 import { useAuthStore } from '@store/authStore';
+import { OfferGridSkeleton } from '../components/OfferCardSkeleton';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Offers'>;
 
@@ -29,20 +30,23 @@ export function OffersScreen({ navigation }: Props) {
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
   const status = useAuthStore(s => s.status);
-  const [offers, setOffers] = useState<Offer[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [offers, setOffers] = useState<Offer[]>(() => getCachedOffers() ?? []);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [copied, setCopied] = useState<string | null>(null);
 
   useEffect(() => {
     if (status !== 'authed') {
-      setLoading(false);
+      setIsRefreshing(false);
       return;
     }
+    setIsRefreshing(true);
     getOffers().then(data => {
       setOffers(data);
-      setLoading(false);
+      setIsRefreshing(false);
     });
   }, [status]);
+
+  const loading = isRefreshing && offers.length === 0;
 
   function handleCopy(code: string) {
     // Keep the screen loadable when a stale native build has not linked the Clipboard pod yet.
@@ -75,7 +79,7 @@ export function OffersScreen({ navigation }: Props) {
           <Button label="Sign In" onPress={() => navigation.navigate('Login', {})} leftIcon={<LogIn size={16} color={colors.textInverse} />} />
         </View>
       ) : loading ? (
-        <Loader fullScreen />
+        <OfferGridSkeleton />
       ) : offers.length === 0 ? (
         <View style={styles.signedOut}>
           <Tag size={40} color={colors.textMuted} />

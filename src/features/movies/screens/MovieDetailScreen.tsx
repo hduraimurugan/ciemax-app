@@ -19,10 +19,11 @@ import { ColorTokens, FontSize, FontWeight, Radius, Spacing } from '@constants/t
 import { useTheme } from '@hooks/useTheme';
 import { useFavourites } from '@hooks/useFavourites';
 import { StorageKeys } from '@constants/config';
-import { Badge, Button, Loader } from '@shared/ui';
+import { Badge, Button, Skeleton } from '@shared/ui';
 import { Heading1, Body, BodySmall, Label } from '@shared/ui';
 import { formatDuration, formatRating } from '@shared/utils';
-import { getMovieById } from '@services/moviesService';
+import { getMovieById, getCachedMovie } from '@services/moviesService';
+import { MovieDetailBodySkeleton } from '../components/MovieDetailSkeleton';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'MovieDetail'>;
 
@@ -33,18 +34,15 @@ export function MovieDetailScreen({ navigation, route }: Props) {
   const { movieId } = route.params;
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
-  const [movie, setMovie] = useState<Movie | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [movie, setMovie] = useState<Movie | null>(() => getCachedMovie(movieId) ?? null);
   const [synopsisExpanded, setSynopsisExpanded] = useState(false);
   const { isFavourite, toggle } = useFavourites(StorageKeys.favouriteMovies);
 
   useEffect(() => {
     let cancelled = false;
-    setLoading(true);
     getMovieById(movieId).then(m => {
       if (cancelled) return;
       if (m) setMovie(m);
-      setLoading(false);
     });
     return () => {
       cancelled = true;
@@ -69,34 +67,41 @@ export function MovieDetailScreen({ navigation, route }: Props) {
   }
 
   const trailerUrl = movie?.trailerUrl;
-
-  if (loading) return <Loader fullScreen />;
-  if (!movie) return null;
-
-  const favourited = isFavourite(movie.id);
-  const synopsisText =
-    synopsisExpanded || movie.synopsis.length <= SYNOPSIS_CLAMP
+  const favourited = movie ? isFavourite(movie.id) : false;
+  const synopsisText = movie
+    ? synopsisExpanded || movie.synopsis.length <= SYNOPSIS_CLAMP
       ? movie.synopsis
-      : movie.synopsis.slice(0, SYNOPSIS_CLAMP) + '…';
+      : movie.synopsis.slice(0, SYNOPSIS_CLAMP) + '…'
+    : '';
 
   return (
     <SafeAreaView style={styles.screen} edges={['bottom']}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
         <View style={styles.hero}>
-          <Image source={{ uri: movie.backdropUrl }} style={StyleSheet.absoluteFill} resizeMode="cover" />
-          <View style={[StyleSheet.absoluteFill, styles.heroOverlay]} />
+          {movie ? (
+            <>
+              <Image source={{ uri: movie.backdropUrl }} style={StyleSheet.absoluteFill} resizeMode="cover" />
+              <View style={[StyleSheet.absoluteFill, styles.heroOverlay]} />
+            </>
+          ) : (
+            <Skeleton width={SCREEN_WIDTH} height={340} radius={0} style={StyleSheet.absoluteFill} />
+          )}
 
+          {/* Back button stays interactive from the very first frame, loading or not. */}
           <Pressable style={styles.iconButton} onPress={() => navigation.goBack()}>
             <ArrowLeft size={18} color="#fff" />
           </Pressable>
-          <View style={styles.heroActions}>
-            <Pressable style={styles.iconButton} onPress={() => toggle(movie.id)}>
-              <Heart size={17} color="#fff" fill={favourited ? '#fff' : 'none'} />
-            </Pressable>
-            <Pressable style={styles.iconButton} onPress={handleShare}>
-              <Share2 size={16} color="#fff" />
-            </Pressable>
-          </View>
+
+          {movie && (
+            <View style={styles.heroActions}>
+              <Pressable style={styles.iconButton} onPress={() => toggle(movie.id)}>
+                <Heart size={17} color="#fff" fill={favourited ? '#fff' : 'none'} />
+              </Pressable>
+              <Pressable style={styles.iconButton} onPress={handleShare}>
+                <Share2 size={16} color="#fff" />
+              </Pressable>
+            </View>
+          )}
 
           {trailerUrl ? (
             <Pressable style={styles.playButton} onPress={() => Linking.openURL(trailerUrl)}>
@@ -105,50 +110,56 @@ export function MovieDetailScreen({ navigation, route }: Props) {
           ) : null}
         </View>
 
-        <View style={styles.body}>
-          <Heading1 style={styles.title}>{movie.title}</Heading1>
-          <View style={styles.pillRow}>
-            <Badge label={`★ ${formatRating(movie.rating)}`} variant="gold" />
-            <Badge label={movie.genre.join(' · ')} variant="default" />
-            <Badge label={formatDuration(movie.duration)} variant="default" />
-            <Badge label={movie.language} variant="default" />
-          </View>
+        {movie ? (
+          <View style={styles.body}>
+            <Heading1 style={styles.title}>{movie.title}</Heading1>
+            <View style={styles.pillRow}>
+              <Badge label={`★ ${formatRating(movie.rating)}`} variant="gold" />
+              <Badge label={movie.genre.join(' · ')} variant="default" />
+              <Badge label={formatDuration(movie.duration)} variant="default" />
+              <Badge label={movie.language} variant="default" />
+            </View>
 
-          <Body style={styles.synopsis}>{synopsisText}</Body>
-          {movie.synopsis.length > SYNOPSIS_CLAMP && (
-            <Pressable onPress={() => setSynopsisExpanded(v => !v)}>
-              <Text style={styles.readMore}>{synopsisExpanded ? 'Show less' : 'Read more'}</Text>
-            </Pressable>
-          )}
+            <Body style={styles.synopsis}>{synopsisText}</Body>
+            {movie.synopsis.length > SYNOPSIS_CLAMP && (
+              <Pressable onPress={() => setSynopsisExpanded(v => !v)}>
+                <Text style={styles.readMore}>{synopsisExpanded ? 'Show less' : 'Read more'}</Text>
+              </Pressable>
+            )}
 
-          {movie.cast.length > 0 && (
-            <>
-              <Label style={styles.castLabel}>Cast</Label>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.castRow}>
-                {movie.cast.map(c => (
-                  <View key={c.name} style={styles.castItem}>
-                    <View style={styles.castAvatar}>
-                      {c.profilePath ? (
-                        <Image source={{ uri: c.profilePath }} style={styles.castPhoto} resizeMode="cover" />
-                      ) : (
-                        <Text style={styles.castInitials}>{c.initials}</Text>
-                      )}
+            {movie.cast.length > 0 && (
+              <>
+                <Label style={styles.castLabel}>Cast</Label>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.castRow}>
+                  {movie.cast.map(c => (
+                    <View key={c.name} style={styles.castItem}>
+                      <View style={styles.castAvatar}>
+                        {c.profilePath ? (
+                          <Image source={{ uri: c.profilePath }} style={styles.castPhoto} resizeMode="cover" />
+                        ) : (
+                          <Text style={styles.castInitials}>{c.initials}</Text>
+                        )}
+                      </View>
+                      <BodySmall style={styles.castName} numberOfLines={1}>{c.name}</BodySmall>
+                      {c.character ? (
+                        <BodySmall style={styles.castCharacter} numberOfLines={1}>{c.character}</BodySmall>
+                      ) : null}
                     </View>
-                    <BodySmall style={styles.castName} numberOfLines={1}>{c.name}</BodySmall>
-                    {c.character ? (
-                      <BodySmall style={styles.castCharacter} numberOfLines={1}>{c.character}</BodySmall>
-                    ) : null}
-                  </View>
-                ))}
-              </ScrollView>
-            </>
-          )}
-        </View>
+                  ))}
+                </ScrollView>
+              </>
+            )}
+          </View>
+        ) : (
+          <MovieDetailBodySkeleton />
+        )}
       </ScrollView>
 
-      <View style={styles.cta}>
-        <Button label="Book Tickets" onPress={handleBookNow} fullWidth size="lg" />
-      </View>
+      {movie && (
+        <View style={styles.cta}>
+          <Button label="Book Tickets" onPress={handleBookNow} fullWidth size="lg" />
+        </View>
+      )}
     </SafeAreaView>
   );
 }

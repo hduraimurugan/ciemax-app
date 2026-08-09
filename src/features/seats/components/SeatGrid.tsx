@@ -155,7 +155,7 @@ export function SeatGrid({ layout, selectedSeatIds, onSeatPress }: SeatGridProps
                         const effectiveStatus = selectedSeatIds.has(seat.id) ? 'selected' : seat.status;
                         return (
                           <React.Fragment key={seat.id}>
-                            <SeatItem seat={{ ...seat, status: effectiveStatus }} onPress={onSeatPress} />
+                            <SeatItem seat={seat} status={effectiveStatus} onPress={onSeatPress} />
                             {afterColGap ? <View style={styles.colAisle} /> : null}
                           </React.Fragment>
                         );

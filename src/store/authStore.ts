@@ -4,6 +4,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { authService, SignupPayload } from '@services/authService';
 import { mapCustomer } from '@services/mappers';
 import { configureHttpClientAuth, isApiError } from '@services/httpClient';
+import { clearCache } from '@services/queryCache';
 import type { User } from '@ctypes/models';
 import type { ApiError } from '@ctypes/api';
 
@@ -106,6 +107,7 @@ export const useAuthStore = create<AuthState>()(
       logout: async () => {
         const { refreshToken } = get();
         set({ accessToken: null, refreshToken: null, customer: null, status: 'guest' });
+        clearCache(); // don't let the next signed-in user see this user's cached bookings/offers
         try {
           await authService.logout(refreshToken);
         } catch {
@@ -170,5 +172,6 @@ configureHttpClientAuth({
       customer: null,
       status: 'guest',
     });
+    clearCache();
   },
 });

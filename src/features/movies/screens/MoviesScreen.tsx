@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Animated,
   Dimensions,
@@ -19,7 +19,7 @@ import { RootStackParamList, TabParamList } from '@ctypes/navigation';
 import { Movie } from '@ctypes/models';
 import { ColorTokens, FontFamily, FontSize, FontWeight, Radius, Spacing } from '@constants/theme';
 import { useTheme } from '@hooks/useTheme';
-import { AdBanner, Loader } from '@shared/ui';
+import { AdBanner } from '@shared/ui';
 import { Body, Heading2 } from '@shared/ui';
 import { formatRating } from '@shared/utils';
 import { useMovies } from '@hooks/useMovies';
@@ -27,6 +27,7 @@ import { useLocationStore } from '@store/locationStore';
 import { getActiveAds, recordAdClick } from '@services/adsService';
 import { LocationModal } from '@features/location';
 import { MovieCard } from '../components/MovieCard';
+import { HomeSkeleton } from '../components/HomeSkeleton';
 
 type Props = CompositeScreenProps<
   BottomTabScreenProps<TabParamList, 'Home'>,
@@ -38,7 +39,7 @@ const HERO_ROTATE_MS = 4000;
 export function MoviesScreen({ navigation }: Props) {
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
-  const { nowShowing, comingSoon, loading, error, refresh } = useMovies();
+  const { nowShowing, comingSoon, loading, isRefreshing, error, refresh } = useMovies();
   const [heroIdx, setHeroIdx] = useState(0);
   const progress = useRef(new Animated.Value(0)).current;
 
@@ -57,8 +58,13 @@ export function MoviesScreen({ navigation }: Props) {
     getActiveAds('banner').then(setAds);
   }, []);
 
-  const heroMovies = nowShowing.slice(0, 3);
-  const recommended = [...nowShowing, ...comingSoon].reverse().slice(0, 4);
+  // Stable references so the 4s hero timer doesn't force MovieRow (and every
+  // MovieCard inside it) to re-render on every tick — only heroIdx/progress change.
+  const heroMovies = useMemo(() => nowShowing.slice(0, 3), [nowShowing]);
+  const recommended = useMemo(
+    () => [...nowShowing, ...comingSoon].reverse().slice(0, 4),
+    [nowShowing, comingSoon],
+  );
 
   useEffect(() => {
     if (heroMovies.length <= 1) return;
@@ -73,31 +79,21 @@ export function MoviesScreen({ navigation }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [heroIdx, heroMovies.length]);
 
-  function handleMoviePress(movie: Movie) {
-    navigation.navigate('MovieDetail', { movieId: movie.id });
-  }
+  const handleMoviePress = useCallback(
+    (movie: Movie) => {
+      navigation.navigate('MovieDetail', { movieId: movie.id });
+    },
+    [navigation],
+  );
 
   function handleAdPress(index: number) {
     const ad = ads[index];
     if (ad) recordAdClick(ad.id);
   }
 
-  if (loading && nowShowing.length === 0) {
-    return <Loader fullScreen message="Loading movies..." />;
-  }
-
-  if (error && nowShowing.length === 0) {
-    return (
-      <SafeAreaView style={styles.screen}>
-        <Body style={styles.errorText}>{error}</Body>
-        <Pressable style={styles.retryButton} onPress={refresh}>
-          <Text style={styles.retryButtonText}>Refresh</Text>
-        </Pressable>
-      </SafeAreaView>
-    );
-  }
-
   const heroMovie = heroMovies[heroIdx];
+  const showSkeleton = loading;
+  const showError = !showSkeleton && error && nowShowing.length === 0;
 
   return (
     <SafeAreaView style={styles.screen}>
@@ -118,68 +114,81 @@ export function MoviesScreen({ navigation }: Props) {
         </View>
       </View>
 
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl refreshing={loading} onRefresh={refresh} tintColor={colors.accent} />
-        }>
-        {heroMovie && (
-          <Pressable style={styles.hero} onPress={() => handleMoviePress(heroMovie)}>
-            <Image source={{ uri: heroMovie.backdropUrl }} style={StyleSheet.absoluteFill} resizeMode="cover" />
-            <View style={[StyleSheet.absoluteFill, styles.heroOverlay]} />
-            <View style={styles.heroDots}>
-              {heroMovies.map((_, i) => (
-                <View key={i} style={styles.heroDotTrack}>
-                  {i < heroIdx && <View style={[styles.heroDotFill, { width: '100%' }]} />}
-                  {i === heroIdx && (
-                    <Animated.View
-                      style={[
-                        styles.heroDotFill,
-                        {
-                          width: progress.interpolate({ inputRange: [0, 1], outputRange: ['0%', '100%'] }),
-                        },
-                      ]}
-                    />
-                  )}
-                </View>
-              ))}
-            </View>
-            <View style={styles.heroTextBlock}>
-              <Text style={styles.heroTag}>★ {formatRating(heroMovie.rating)} · {heroMovie.isNowShowing ? 'Now Showing' : 'Coming Soon'}</Text>
-              <Text style={styles.heroTitle}>{heroMovie.title}</Text>
-            </View>
+      {showSkeleton ? (
+        <ScrollView showsVerticalScrollIndicator={false}>
+          <HomeSkeleton />
+        </ScrollView>
+      ) : showError ? (
+        <View style={styles.errorWrap}>
+          <Body style={styles.errorText}>{error}</Body>
+          <Pressable style={styles.retryButton} onPress={refresh}>
+            <Text style={styles.retryButtonText}>Refresh</Text>
           </Pressable>
-        )}
+        </View>
+      ) : (
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl refreshing={isRefreshing} onRefresh={refresh} tintColor={colors.accent} />
+          }>
+          {heroMovie && (
+            <Pressable style={styles.hero} onPress={() => handleMoviePress(heroMovie)}>
+              <Image source={{ uri: heroMovie.backdropUrl }} style={StyleSheet.absoluteFill} resizeMode="cover" />
+              <View style={[StyleSheet.absoluteFill, styles.heroOverlay]} />
+              <View style={styles.heroDots}>
+                {heroMovies.map((_, i) => (
+                  <View key={i} style={styles.heroDotTrack}>
+                    {i < heroIdx && <View style={[styles.heroDotFill, { width: '100%' }]} />}
+                    {i === heroIdx && (
+                      <Animated.View
+                        style={[
+                          styles.heroDotFill,
+                          {
+                            width: progress.interpolate({ inputRange: [0, 1], outputRange: ['0%', '100%'] }),
+                          },
+                        ]}
+                      />
+                    )}
+                  </View>
+                ))}
+              </View>
+              <View style={styles.heroTextBlock}>
+                <Text style={styles.heroTag}>★ {formatRating(heroMovie.rating)} · {heroMovie.isNowShowing ? 'Now Showing' : 'Coming Soon'}</Text>
+                <Text style={styles.heroTitle}>{heroMovie.title}</Text>
+              </View>
+            </Pressable>
+          )}
 
-        {ads.length > 0 && (
-          <View style={styles.adBannerWrap}>
-            <AdBanner
-              imageUrls={ads.map(a => a.image_url)}
-              width={Dimensions.get('window').width - Spacing.lg * 2}
-              onPressIndex={handleAdPress}
-            />
-          </View>
-        )}
+          {ads.length > 0 && (
+            <View style={styles.adBannerWrap}>
+              <AdBanner
+                imageUrls={ads.map(a => a.image_url)}
+                width={Dimensions.get('window').width - Spacing.lg * 2}
+                onPressIndex={handleAdPress}
+              />
+            </View>
+          )}
 
-        <MovieRow title="Now Showing" movies={nowShowing} onPress={handleMoviePress} colors={colors} />
-        <MovieRow title="Coming Soon" movies={comingSoon} onPress={handleMoviePress} colors={colors} variant="soon" />
-        <MovieRow title="Recommended For You" movies={recommended} onPress={handleMoviePress} colors={colors} variant="plain" />
+          <MovieRow title="Now Showing" movies={nowShowing} onPress={handleMoviePress} colors={colors} />
+          <MovieRow title="Coming Soon" movies={comingSoon} onPress={handleMoviePress} colors={colors} variant="soon" />
+          <MovieRow title="Recommended For You" movies={recommended} onPress={handleMoviePress} colors={colors} variant="plain" />
 
-        {nowShowing.length === 0 && comingSoon.length === 0 && !loading && (
-          <Body style={styles.errorText}>
-            {district ? `No movies found near ${district}.` : 'Set your location to see movies playing near you.'}
-          </Body>
-        )}
+          {nowShowing.length === 0 && comingSoon.length === 0 && (
+            <Body style={styles.errorText}>
+              {district ? `No movies found near ${district}.` : 'Set your location to see movies playing near you.'}
+            </Body>
+          )}
 
-        <View style={styles.bottomPad} />
-      </ScrollView>
+          <View style={styles.bottomPad} />
+        </ScrollView>
+      )}
 
       <LocationModal visible={locationModalVisible} onClose={() => setLocationModalVisible(false)} />
     </SafeAreaView>
   );
 }
 
-function MovieRow({
+const MovieRow = React.memo(function MovieRow({
   title,
   movies,
   onPress,
@@ -204,7 +213,7 @@ function MovieRow({
       </ScrollView>
     </View>
   );
-}
+});
 
 const makeStyles = (Colors: ColorTokens) =>
   StyleSheet.create({
@@ -262,6 +271,7 @@ const makeStyles = (Colors: ColorTokens) =>
     section: { marginBottom: Spacing.lg },
     sectionTitle: { paddingHorizontal: Spacing.lg, marginBottom: Spacing.sm, fontSize: FontSize.md + 1 },
     horizontalList: { paddingHorizontal: Spacing.lg, gap: Spacing.sm },
+    errorWrap: { flex: 1, alignItems: 'center', justifyContent: 'center' },
     errorText: { textAlign: 'center', margin: Spacing.xl },
     retryButton: {
       alignSelf: 'center',

@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { Seat } from '@ctypes/models';
+import { Seat, SeatStatus } from '@ctypes/models';
 import { ColorTokens, FontSize, FontWeight, Radius } from '@constants/theme';
 import { useTheme } from '@hooks/useTheme';
 
@@ -9,10 +9,16 @@ const SEAT_GAP = 4;
 
 interface SeatItemProps {
   seat: Seat;
+  /**
+   * Effective status, separate from `seat.status`: the grid overlays local
+   * selection state on top of the fetched seat without mutating/cloning the
+   * seat object (which would defeat React.memo below on every render).
+   */
+  status: SeatStatus;
   onPress: (seat: Seat) => void;
 }
 
-export function SeatItem({ seat, onPress }: SeatItemProps) {
+export const SeatItem = React.memo(function SeatItem({ seat, status, onPress }: SeatItemProps) {
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
 
@@ -22,10 +28,10 @@ export function SeatItem({ seat, onPress }: SeatItemProps) {
     return <View style={styles.spacer} />;
   }
 
-  const isBooked = seat.status === 'booked';
-  const isHeld = seat.status === 'held';
+  const isBooked = status === 'booked';
+  const isHeld = status === 'held';
   const isUnavailable = isBooked || isHeld;
-  const isSelected = seat.status === 'selected';
+  const isSelected = status === 'selected';
   const isPremium = seat.section === 'premium';
 
   return (
@@ -49,7 +55,7 @@ export function SeatItem({ seat, onPress }: SeatItemProps) {
       </Text>
     </Pressable>
   );
-}
+});
 
 const makeStyles = (Colors: ColorTokens) =>
   StyleSheet.create({
