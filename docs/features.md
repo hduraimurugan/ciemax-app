@@ -52,9 +52,11 @@ Every documented API failure mode gets a distinct UI response, not a generic "lo
 
 | File | Purpose |
 |---|---|
-| `components/LocationModal.tsx` | BottomSheet: "Use my current location" (GPS) or a state → district picker |
+| `components/LocationModal.tsx` | BottomSheet: "Use my current location" (GPS) or a state → district picker, each step filterable via a search box |
 
-Backed by `locationStore` (see [docs/state-management.md](state-management.md#location-store)). The state list is a small curated set of Indian states (no state-list endpoint exists in the API); districts within a chosen state come from `GET /api/user/movies/location/districts`.
+Backed by `locationStore` (see [docs/state-management.md](state-management.md#location-store)). States and districts come from `constants/indiaLocations.ts` — all 36 India states/UTs and their ~4,242 districts/cities, generated from the `country-state-city` npm package (the same data source the web app's "Select Your City" picker uses) via a one-off script, not fetched from `cinema-hall-api` at runtime. This replaced an earlier 10-state curated list plus a per-state `GET /api/user/movies/location/districts` call — the lookup is now synchronous and offline. A picked district isn't guaranteed to have movies/theatres in the backend; `MoviesScreen`/`TheatresScreen` show an empty-state message rather than filtering the picker itself, matching the web app.
+
+A "Clear" link appears in the modal header once a location is already set, calling `locationStore.clear()` so the user can start picking fresh instead of only being able to overwrite the existing selection.
 
 ---
 
@@ -71,6 +73,7 @@ Backed by `locationStore` (see [docs/state-management.md](state-management.md#lo
 ### MoviesScreen
 
 - Location-aware: prefers `GET /api/user/movies/location/movies?district&state` once a location is set (city chip opens `LocationModal`), falls back to the global `status=now_showing|upcoming` list otherwise.
+- On fetch failure, `useMovies()`'s `error` state renders a "Refresh" button (calls `refresh()`, which bumps the hook's retry tick) instead of a dead-end error message.
 - Ad banner: `GET /api/ads/active?placement=banner`, tap records a click via `POST /api/ads/click/:id`. The banner is rendered at the Home content width with a 3.5:1 aspect ratio, autoplay dots, and a visible `AD` corner label.
 - A `Clapperboard` icon in the header opens `Theatres` — the app's other entry point into the hall-first browse flow.
 

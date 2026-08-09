@@ -26,6 +26,7 @@ src/
 │   ├── theme.ts                   # DarkColors / LightColors token objects + Spacing/Radius/FontSize/Shadow
 │   ├── config.ts                  # AppConfig (seat cap, currency), StorageKeys, mock-only SeatPricing
 │   ├── env.ts                     # Typed react-native-config wrapper — throws on a missing API_BASE_URL
+│   ├── indiaLocations.ts          # Generated: all India states/UTs + districts (country-state-city dataset, same source as the web app)
 │   └── index.ts
 │
 ├── types/
@@ -97,7 +98,7 @@ src/
 Bootstrap and navigation wiring. Contains no business logic or UI primitives. `App.tsx` wraps the tree in `SafeAreaProvider` → `NavigationContainer`; the seat map owns its gesture detector configuration locally.
 
 ### `src/constants/`
-Magic numbers, strings, and environment config. `theme.ts` exports `DarkColors`/`LightColors` — no component should hardcode a colour hex; it must come from `useTheme().colors`. `env.ts` is the only file that reads `react-native-config` directly.
+Magic numbers, strings, and environment config. `theme.ts` exports `DarkColors`/`LightColors` — no component should hardcode a colour hex; it must come from `useTheme().colors`. `env.ts` is the only file that reads `react-native-config` directly. `indiaLocations.ts` is generated output (not hand-maintained) — see [docs/features.md](features.md#location) for how it's produced and why it's checked in instead of fetched at runtime.
 
 ### `src/types/`
 Two distinct layers on purpose:
