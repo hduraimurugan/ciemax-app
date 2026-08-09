@@ -35,6 +35,7 @@ function getNext7Dates(): Array<{ iso: string; dow: string; num: string }> {
 }
 
 const DATE_LABELS = getNext7Dates();
+const DATE_BTN_HEIGHT = 68;
 
 function openDirections(theatre: Theatre) {
   const url =
@@ -117,7 +118,11 @@ export function TheatresScreen({ navigation }: Props) {
         </View>
       ) : (
         <>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.dateStrip}>
+          <ScrollView
+            horizontal
+            style={styles.dateStripScroll}
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.dateStrip}>
             {DATE_LABELS.map((d, i) => (
               <Pressable
                 key={d.iso}
@@ -215,10 +220,15 @@ const makeStyles = (Colors: ColorTokens) =>
       borderRadius: Radius.md,
     },
     setLocationBtnText: { color: '#fff', fontWeight: FontWeight.semibold },
+    // Explicit height on the horizontal ScrollView itself (not just its
+    // contentContainerStyle) — without it, Yoga can't reliably measure an
+    // unstyled horizontal ScrollView's cross-axis size, and the sibling
+    // below it (given flex: 1) ends up pushed down by a large phantom gap.
+    dateStripScroll: { height: DATE_BTN_HEIGHT + Spacing.lg, flexGrow: 0 },
     dateStrip: { gap: Spacing.sm, paddingHorizontal: Spacing.lg, paddingBottom: Spacing.lg },
     dateBtn: {
       width: 52,
-      height: 68,
+      height: DATE_BTN_HEIGHT,
       borderRadius: Radius.lg,
       backgroundColor: Colors.surface,
       borderWidth: 1,
