@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Animated,
+  Dimensions,
   Image,
   Pressable,
   ScrollView,
@@ -144,8 +145,11 @@ export function MoviesScreen({ navigation }: Props) {
 
         {ads.length > 0 && (
           <View style={styles.adBannerWrap}>
-            {/* AdBanner sizes itself to the full device width internally. */}
-            <AdBanner imageUrls={ads.map(a => a.image_url)} onPressIndex={handleAdPress} />
+            <AdBanner
+              imageUrls={ads.map(a => a.image_url)}
+              width={Dimensions.get('window').width - Spacing.lg * 2}
+              onPressIndex={handleAdPress}
+            />
           </View>
         )}
 
@@ -246,7 +250,7 @@ const makeStyles = (Colors: ColorTokens) =>
       marginBottom: 4,
     },
     heroTitle: { fontSize: FontSize.lg, fontWeight: FontWeight.bold, color: '#fff' },
-    adBannerWrap: { marginBottom: Spacing.lg },
+    adBannerWrap: { marginHorizontal: Spacing.lg, marginBottom: Spacing.lg },
     section: { marginBottom: Spacing.lg },
     sectionTitle: { paddingHorizontal: Spacing.lg, marginBottom: Spacing.sm, fontSize: FontSize.md + 1 },
     horizontalList: { paddingHorizontal: Spacing.lg, gap: Spacing.sm },

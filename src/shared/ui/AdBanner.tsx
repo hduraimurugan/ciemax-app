@@ -5,6 +5,7 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
+  Text,
   View,
 } from 'react-native';
 import { ColorTokens, Radius } from '@constants/theme';
@@ -12,16 +13,18 @@ import { useTheme } from '@hooks/useTheme';
 
 interface AdBannerProps {
   imageUrls: string[];
+  /** Width of the banner viewport. Defaults to the device width. */
+  width?: number;
   /** Called with the tapped banner's index — e.g. to record a click or open its link. */
   onPressIndex?: (index: number) => void;
 }
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
-const BANNER_HEIGHT = Math.round(SCREEN_WIDTH / 5);
 
-export function AdBanner({ imageUrls, onPressIndex }: AdBannerProps) {
+export function AdBanner({ imageUrls, width = SCREEN_WIDTH, onPressIndex }: AdBannerProps) {
   const { colors } = useTheme();
-  const styles = useMemo(() => makeStyles(colors), [colors]);
+  const bannerHeight = Math.round(width / 3.5);
+  const styles = useMemo(() => makeStyles(colors, width, bannerHeight), [colors, width, bannerHeight]);
   const [activeIndex, setActiveIndex] = useState(0);
   const scrollRef = useRef<ScrollView>(null);
   const banners = imageUrls.slice(0, 5);
@@ -31,12 +34,12 @@ export function AdBanner({ imageUrls, onPressIndex }: AdBannerProps) {
     const interval = setInterval(() => {
       setActiveIndex(prev => {
         const next = (prev + 1) % banners.length;
-        scrollRef.current?.scrollTo({ x: next * SCREEN_WIDTH, animated: true });
+        scrollRef.current?.scrollTo({ x: next * width, animated: true });
         return next;
       });
     }, 3000);
     return () => clearInterval(interval);
-  }, [banners.length]);
+  }, [banners.length, width]);
 
   if (banners.length === 0) return null;
 
@@ -48,8 +51,8 @@ export function AdBanner({ imageUrls, onPressIndex }: AdBannerProps) {
         pagingEnabled
         showsHorizontalScrollIndicator={false}
         scrollEventThrottle={16}
-        onMomentumScrollEnd={e => {
-          const index = Math.round(e.nativeEvent.contentOffset.x / SCREEN_WIDTH);
+          onMomentumScrollEnd={e => {
+            const index = Math.round(e.nativeEvent.contentOffset.x / width);
           setActiveIndex(index);
         }}>
         {banners.map((url, i) =>
@@ -62,6 +65,9 @@ export function AdBanner({ imageUrls, onPressIndex }: AdBannerProps) {
           ),
         )}
       </ScrollView>
+      <View style={styles.adLabel}>
+        <Text style={styles.adLabelText}>AD</Text>
+      </View>
       <View style={styles.dots}>
         {banners.map((_, i) => (
           <View
@@ -74,18 +80,18 @@ export function AdBanner({ imageUrls, onPressIndex }: AdBannerProps) {
   );
 }
 
-const makeStyles = (Colors: ColorTokens) =>
+const makeStyles = (Colors: ColorTokens, width: number, height: number) =>
   StyleSheet.create({
     container: {
-      width: SCREEN_WIDTH,
-      height: BANNER_HEIGHT,
+      width,
+      height,
       borderRadius: Radius.lg,
       overflow: 'hidden',
       position: 'relative',
     },
     banner: {
-      width: SCREEN_WIDTH,
-      height: BANNER_HEIGHT,
+      width,
+      height,
     },
     dots: {
       position: 'absolute',
@@ -95,6 +101,21 @@ const makeStyles = (Colors: ColorTokens) =>
       flexDirection: 'row',
       justifyContent: 'center',
       gap: 4,
+    },
+    adLabel: {
+      position: 'absolute',
+      top: 8,
+      right: 8,
+      paddingHorizontal: 6,
+      paddingVertical: 3,
+      borderRadius: 4,
+      backgroundColor: 'rgba(0,0,0,0.55)',
+    },
+    adLabelText: {
+      color: Colors.textPrimary,
+      fontSize: 9,
+      fontWeight: '700',
+      letterSpacing: 0.8,
     },
     dot: {
       width: 6,
