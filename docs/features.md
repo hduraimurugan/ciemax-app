@@ -110,7 +110,8 @@ Query input is debounced 350ms (`useDebouncedValue`) before calling `GET /api/us
 ### ShowtimesScreen
 
 - Requires a location; shows a "Set Location" prompt (opens `LocationModal`) if none is set yet.
-- `GET /api/user/movies/:movieId/showtimes?district&state&date` via `useTheatresForMovie`/`useShowsForMovie`.
+- `GET /api/user/movies/:movieId/showtimes?district&state&date` via `useTheatresForMovie`/`useShowsForMovie` — both hooks take the same `selectedDate` and refetch together when the date strip changes, so the cinema list and its showtimes never fall out of sync with each other (they used to: `useTheatresForMovie` originally omitted `date` entirely, which made the backend default to *its own* server-side "today" regardless of the date selected in the UI, silently returning zero halls whenever that implicit day had no shows — always looked like "no showtimes available").
+- This endpoint doesn't report per-show seat counts (only the mock service does — see the comment on `Show.availableSeats`/`totalSeats` in `types/models.ts`). `statusOf()` treats missing seat data as bookable rather than sold out; real availability is only enforced once the seat map loads on `SeatSelection`. The web app has the same limitation and papers over it with a cosmetic `show_id % 4` fast-filling indicator — the mobile app doesn't replicate that since it isn't real data.
 - Each cinema card has a heart (favourite, `AsyncStorage[StorageKeys.favouriteTheatres]`) and a Directions button (`Linking` → Google Maps, using lat/lng when available, else a text query).
 - Tapping a showtime chip sets `selectedMovie`/`selectedTheatre`/`selectedShow` on `bookingStore` (display-only from here on) and navigates to `SeatSelection`.
 
@@ -206,6 +207,12 @@ RazorpayWebViewScreen: loads an inline HTML page with <script src="checkout.js">
 ```
 
 A `settledRef` guard prevents the bridge firing twice (e.g. a stray `dismiss` arriving after `success`). `BookingSuccessScreen` deliberately re-fetches the booking by `payment_id` rather than trusting anything held locally — the server's Razorpay webhook can create the booking independently of the client ever calling `/verify`, so the client's own belief about "did it work" isn't authoritative.
+
+### BookingSuccessScreen ticket
+
+- All money display goes through `formatPrice()` (`shared/utils/formatters.ts`), which always renders exactly 2 decimal places (`₹235.40`, never `₹235.4`) via `toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })`.
+- The ticket card is wrapped in `<ViewShot>` (captured for Download/Share) with its own `width: '100%'` style — `ViewShot` renders a plain `View` with no width of its own, and the screen's outer `ScrollView` uses `alignItems: 'center'`, so without an explicit width on the wrapper the percentage-widthed card inside it has nothing definite to resolve against and collapses to content width instead of filling the screen.
+- The Theatre row only renders when `booking.theatreName` is present — defensive, since `GET /api/booking/by-payment/:payment_id` is a separate backend query from `GET /api/booking/my-bookings`/`GET /api/booking/:id` and has historically drifted out of sync on which `cinema_hall` fields it joins.
 
 ### BookingFailureScreen
 
