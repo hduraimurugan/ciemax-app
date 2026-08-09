@@ -37,7 +37,7 @@ const HERO_ROTATE_MS = 4000;
 export function MoviesScreen({ navigation }: Props) {
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
-  const { nowShowing, comingSoon, loading, error } = useMovies();
+  const { nowShowing, comingSoon, loading, error, refresh } = useMovies();
   const [heroIdx, setHeroIdx] = useState(0);
   const progress = useRef(new Animated.Value(0)).current;
 
@@ -89,6 +89,9 @@ export function MoviesScreen({ navigation }: Props) {
     return (
       <SafeAreaView style={styles.screen}>
         <Body style={styles.errorText}>{error}</Body>
+        <Pressable style={styles.retryButton} onPress={refresh}>
+          <Text style={styles.retryButtonText}>Refresh</Text>
+        </Pressable>
       </SafeAreaView>
     );
   }
@@ -255,5 +258,18 @@ const makeStyles = (Colors: ColorTokens) =>
     sectionTitle: { paddingHorizontal: Spacing.lg, marginBottom: Spacing.sm, fontSize: FontSize.md + 1 },
     horizontalList: { paddingHorizontal: Spacing.lg, gap: Spacing.sm },
     errorText: { textAlign: 'center', margin: Spacing.xl },
+    retryButton: {
+      alignSelf: 'center',
+      paddingHorizontal: Spacing.xl,
+      paddingVertical: Spacing.sm,
+      borderRadius: Radius.md,
+      backgroundColor: Colors.accent,
+    },
+    retryButtonText: {
+      color: '#fff',
+      fontFamily: FontFamily.medium,
+      fontSize: FontSize.sm,
+      fontWeight: FontWeight.semibold,
+    },
     bottomPad: { height: Spacing.xl },
   });
