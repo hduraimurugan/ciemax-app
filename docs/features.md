@@ -2,6 +2,8 @@
 
 Each feature in `src/features/` is a self-contained domain module — components, screens, and (where needed) a small `utils/`, exposed via a single `index.ts` barrel. See [docs/navigation.md](navigation.md) for the live route map and [docs/architecture.md](architecture.md) for the service/mapper layer every feature calls into.
 
+Loading placeholders are built from the shared `Skeleton` family in `@shared/ui` (see [docs/design-system.md](design-system.md#skeleton)), and the service layer's `queryCache` (see [docs/architecture.md](architecture.md#srcservicesquerycachets)) seeds screens from a short-TTL in-memory cache — so a skeleton only renders on a genuine cold start, never when revisiting data fetched moments ago.
+
 ---
 
 ## onboarding
@@ -69,6 +71,8 @@ A "Clear" link appears in the modal header once a location is already set, calli
 | `screens/MoviesScreen.tsx` | **Home tab** — hero carousel, ad banner, Now Showing / Coming Soon / Recommended rows |
 | `screens/MovieDetailScreen.tsx` | Backdrop hero, real cast photos, trailer link, favourite/share, "Book Tickets" |
 | `components/MovieCard.tsx` | `variant: 'rating' \| 'soon' \| 'plain'` |
+| `components/HomeSkeleton.tsx` | Skeleton layout for the Home tab (hero + rows) |
+| `components/MovieDetailSkeleton.tsx` | Skeleton layout for `MovieDetailScreen` |
 
 ### MoviesScreen
 
@@ -76,6 +80,7 @@ A "Clear" link appears in the modal header once a location is already set, calli
 - Pull-to-refresh on the main `ScrollView` and, on fetch failure, `useMovies()`'s `error` state renders a "Refresh" button — both call the same `refresh()` (bumps the hook's retry tick) instead of leaving a dead-end error message.
 - Ad banner: `GET /api/ads/active?placement=banner`, tap records a click via `POST /api/ads/click/:id`. The banner is rendered at the Home content width with a 3.5:1 aspect ratio, autoplay dots, and a visible `AD` corner label.
 - A `Clapperboard` icon in the header opens `Theatres` — the app's other entry point into the hall-first browse flow.
+- `useMovies()` seeds its Now Showing / Coming Soon state synchronously from `queryCache` on mount and renders `HomeSkeleton` only while `loading` is true — i.e. only when there is no data at all, never during a background revalidation of already-visible rows.
 
 ### MovieDetailScreen
 
@@ -93,6 +98,7 @@ A "Clear" link appears in the modal header once a location is already set, calli
 | File | Purpose |
 |---|---|
 | `screens/SearchScreen.tsx` | Debounced live search, persisted recent searches |
+| `components/SearchResultsSkeleton.tsx` | Skeleton result rows while a search query is in flight |
 
 Query input is debounced 350ms (`useDebouncedValue`) before calling `GET /api/user/movies?search=`, replacing the old fire-on-every-keystroke behavior. Recent searches persist to `AsyncStorage[StorageKeys.recentSearches]` (capped at 6, most-recent-first, deduped case-insensitively) instead of a static in-file array.
 
@@ -106,11 +112,13 @@ Query input is debounced 350ms (`useDebouncedValue`) before calling `GET /api/us
 |---|---|
 | `screens/ShowtimesScreen.tsx` | Per-movie: date strip + per-cinema showtime chips (reached from `MovieDetail`) |
 | `screens/TheatresScreen.tsx` | Per-location: hall → movies → shows, all halls in the current district/state |
+| `components/TheatreCardSkeleton.tsx` | Skeleton hall cards while theatres/showtimes load |
 
 ### ShowtimesScreen
 
 - Requires a location; shows a "Set Location" prompt (opens `LocationModal`) if none is set yet.
-- `GET /api/user/movies/:movieId/showtimes?district&state&date` via `useTheatresForMovie`/`useShowsForMovie` — both hooks take the same `selectedDate` and refetch together when the date strip changes, so the cinema list and its showtimes never fall out of sync with each other (they used to: `useTheatresForMovie` originally omitted `date` entirely, which made the backend default to *its own* server-side "today" regardless of the date selected in the UI, silently returning zero halls whenever that implicit day had no shows — always looked like "no showtimes available").
+- `GET /api/user/movies/:movieId/showtimes?district&state&date` via `useTheatresForMovie`/`useShowsForMovie` — both hooks take the same `selectedDate` and refetch together when the date strip changes, so the cinema list and its showtimes never fall out of sync with each other (they used to: `useTheatresForMovie` originally omitted `date` entirely, which made the backend default to *its own* server-side "today" regardless of the date selected in the UI, silently returning zero halls whenever that implicit day had no shows — always looked like "no showtimes available"). Both hooks share the same cache key, so `queryCache`'s dedup collapses their concurrent calls into a single network request.
+- `TheatreCardSkeleton` renders while the list loads — skipped entirely when `queryCache` already has fresh data for the selected date.
 - This endpoint doesn't report per-show seat counts (only the mock service does — see the comment on `Show.availableSeats`/`totalSeats` in `types/models.ts`). `statusOf()` treats missing seat data as bookable rather than sold out; real availability is only enforced once the seat map loads on `SeatSelection`. The web app has the same limitation and papers over it with a cosmetic `show_id % 4` fast-filling indicator — the mobile app doesn't replicate that since it isn't real data.
 - Each cinema card has a heart (favourite, `AsyncStorage[StorageKeys.favouriteTheatres]`) and a Directions button (`Linking` → Google Maps, using lat/lng when available, else a text query).
 - Tapping a showtime chip sets `selectedMovie`/`selectedTheatre`/`selectedShow` on `bookingStore` (display-only from here on) and navigates to `SeatSelection`.
@@ -132,6 +140,7 @@ Query input is debounced 350ms (`useDebouncedValue`) before calling `GET /api/us
 | `components/SeatCountModal.tsx` | 1–`AppConfig.maxSeatSelectionPerBooking` picker with live per-section availability |
 | `components/SeatGrid.tsx` | Pinch/pan-zoomable renderer, built from `layout.allSeats` (not the pricing-grouped `sections`) |
 | `components/SeatItem.tsx` | Single seat — renders `passage`/`isBlocked` seats as invisible spacers |
+| `components/SeatGridSkeleton.tsx` | Skeleton seat grid while the layout fetches |
 | `utils/seatSelection.ts` | `findBestAdjacentSeats()` — ported verbatim from the web app |
 
 ### The seat map
@@ -155,7 +164,7 @@ Tapping a seat doesn't toggle it individually:
 - **200** → navigate to `Checkout` with the full `CheckoutParams` (see [docs/navigation.md](navigation.md#navigation-param-types)), carrying the real `hold_expires_at`.
 - **409** (seat taken since the layout was fetched) → an alert names the conflicting seats (matched back to their labels), clears the selection, and refetches the layout.
 
-The seat map also refetches on screen focus and app-foreground (`useFocusEffect` + `AppState` listener) — there's no realtime/socket layer in the API, so this poll-on-resume is the only staleness guard.
+The seat map also refetches on screen focus and app-foreground (`useFocusEffect` + `AppState` listener) — there's no realtime/socket layer in the API, so this poll-on-resume is the only staleness guard. `useSeatLayout` seeds from `queryCache` (`CacheTTL.seatLayout` = 15s) and `SeatGridSkeleton` renders while `layout` is still null; holding or releasing seats calls `invalidate('seat-layout:<showId>')` so a just-held seat immediately shows as unavailable to other viewers.
 
 ---
 
@@ -171,6 +180,8 @@ The seat map also refetches on screen focus and app-foreground (`useFocusEffect`
 | `screens/BookingSuccessScreen.tsx` | Fetches the real booking by `payment_id`, renders + saves/shares the ticket |
 | `screens/BookingFailureScreen.tsx` | Cancelled/failed payment, hold countdown continues, Try Again / Release Seats |
 | `components/PriceBreakdown.tsx` | Subtotal / fee / GST / discount / total rows — settings-driven, not hardcoded |
+| `components/PriceBreakdownSkeleton.tsx` | Skeleton price rows on `CheckoutScreen` (seeds from `getCachedSettings()`) |
+| `components/TicketCardSkeleton.tsx` | Skeleton ticket card on `BookingSuccessScreen`/`TicketDetailScreen` |
 | `utils/pricing.ts` | `computeCheckoutPricing()` — pure function, unit tested |
 | `utils/razorpayCheckoutHtml.ts` | Builds the inline HTML page for the WebView |
 
@@ -229,6 +240,7 @@ The seat hold's countdown keeps running on this screen too (same `holdExpiresAt`
 | `screens/ProfileScreen.tsx` | Real `/me` data, inline edit, connected-provider management, Dark Mode |
 | `screens/MyBookingsScreen.tsx` | Upcoming/Past, pull-to-refresh, login-gated |
 | `screens/TicketDetailScreen.tsx` | Full ticket, price breakdown, refund status, Directions, Contact Support |
+| `components/BookingCardSkeleton.tsx` | Skeleton booking cards on `MyBookingsScreen` |
 | `screens/ChangePasswordScreen.tsx` | For accounts with a password set |
 | `screens/SetPasswordScreen.tsx` | For Google-only accounts (`hasPassword === false`) |
 
@@ -253,8 +265,9 @@ No Cancel Booking button — there is no customer-facing cancellation endpoint i
 | File | Purpose |
 |---|---|
 | `screens/OffersScreen.tsx` | Login-gated grid of active offers |
+| `components/OfferCardSkeleton.tsx` | Skeleton offer cards while offers load |
 
-`GET /api/offers/active`, real clipboard copy (`@react-native-clipboard/clipboard`), `is_redeemed` offers render struck-through and non-copyable, expiring-within-3-days offers get an "ENDING SOON" badge, hall-scoped offers get a "HALL OFFER" badge.
+`GET /api/offers/active`, real clipboard copy (`@react-native-clipboard/clipboard`), `is_redeemed` offers render struck-through and non-copyable, expiring-within-3-days offers get an "ENDING SOON" badge, hall-scoped offers get a "HALL OFFER" badge. Offers are cached in `queryCache` (`CacheTTL.offers` = 30m) so `OffersScreen` and `CheckoutScreen` share a single fetch, with `OfferCardSkeleton` covering the cold start.
 
 ---
 
@@ -264,3 +277,4 @@ No Cancel Booking button — there is no customer-facing cancellation endpoint i
 2. Create `src/features/<name>/` (`components/`, `screens/`, `index.ts`).
 3. Register screens in `RootNavigator`/`TabNavigator` + `src/types/navigation.ts`.
 4. Follow the `useTheme()` + `makeStyles(colors)` pattern for any new styled component — see [docs/design-system.md](design-system.md#theming-architecture).
+5. Add a `<Name>Skeleton` built from the shared `SkeletonGroup`/`SkeletonText`/`SkeletonCircle` for the loading state, and wrap your read-path service call in `queryCache`'s `cachedFetch` so the skeleton only shows on a true cold start — see [docs/design-system.md](design-system.md#skeleton).

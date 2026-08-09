@@ -2,7 +2,7 @@
 
 ## Strategy
 
-CineHall uses **Zustand v5** for global client state, split into four narrowly-scoped stores. Server data (movie lists, seat layouts, booking history) stays in local component state via custom hooks — it's never cached in Zustand.
+CineHall uses **Zustand v5** for global client state, split into four narrowly-scoped stores. Server data (movie lists, seat layouts, booking history) stays in local component state via custom hooks — it's never cached in Zustand. A separate, deliberately minimal in-memory cache ([`src/services/queryCache.ts`](../src/services/queryCache.ts)) provides short-TTL caching and request dedup for that server data, so a screen renders already-fetched data instantly instead of flashing a skeleton on every mount.
 
 | What | Where | Why |
 |---|---|---|
@@ -10,7 +10,7 @@ CineHall uses **Zustand v5** for global client state, split into four narrowly-s
 | GPS location (district/state) | `locationStore` (Zustand + persist) | Read by every browse screen/hook that calls a location-aware endpoint |
 | In-progress seat selection | `bookingStore` (Zustand, **not persisted**) | Shared across Showtimes → SeatSelection only — see below for why it stops there |
 | Theme mode + active palette | `themeStore` (Zustand + persist) | Read by every themed component in the tree |
-| Movie / theatre / show lists, seat layout, bookings | Local state (hooks) | Server data — always re-fetched, never stale-cached in a store |
+| Movie / theatre / show lists, seat layout, bookings | Local state (hooks) + `queryCache` (in-memory, TTL) | Server data — re-fetched within a short TTL, never stale-cached in a store |
 | UI state (modals, tabs, form inputs) | Local `useState` | Component-local |
 
 ---
@@ -52,6 +52,8 @@ configureHttpClientAuth({
 ```
 
 This is the *only* coupling between the store and the HTTP layer — `httpClient.ts` itself has no import of Zustand or `authStore`, which avoids a circular dependency (the store needs `httpClient` to call `/login`; `httpClient` needs the store's tokens).
+
+On logout, `authStore` also calls `clearCache()` (from `queryCache`) — both `logout()` and the `onSessionExpired` hook wipe the in-memory server-data cache so the next signed-in account never sees the previous user's cached bookings/offers/lists.
 
 ### What's persisted
 
@@ -133,6 +135,22 @@ interface ThemeState {
 ```
 
 Only `mode` is persisted; `colors` is always re-derived from it via `paletteFor()` on rehydration, so `DarkColors`/`LightColors` can be edited freely without invalidating a stored preference. Read via [`useTheme()`](../src/hooks/useTheme.ts), never `useThemeStore` directly.
+
+---
+
+## Query Cache (server data)
+
+Source: [`src/services/queryCache.ts`](../src/services/queryCache.ts) — not a Zustand store.
+
+Server data intentionally lives outside the four stores. To avoid re-fetching (and re-skeletoning) data the app just fetched, the service layer keeps a tiny in-memory cache keyed by endpoint payload:
+
+- Hooks seed their initial `useState` synchronously via `getCached(key, ttlMs)` (e.g. `useMovies` seeds Now Showing / Coming Soon from cache on mount), then kick off a `cachedFetch(key, fn, ttlMs)` — the fresh-enough cached value is set immediately and the `promise` revalidates in the background.
+- `dedupedFetch` collapses concurrent calls for the same key into one network request — e.g. `useTheatresForMovie` + `useShowsForMovie` both call the same showtimes endpoint for a date.
+- Each cached service exposes a `getCachedX()` peek (`getCachedMovie`, `getCachedSettings`, `getCachedUserBookings`, ...) so a screen can seed its first render without awaiting a promise.
+- Entries expire by TTL (`CacheTTL` — see [docs/architecture.md](architecture.md#srcservicesquerycachets)); past-TTL reads return `undefined` so the caller treats them as a cold start and shows its skeleton.
+- Mutations invalidate: `holdSeats`/`releaseSeats` → `seat-layout:<showId>`, `verifyPayment` → `bookings`. Logout/session-expiry → `clearCache()`.
+
+The key rule that keeps this distinct from the Zustand stores: the cache only ever holds **recently-fetched, re-fetchable server data**, never authoritative client state, so losing it is always safe.
 
 ---
 

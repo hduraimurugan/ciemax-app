@@ -63,7 +63,7 @@ const makeStyles = (Colors: ColorTokens) =>
   });
 ```
 
-This is a **pure wrap** — the body of each style object is untouched from the pre-theming version. Applied to all 11 files in `src/shared/ui/` plus every screen.
+This is a **pure wrap** — the body of each style object is untouched from the pre-theming version. Applied to all 12 files in `src/shared/ui/` plus every screen.
 
 ### Toggling the theme
 
@@ -294,7 +294,7 @@ The onboarding artwork is implemented as local `react-native-svg` scenes in `Onb
 
 ## UI Components
 
-All 11 components in `src/shared/ui/` follow the `useTheme()` + `makeStyles(colors)` pattern described above. Props/API are unchanged from before theming — only the color source changed.
+All 12 components in `src/shared/ui/` follow the `useTheme()` + `makeStyles(colors)` pattern described above. Props/API are unchanged from before theming — only the color source changed.
 
 ### Button
 
@@ -497,6 +497,32 @@ import { Loader } from '@shared/ui';
 <Loader fullScreen message="Loading movies..." />
 <Loader size="small" />
 ```
+
+---
+
+### Skeleton
+
+Shimmer loading placeholders shown while data fetches, built from `Skeleton.tsx` in `src/shared/ui/`. A single module-scope Reanimated shared value drives every shimmer band on screen (and across screens), so N skeletons cost one UI-thread animation and stay perfectly in phase with each other.
+
+```tsx
+import { Skeleton, SkeletonText, SkeletonCircle, SkeletonPoster, SkeletonGroup } from '@shared/ui';
+
+<SkeletonGroup label="Loading cinemas">
+  <SkeletonPoster />
+  <SkeletonText lines={3} />
+  <SkeletonCircle size={40} />
+</SkeletonGroup>
+```
+
+| Component | Purpose |
+|---|---|
+| `Skeleton` | Base block — themed fill (`colors.surfaceElevated`) with a `surfaceHighlight` band sweeping across; `width`/`height`/`radius` props |
+| `SkeletonText` | Stacked bars mimicking wrapped text; the last line defaults shorter (`lines`, `lastLineWidth`, `lineHeight`, `gap`) |
+| `SkeletonCircle` | Circular placeholder for avatars / cast photos |
+| `SkeletonPoster` | Mirrors `MovieCard.tsx`'s 128×184 poster + two text lines exactly |
+| `SkeletonGroup` | Screen-root wrapper marking the whole block as a single accessibility loading region (`progressbar` role, `label` prop) |
+
+The shimmer loop starts once at module load (a `withRepeat`/`withTiming` driven `makeMutable`), so there is nothing to start/stop per component. Screens render a skeleton only while there is **no data at all** — a background revalidation of already-visible data never flashes one (see [docs/features.md](features.md) and [`queryCache`](architecture.md#srcservicesquerycachets)).
 
 ---
 

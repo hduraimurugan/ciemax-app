@@ -45,6 +45,7 @@ src/
 ├── services/
 │   ├── httpClient.ts              # fetch wrapper — error normalization, Bearer injection, refresh-on-401/403
 │   ├── mappers.ts                 # api.ts DTO → models.ts app-model conversions (the ONLY place this happens)
+│   ├── queryCache.ts              # In-memory TTL cache + in-flight request dedup for GET data
 │   ├── authService.ts             # /api/customer/*, /api/otp/*
 │   ├── moviesService.ts           # /api/user/movies* (location-aware, falls back to global list)
 │   ├── theatresService.ts         # Derives Theatre/Show from moviesService's showtimes call + /location/theatres
@@ -59,7 +60,7 @@ src/
 │   └── index.ts
 │
 ├── hooks/
-│   ├── useMovies.ts, useTheatres.ts, useSeatLayout.ts   # loading/error/refetch, location-aware
+│   ├── useMovies.ts, useTheatres.ts, useSeatLayout.ts   # loading/error/refetch, location-aware, cache-seeded + skeleton-driven
 │   ├── useRequireAuth.ts          # Guards an action behind login; queues + resumes it after sign-in
 │   ├── useFavourites.ts           # AsyncStorage-backed favourite movies/theatres
 │   ├── useDebouncedValue.ts       # Used by SearchScreen
@@ -67,7 +68,7 @@ src/
 │   └── index.ts
 │
 ├── shared/
-│   ├── ui/                        # Reusable, theme-aware primitives (Button, Card, Badge, BottomSheet, ...)
+│   ├── ui/                        # Reusable, theme-aware primitives (Button, Card, Badge, BottomSheet, Skeleton, ...)
 │   └── utils/formatters.ts        # formatPrice, formatShowDate, formatShowTime, ...
 │
 └── features/
@@ -135,6 +136,18 @@ The single most load-bearing new file. Handles, in one place:
 ### `src/services/mappers.ts`
 The only place a `ApiXxx` DTO becomes an `Xxx` app model. Notable non-obvious mappings documented inline: cinema-hall-api uses **two different field-name sets** for a "theatre" depending on the endpoint (`cinema_hall_id/_name/_location` vs `hall_id/hall_name/location`); seat pricing resolves `price_override` before falling back to the screen's base `pricing`; PostgreSQL numeric fields such as ratings and booking amounts may arrive as strings and are converted to numbers before entering app models or arithmetic.
 
+### `src/services/queryCache.ts`
+
+A tiny in-memory cache + in-flight request dedup for GET-ish data — deliberately **not** a data-fetching library. It exists to let a screen render already-fetched data synchronously on mount (instead of flashing a skeleton for data fetched moments ago) and to collapse concurrent calls for the same key into a single network request (e.g. `ShowtimesScreen`'s `useTheatresForMovie` + `useShowsForMovie` hitting the same endpoint). The cache lives for the app's lifetime and is wiped on logout — `authStore.logout()` (and the `onSessionExpired` hook) call `clearCache()` so one account never sees another's cached bookings/offers.
+
+- `getCached(key, ttlMs)` / `getStale(key)` — synchronous reads; a `getCached` past its TTL returns `undefined` so callers treat it as a cold start.
+- `dedupedFetch(key, fn)` — runs `fn()` once per key; concurrent callers share the same in-flight promise. Rejections aren't cached, so a failed fetch can be retried immediately.
+- `cachedFetch(key, fn, ttlMs)` — the common "seed from cache, then revalidate" wrapper: returns `{ cached, promise }`, letting a hook set state synchronously from `cached` while `promise` refreshes in the background.
+- `invalidate(prefix)` / `clearCache()` — drop entries whose key starts with `prefix` (used after mutations) or everything (used on logout).
+- `CacheTTL` — per-key freshness windows: `movies` 5m, `movieDetail` 15m, `theatres` 5m, `showtimes` 5m, `offers` 30m, `settings` 30m, `bookings` 1m, `seatLayout` 15s.
+
+Services use it two ways. Read paths like `getNowShowingMovies`, `getActiveOffers`, and `getSettings` wrap their fetch in `cachedFetch` and return the fresh-enough cached value immediately while revalidating in the background; each also exposes a synchronous `getCachedX()` peek (`getCachedMovie`, `getCachedUserBookings`, `getCachedTheatresWithShows`, ...) so hooks and screens can seed their initial `useState` without awaiting. Mutation paths invalidate related entries: `bookingService.holdSeats`/`releaseSeats` call `invalidate('seat-layout:...')` so held seats show as unavailable immediately, and `paymentService.verifyPayment` calls `invalidate('bookings')` so a new booking appears in My Bookings without waiting out the TTL.
+
 ### `src/hooks/`
 Wraps service calls with `loading`, `error`, and `refresh`/`refetch` state, and are location-aware where the underlying endpoint requires `district`/`state` (`useMovies`, `useTheatresForMovie`, `useShowsForMovie`). `useRequireAuth()` is the auth-gating primitive — see [docs/state-management.md](state-management.md#auth-store).
 
@@ -166,8 +179,8 @@ No circular dependencies except the intentionally-inverted one between `httpClie
 
 1. Add the DTO shape to `src/types/api.ts`.
 2. Add the mapper to `src/services/mappers.ts`.
-3. Add the service function to a new or existing `src/services/<name>Service.ts`, calling `httpClient`.
-4. Add a hook in `src/hooks/` if the screen needs loading/error state.
+3. Add the service function to a new or existing `src/services/<name>Service.ts`, calling `httpClient`. If it's a read path, wrap it in `queryCache`'s `cachedFetch` and expose a `getCachedX()` peek (see above).
+4. Add a hook in `src/hooks/` if the screen needs loading/error state — seed initial state from `getCached`, drive a `<Name>Skeleton` from the cold-start `loading` flag.
 5. Create `src/features/<name>/` with the standard sub-structure (`components/`, `screens/`, `index.ts`) and register screens in `RootNavigator`/`TabNavigator` + `src/types/navigation.ts`.
 
 ### Adding a mock fallback for a new service
