@@ -239,6 +239,11 @@ export function mapSeatLayout(detail: ApiShowDetail): SeatLayout {
 
 export function mapBooking(b: ApiBooking): Booking {
   const status: Booking['status'] = b.booking_status === 'cancelled' ? 'cancelled' : 'confirmed';
+  const totalAmount = Number(b.total_amount) || 0;
+  const convenienceFee = Number(b.convenience_fee) || 0;
+  const gstAmount = Number(b.gst_amount) || 0;
+  const discountAmount = Number(b.discount_amount) || 0;
+  const refundAmount = b.refund_amount == null ? null : Number(b.refund_amount) || 0;
   return {
     id: b.id,
     movieId: '',
@@ -261,18 +266,18 @@ export function mapBooking(b: ApiBooking): Booking {
     seatLabels: b.seat_labels,
     theatreLatitude: b.cinema_hall_latitude ?? null,
     theatreLongitude: b.cinema_hall_longitude ?? null,
-    subtotal: b.total_amount + b.discount_amount - b.convenience_fee - b.gst_amount,
-    convenienceFee: b.convenience_fee,
-    gstAmount: b.gst_amount,
+    subtotal: totalAmount + discountAmount - convenienceFee - gstAmount,
+    convenienceFee,
+    gstAmount,
     offerCode: b.offer_code,
-    discountAmount: b.discount_amount,
-    totalAmount: b.total_amount,
+    discountAmount,
+    totalAmount,
     bookingDate: b.created_at,
     status,
     paymentId: b.payment_id,
     posterUrl: resolveImageUrl(b.poster_url),
     refundStatus: b.refund_status ?? null,
-    refundAmount: b.refund_amount ?? null,
+    refundAmount,
     razorpayRefundId: b.razorpay_refund_id ?? null,
     refundInitiatedAt: b.refund_initiated_at ?? null,
     refundSettledAt: b.refund_settled_at ?? null,

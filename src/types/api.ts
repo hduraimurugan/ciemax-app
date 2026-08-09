@@ -275,12 +275,12 @@ export interface ApiBooking {
   customer_id: string;
   seats: string[];
   seat_labels: string[];
-  total_amount: number;
-  convenience_fee: number;
-  gst_amount: number;
+  total_amount: number | string;
+  convenience_fee: number | string;
+  gst_amount: number | string;
   offer_code: string | null;
   offer_title?: string | null;
-  discount_amount: number;
+  discount_amount: number | string;
   booking_status: 'confirmed' | 'cancelled' | 'completed';
   payment_status: string;
   payment_id: string | null;
@@ -300,7 +300,7 @@ export interface ApiBooking {
   cinema_hall_longitude?: number | null;
   // Refunds — admin-initiated only, no customer cancellation endpoint exists.
   refund_status?: 'initiated' | 'settled' | 'failed' | null;
-  refund_amount?: number | null;
+  refund_amount?: number | string | null;
   razorpay_refund_id?: string | null;
   refund_initiated_at?: string | null;
   refund_settled_at?: string | null;
