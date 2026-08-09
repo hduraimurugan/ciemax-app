@@ -3,7 +3,7 @@ import { Show, Theatre } from '@ctypes/models';
 import { getTheatresForMovie, getShowsForMovieAndTheatre, getShowsForMovie } from '@services/theatresService';
 import { useLocationStore } from '@store/locationStore';
 
-export function useTheatresForMovie(movieId: string) {
+export function useTheatresForMovie(movieId: string, date?: string) {
   const [theatres, setTheatres] = useState<Theatre[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -22,7 +22,7 @@ export function useTheatresForMovie(movieId: string) {
       setLoading(true);
       setError(null);
       try {
-        const data = await getTheatresForMovie(movieId, district, state);
+        const data = await getTheatresForMovie(movieId, district, state, date);
         if (!cancelled) setTheatres(data);
       } catch {
         if (!cancelled) setError('Failed to load theatres.');
@@ -33,7 +33,7 @@ export function useTheatresForMovie(movieId: string) {
 
     if (movieId) load();
     return () => { cancelled = true; };
-  }, [movieId, district, state]);
+  }, [movieId, date, district, state]);
 
   return { theatres, loading, error, hasLocation: !!(district && state) };
 }

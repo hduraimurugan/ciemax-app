@@ -19,10 +19,13 @@ type Props = NativeStackScreenProps<RootStackParamList, 'Showtimes'>;
 type ShowStatus = 'available' | 'fast' | 'soldout';
 
 function statusOf(show: Show): ShowStatus {
-  const available = show.availableSeats ?? 0;
-  const total = show.totalSeats ?? 1;
-  if (available === 0) return 'soldout';
-  if (available / total < 0.2) return 'fast';
+  // The real API's showtime list doesn't report seat counts up front (only
+  // the mock service does) — treat unknown availability as bookable rather
+  // than defaulting to sold out. Actual availability is enforced when the
+  // seat map loads.
+  if (show.availableSeats == null || show.totalSeats == null) return 'available';
+  if (show.availableSeats === 0) return 'soldout';
+  if (show.availableSeats / show.totalSeats < 0.2) return 'fast';
   return 'available';
 }
 
@@ -59,7 +62,7 @@ export function ShowtimesScreen({ navigation, route }: Props) {
   const [dateIdx, setDateIdx] = useState(0);
   const [locationModalVisible, setLocationModalVisible] = useState(false);
   const selectedDate = DATE_LABELS[dateIdx]?.iso;
-  const { theatres, loading: theatresLoading, hasLocation } = useTheatresForMovie(movieId);
+  const { theatres, loading: theatresLoading, hasLocation } = useTheatresForMovie(movieId, selectedDate);
   const { shows, loading: showsLoading } = useShowsForMovie(movieId, selectedDate);
   const setSelectedMovie = useBookingStore(s => s.setSelectedMovie);
   const setSelectedTheatre = useBookingStore(s => s.setSelectedTheatre);

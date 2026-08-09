@@ -10,9 +10,14 @@ const MOVIES_BASE = '/api/user/movies';
 
 // ─── Per-movie showtimes (backs MovieDetail -> Showtimes) ──────────────────
 
-export async function getTheatresForMovie(movieId: string, district: string, state: string): Promise<Theatre[]> {
+export async function getTheatresForMovie(
+  movieId: string,
+  district: string,
+  state: string,
+  date?: string,
+): Promise<Theatre[]> {
   if (Env.USE_MOCKS) return mock.getTheatresForMovie(movieId);
-  const { halls } = await getMovieShowtimesRaw(movieId, district, state);
+  const { halls } = await getMovieShowtimesRaw(movieId, district, state, date);
   return halls.map(mapShowtimeHall);
 }
 
