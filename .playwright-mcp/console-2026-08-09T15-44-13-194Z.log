@@ -1,0 +1,8 @@
+[    1504ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=fe5c6041:17986
+[    2396ms] [ERROR] Failed to load resource: the server responded with a status of 401 (Unauthorized) @ http://localhost:5000/api/customer/me:0
+[    2398ms] [ERROR] Failed to load resource: the server responded with a status of 401 (Unauthorized) @ http://localhost:5000/api/customer/me:0
+[    2408ms] [ERROR] Failed to load resource: the server responded with a status of 401 (Unauthorized) @ http://localhost:5000/api/customer/refresh:0
+[    2481ms] [ERROR] Failed to load resource: the server responded with a status of 401 (Unauthorized) @ http://localhost:5000/api/customer/refresh:0
+[    2692ms] [ERROR] Received an empty string for a boolean attribute `%s`. This will treat the attribute as if it were false. Either pass `false` to silence this warning, or pass `true` if you used an empty string in earlier versions of React to indicate this attribute is true. inert @ http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=fe5c6041:12473
+[    7666ms] [ERROR] Location fetch failed: GeolocationPositionError @ http://localhost:5173/src/context/CustomerAuthContext.jsx:77
+[    7666ms] [ERROR] Location fetch failed: GeolocationPositionError @ http://localhost:5173/src/context/CustomerAuthContext.jsx:77

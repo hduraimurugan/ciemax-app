@@ -1,0 +1,293 @@
+- generic [ref=e2]:
+  - generic [ref=e3]:
+    - banner [ref=e4]:
+      - generic [ref=e6]:
+        - link "CinemaMax home" [ref=e7] [cursor=pointer]:
+          - /url: /
+          - generic [ref=e11]: CineMax
+        - searchbox "Search movies, events, shows..." [ref=e17]
+        - generic [ref=e18]:
+          - button "Switch to light mode" [ref=e19] [cursor=pointer]
+          - button "Select location" [ref=e20] [cursor=pointer]:
+            - generic [ref=e21]: Select city
+          - button "Notifications, 2 unread" [ref=e22] [cursor=pointer]:
+            - generic [ref=e23]: "2"
+          - button "Sign in" [ref=e24] [cursor=pointer]
+    - generic [ref=e26]:
+      - navigation "Main navigation" [ref=e27]:
+        - link "Movies" [ref=e28] [cursor=pointer]:
+          - /url: /movies
+        - link "Theatres" [ref=e31] [cursor=pointer]:
+          - /url: /theatres
+      - navigation "Secondary navigation" [ref=e36]:
+        - link "Offers" [ref=e37] [cursor=pointer]:
+          - /url: /offers
+        - link "Gift Cards" [ref=e41] [cursor=pointer]:
+          - /url: /gift-cards
+    - main "Main content" [ref=e46]:
+      - generic [ref=e47]:
+        - generic [ref=e51]:
+          - region "Featured movies" [ref=e52]:
+            - generic [ref=e59]:
+              - generic [ref=e60]: Now Trending
+              - 'heading "The Punisher: One Last Kill" [level=1] [ref=e62]'
+              - generic [ref=e63]:
+                - generic [ref=e64]: "8.4"
+                - generic [ref=e68]: 0h 51m
+                - generic [ref=e72]: English
+              - paragraph [ref=e73]: Action • Drama
+              - generic [ref=e74]:
+                - button "Book Now" [ref=e75] [cursor=pointer]
+                - button "View Details" [ref=e78] [cursor=pointer]
+            - generic:
+              - generic:
+                - generic:
+                  - generic: Now Trending
+                  - heading "The Odyssey" [level=1]
+                  - generic:
+                    - generic: "7.9"
+                    - generic: 2h 53m
+                    - generic: English
+                  - paragraph: Adventure • Action • Fantasy
+                  - generic:
+                    - button "Book Now"
+                    - button "View Details"
+            - generic:
+              - generic:
+                - generic:
+                  - generic: Now Trending
+                  - 'heading "Spider-Man: Brand New Day" [level=1]'
+                  - generic:
+                    - generic: "7.8"
+                    - generic: 2h 25m
+                    - generic: English
+                  - paragraph: Sci-Fi • Action • Adventure
+                  - generic:
+                    - button "Book Now"
+                    - button "View Details"
+            - generic:
+              - generic:
+                - generic:
+                  - generic: Now Trending
+                  - heading "Michael" [level=1]
+                  - generic:
+                    - generic: "7.6"
+                    - generic: 2h 8m
+                    - generic: English
+                  - paragraph: Musical • Drama
+                  - generic:
+                    - button "Book Now"
+                    - button "View Details"
+            - generic:
+              - generic:
+                - generic:
+                  - generic: Now Trending
+                  - heading "Karuppu" [level=1]
+                  - generic:
+                    - generic: "7.2"
+                    - generic: 2h 31m
+                    - generic: Tamil
+                  - paragraph: Action • Fantasy
+                  - generic:
+                    - button "Book Now"
+                    - button "View Details"
+            - generic [ref=e81]:
+              - button "Go to slide 1" [ref=e82] [cursor=pointer]
+              - button "Go to slide 2" [ref=e83] [cursor=pointer]
+              - button "Go to slide 3" [ref=e84] [cursor=pointer]
+              - button "Go to slide 4" [ref=e85] [cursor=pointer]
+              - button "Go to slide 5" [ref=e86] [cursor=pointer]
+          - generic [ref=e87]:
+            - generic [ref=e89]:
+              - button "Now Showing" [pressed] [ref=e90] [cursor=pointer]
+              - button "Coming Soon" [ref=e91] [cursor=pointer]
+            - generic [ref=e94]:
+              - generic [ref=e95]:
+                - generic [ref=e97] [cursor=pointer]:
+                  - img "Bookmyshow" [ref=e98]
+                  - generic [ref=e99]: AD
+                - generic [ref=e101] [cursor=pointer]:
+                  - img "Flat 5%" [ref=e102]
+                  - generic [ref=e103]: AD
+              - generic [ref=e104]:
+                - button "Go to slide 1" [ref=e105] [cursor=pointer]
+                - button "Go to slide 2" [ref=e106] [cursor=pointer]
+            - generic [ref=e108]:
+              - generic [ref=e109]:
+                - generic [ref=e110]:
+                  - heading "Now Showing" [level=2] [ref=e112]
+                  - generic [ref=e113]: 12 movies
+                - generic [ref=e114]:
+                  - button "Scroll left" [disabled] [ref=e115]
+                  - button "Scroll right" [ref=e118] [cursor=pointer]
+              - region "Now Showing movies" [ref=e122]:
+                - 'button "Spider-Man: Brand New Day, rated 7.8" [ref=e124] [cursor=pointer]':
+                  - generic [ref=e125]:
+                    - generic [ref=e128]: "7.8"
+                    - generic [ref=e132]:
+                      - generic [ref=e133]: Sci-Fi
+                      - generic [ref=e134]: Action
+                    - button "Book Now" [ref=e136]
+                  - generic [ref=e139]:
+                    - 'heading "Spider-Man: Brand New Day" [level=3] [ref=e140]'
+                    - generic [ref=e141]:
+                      - generic [ref=e142]: Sci-Fi / Action
+                      - generic [ref=e143]: "|"
+                      - generic [ref=e144]: 2h 25m
+                    - paragraph [ref=e148]: English
+                - button "Jana Nayagan, rated 5.1" [ref=e150] [cursor=pointer]:
+                  - generic [ref=e151]:
+                    - generic [ref=e154]: "5.1"
+                    - generic [ref=e158]:
+                      - generic [ref=e159]: Action
+                      - generic [ref=e160]: Drama
+                    - button "Book Now" [ref=e162]
+                  - generic [ref=e165]:
+                    - heading "Jana Nayagan" [level=3] [ref=e166]
+                    - generic [ref=e167]:
+                      - generic [ref=e168]: Action / Drama
+                      - generic [ref=e169]: "|"
+                      - generic [ref=e170]: 3h 3m
+                    - paragraph [ref=e174]: Tamil
+                - button "The Odyssey, rated 7.9" [ref=e176] [cursor=pointer]:
+                  - generic [ref=e177]:
+                    - generic [ref=e180]: "7.9"
+                    - generic [ref=e184]:
+                      - generic [ref=e185]: Adventure
+                      - generic [ref=e186]: Action
+                    - button "Book Now" [ref=e188]
+                  - generic [ref=e191]:
+                    - heading "The Odyssey" [level=3] [ref=e192]
+                    - generic [ref=e193]:
+                      - generic [ref=e194]: Adventure / Action
+                      - generic [ref=e195]: "|"
+                      - generic [ref=e196]: 2h 53m
+                    - paragraph [ref=e200]: English
+                - button "Supergirl, rated 6.7" [ref=e202] [cursor=pointer]:
+                  - generic [ref=e203]:
+                    - generic [ref=e206]: "6.7"
+                    - generic [ref=e210]:
+                      - generic [ref=e211]: Action
+                      - generic [ref=e212]: Adventure
+                    - button "Book Now" [ref=e214]
+                  - generic [ref=e217]:
+                    - heading "Supergirl" [level=3] [ref=e218]
+                    - generic [ref=e219]:
+                      - generic [ref=e220]: Action / Adventure
+                      - generic [ref=e221]: "|"
+                      - generic [ref=e222]: 1h 48m
+                    - paragraph [ref=e226]: English
+                - button "Karuppu, rated 7.2" [ref=e228] [cursor=pointer]:
+                  - generic [ref=e229]:
+                    - generic [ref=e232]: "7.2"
+                    - generic [ref=e236]:
+                      - generic [ref=e237]: Action
+                      - generic [ref=e238]: Fantasy
+                    - button "Book Now" [ref=e240]
+                  - generic [ref=e243]:
+                    - heading "Karuppu" [level=3] [ref=e244]
+                    - generic [ref=e245]:
+                      - generic [ref=e246]: Action / Fantasy
+                      - generic [ref=e247]: "|"
+                      - generic [ref=e248]: 2h 31m
+                    - paragraph [ref=e252]: Tamil
+                - 'button "The Punisher: One Last Kill, rated 8.4" [ref=e254] [cursor=pointer]':
+                  - generic [ref=e255]:
+                    - generic [ref=e258]: "8.4"
+                    - generic [ref=e262]:
+                      - generic [ref=e263]: Action
+                      - generic [ref=e264]: Drama
+                    - button "Book Now" [ref=e266]
+                  - generic [ref=e269]:
+                    - 'heading "The Punisher: One Last Kill" [level=3] [ref=e270]'
+                    - generic [ref=e271]:
+                      - generic [ref=e272]: Action / Drama
+                      - generic [ref=e273]: "|"
+                      - generic [ref=e274]: 0h 51m
+                    - paragraph [ref=e278]: English
+                - button "Michael, rated 7.6" [ref=e280] [cursor=pointer]:
+                  - generic [ref=e281]:
+                    - generic [ref=e284]: "7.6"
+                    - generic [ref=e288]:
+                      - generic [ref=e289]: Musical
+                      - generic [ref=e290]: Drama
+                    - button "Book Now" [ref=e292]
+                  - generic [ref=e295]:
+                    - heading "Michael" [level=3] [ref=e296]
+                    - generic [ref=e297]:
+                      - generic [ref=e298]: Musical / Drama
+                      - generic [ref=e299]: "|"
+                      - generic [ref=e300]: 2h 8m
+                    - paragraph [ref=e304]: English
+                - button "Youth, rated 6.0" [ref=e306] [cursor=pointer]:
+                  - generic [ref=e307]:
+                    - generic [ref=e310]: "6.0"
+                    - generic [ref=e314]:
+                      - generic [ref=e315]: Comedy
+                      - generic [ref=e316]: Romance
+                    - button "Book Now" [ref=e318]
+                  - generic [ref=e321]:
+                    - heading "Youth" [level=3] [ref=e322]
+                    - generic [ref=e323]:
+                      - generic [ref=e324]: Comedy / Romance
+                      - generic [ref=e325]: "|"
+                      - generic [ref=e326]: 2h 21m
+                    - paragraph [ref=e330]: Tamil
+                - 'button "Dhurandhar: The Revenge, rated 7.8" [ref=e332] [cursor=pointer]':
+                  - generic [ref=e333]:
+                    - generic [ref=e336]: "7.8"
+                    - generic [ref=e340]:
+                      - generic [ref=e341]: Action
+                      - generic [ref=e342]: Thriller
+                    - button "Book Now" [ref=e344]
+                  - generic [ref=e347]:
+                    - 'heading "Dhurandhar: The Revenge" [level=3] [ref=e348]'
+                    - generic [ref=e349]:
+                      - generic [ref=e350]: Action / Thriller
+                      - generic [ref=e351]: "|"
+                      - generic [ref=e352]: 3h 49m
+                    - paragraph [ref=e356]: Hindi
+                - button "Project Hail Mary, rated 8.2" [ref=e358] [cursor=pointer]:
+                  - generic [ref=e359]:
+                    - generic [ref=e362]: "8.2"
+                    - generic [ref=e366]:
+                      - generic [ref=e367]: Sci-Fi
+                      - generic [ref=e368]: Adventure
+                    - button "Book Now" [ref=e370]
+                  - generic [ref=e373]:
+                    - heading "Project Hail Mary" [level=3] [ref=e374]
+                    - generic [ref=e375]:
+                      - generic [ref=e376]: Sci-Fi / Adventure
+                      - generic [ref=e377]: "|"
+                      - generic [ref=e378]: 2h 37m
+                    - paragraph [ref=e382]: English
+                - button "Thaai Kizhavi, rated 6.3" [ref=e384] [cursor=pointer]:
+                  - generic [ref=e385]:
+                    - generic [ref=e388]: "6.3"
+                    - generic [ref=e392]:
+                      - generic [ref=e393]: Comedy
+                      - generic [ref=e394]: Drama
+                    - button "Book Now" [ref=e396]
+                  - generic [ref=e399]:
+                    - heading "Thaai Kizhavi" [level=3] [ref=e400]
+                    - generic [ref=e401]:
+                      - generic [ref=e402]: Comedy / Drama
+                      - generic [ref=e403]: "|"
+                      - generic [ref=e404]: 2h 24m
+                    - paragraph [ref=e408]: Tamil
+                - 'button "Avatar: Fire and Ash, rated 7.3" [ref=e410] [cursor=pointer]':
+                  - generic [ref=e411]:
+                    - generic [ref=e414]: "7.3"
+                    - generic [ref=e418]:
+                      - generic [ref=e419]: Sci-Fi
+                      - generic [ref=e420]: Adventure
+                    - button "Book Now" [ref=e422]
+                  - generic [ref=e425]:
+                    - 'heading "Avatar: Fire and Ash" [level=3] [ref=e426]'
+                    - generic [ref=e427]:
+                      - generic [ref=e428]: Sci-Fi / Adventure
+                      - generic [ref=e429]: "|"
+                      - generic [ref=e430]: 3h 18m
+                    - paragraph [ref=e434]: English
+        - paragraph [ref=e438]: © 2026 CinemaMax. All rights reserved.
+  - region "Notifications alt+T"
