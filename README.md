@@ -85,7 +85,9 @@ cp .env.example .env
 # Start Metro bundler
 npm start
 
-# Run on Android (new terminal)
+# Run on Android (new terminal). On a *physical* device, first run
+# `adb reverse tcp:5000 tcp:5000` so the phone can reach the local API —
+# see docs/android-dev-device.md
 npm run android
 
 # Run on iOS (new terminal) — see docs/ios-env-setup.md for one-time
@@ -151,7 +153,8 @@ MyApp/
 │       └── offers/                 # OffersScreen — real coupons, clipboard copy
 ├── android/app/build.gradle       # react-native-config wired to per-variant .env files
 ├── docs/
-│   └── ios-env-setup.md           # Manual Xcode steps for react-native-config + Google Sign-In (Mac-only)
+│   ├── ios-env-setup.md           # Manual Xcode steps for react-native-config + Google Sign-In (Mac-only)
+│   └── android-dev-device.md      # Local API access from a physical Android device (adb reverse / LAN IP)
 └── __mocks__/                     # Jest manual mocks for every native module the app touches
 ```
 
@@ -214,6 +217,7 @@ Toggle it from **Profile → Dark Mode** (persisted via AsyncStorage). See [docs
 | [State Management](docs/state-management.md) | Zustand stores — auth, location, booking, theme |
 | [Features](docs/features.md) | Feature module breakdown, real endpoints used per screen |
 | [iOS env setup](docs/ios-env-setup.md) | Manual Xcode steps (react-native-config, Google Sign-In) — done once, on a Mac |
+| [Android dev device](docs/android-dev-device.md) | Reaching a local API from a physical phone — `adb reverse` vs. LAN IP, firewall, rebuild gotchas |
 
 ---
 
