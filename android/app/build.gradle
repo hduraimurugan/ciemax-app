@@ -90,6 +90,22 @@ android {
     compileSdk rootProject.ext.compileSdkVersion
 
     namespace "com.myapp"
+
+    // This repo lives at a deeply nested Windows path (Users\...\Git Cloned\
+    // My Projects\my-apps\MyApp), and native C++ codegen (e.g.
+    // react-native-safe-area-context) produces object-file paths that blow
+    // past Windows' 260-character MAX_PATH under the default .cxx staging
+    // dir, failing ninja with "Filename longer than 260 characters". Staging
+    // native builds to a short, fixed path outside the repo sidesteps it
+    // without needing a subst'd drive (which broke Metro/Babel's module
+    // resolution by mixing drive-letter and realpath'd absolute paths).
+    if (org.gradle.internal.os.OperatingSystem.current().isWindows()) {
+        externalNativeBuild {
+            cmake {
+                buildStagingDirectory "C:/rn-cxx-build/MyApp"
+            }
+        }
+    }
     defaultConfig {
         applicationId "com.myapp"
         minSdkVersion rootProject.ext.minSdkVersion
