@@ -33,10 +33,13 @@ NavigationContainer                    (App.tsx)
     │
     ├── TicketDetail                   → TicketDetailScreen
     ├── ChangePassword                  → ChangePasswordScreen     (modal)
-    └── SetPassword                      → SetPasswordScreen        (modal)
+    ├── SetPassword                      → SetPasswordScreen        (modal)
+    └── Notifications                     → NotificationsScreen       (bell icon on Home; ProfileScreen menu; push-notification taps)
 ```
 
 Splash no longer forces every user through Login — it waits only for a persisted token (if any) to be verified against `GET /me`, then goes straight to `MainTabs` (or `Onboarding` on first run). This mirrors the web app: browsing, search, and movie/showtime discovery are all public.
+
+`Notifications` is also the landing screen for every push-notification tap (backgrounded, killed-app launch, or foreground banner) — reached via a stable `navigationRef` (`src/app/navigation/navigationRef.ts`) rather than a `navigation` prop, since a tap handler fires outside the component tree. See [docs/architecture.md](architecture.md#push-notifications-notifee--react-native-firebasemessaging).
 
 ---
 
@@ -49,6 +52,7 @@ Splash ── bootstrap() resolves ──▶  Onboarding (first run only) ──
     MoviesScreen  ── city chip ──▶  LocationModal (GPS or manual state/district)
                   ── search icon ──▶  SearchTab (sibling tab)
                   ── Clapperboard icon ──▶  Theatres
+                  ── bell icon (badge = notificationStore.unreadCount) ──▶  Notifications
         │  user taps a movie card
         ▼
     MovieDetailScreen  ── "Book Tickets" ──▶  ShowtimesScreen
@@ -95,9 +99,17 @@ Splash ── bootstrap() resolves ──▶  Onboarding (first run only) ──
 [MainTabs: Profile] — login-gated menu, but the screen itself renders for guests too
     ProfileScreen  ── "Sign In" (guests) ──▶  Login (modal)
                    ── Dark Mode switch ──▶  toggleTheme()
+                   ── Push Notifications switch ──▶  enablePush() / disablePush() (no navigation — see docs/architecture.md)
+                   ── "Notifications" menu item ──▶  Notifications
                    ── "Offers & Coupons" ──▶  Offers
                    ── "Change/Set Password" ──▶  ChangePassword / SetPassword
                    ── "Logout" ──▶  authStore.logout() + resetBookingFlow() → MainTabs (stays, doesn't force Login)
+
+[Notifications] — reachable from the Home bell, the Profile menu, and any push-notification tap
+    NotificationsScreen  ── guest ──▶  "Sign In" prompt (same pattern as MyBookings/Profile)
+                          ── tap a notification with a bookingId ──▶  TicketDetail (and marks it read)
+                          ── tap one without a bookingId ──▶  marks it read in place, no navigation
+                          ── "Mark all read" ──▶  POST-backed bulk mark, no navigation
 ```
 
 ---
@@ -148,6 +160,7 @@ export type RootStackParamList = {
   TicketDetail: { bookingId: string };
   ChangePassword: undefined;
   SetPassword: undefined;
+  Notifications: undefined;
 };
 
 export type TabParamList = {
@@ -257,5 +270,7 @@ Logout resets to `MainTabs`, not `Login` — browsing stays available for a logg
 |---|---|
 | [src/app/navigation/RootNavigator.tsx](../src/app/navigation/RootNavigator.tsx) | Root stack — registers every live screen |
 | [src/app/navigation/TabNavigator.tsx](../src/app/navigation/TabNavigator.tsx) | Bottom tab bar configuration |
+| [src/app/navigation/navigationRef.ts](../src/app/navigation/navigationRef.ts) | Stable nav ref + `navigateToNotifications()`, for code outside the component tree (push-notification tap handlers) |
 | [src/types/navigation.ts](../src/types/navigation.ts) | All param list type definitions |
 | [src/hooks/useRequireAuth.ts](../src/hooks/useRequireAuth.ts) | The login-as-modal guard used across screens |
+| [src/hooks/usePushNotifications.ts](../src/hooks/usePushNotifications.ts) | Wires push-notification taps to `navigateToNotifications()` |

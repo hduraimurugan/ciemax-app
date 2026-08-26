@@ -2,7 +2,7 @@
 
 ## Strategy
 
-CineHall uses **Zustand v5** for global client state, split into four narrowly-scoped stores. Server data (movie lists, seat layouts, booking history) stays in local component state via custom hooks — it's never cached in Zustand. A separate, deliberately minimal in-memory cache ([`src/services/queryCache.ts`](../src/services/queryCache.ts)) provides short-TTL caching and request dedup for that server data, so a screen renders already-fetched data instantly instead of flashing a skeleton on every mount.
+CineHall uses **Zustand v5** for global client state, split into five narrowly-scoped stores. Server data (movie lists, seat layouts, booking history) stays in local component state via custom hooks — it's never cached in Zustand. A separate, deliberately minimal in-memory cache ([`src/services/queryCache.ts`](../src/services/queryCache.ts)) provides short-TTL caching and request dedup for that server data, so a screen renders already-fetched data instantly instead of flashing a skeleton on every mount.
 
 | What | Where | Why |
 |---|---|---|
@@ -10,6 +10,7 @@ CineHall uses **Zustand v5** for global client state, split into four narrowly-s
 | GPS location (district/state) | `locationStore` (Zustand + persist) | Read by every browse screen/hook that calls a location-aware endpoint |
 | In-progress seat selection | `bookingStore` (Zustand, **not persisted**) | Shared across Showtimes → SeatSelection only — see below for why it stops there |
 | Theme mode + active palette | `themeStore` (Zustand + persist) | Read by every themed component in the tree |
+| In-app notifications, unread count, push token | `notificationStore` (Zustand, **not persisted**) | Read by the Home tab bell badge, `NotificationsScreen`, `ProfileScreen`'s push toggle |
 | Movie / theatre / show lists, seat layout, bookings | Local state (hooks) + `queryCache` (in-memory, TTL) | Server data — re-fetched within a short TTL, never stale-cached in a store |
 | UI state (modals, tabs, form inputs) | Local `useState` | Component-local |
 
@@ -53,7 +54,7 @@ configureHttpClientAuth({
 
 This is the *only* coupling between the store and the HTTP layer — `httpClient.ts` itself has no import of Zustand or `authStore`, which avoids a circular dependency (the store needs `httpClient` to call `/login`; `httpClient` needs the store's tokens).
 
-On logout, `authStore` also calls `clearCache()` (from `queryCache`) — both `logout()` and the `onSessionExpired` hook wipe the in-memory server-data cache so the next signed-in account never sees the previous user's cached bookings/offers/lists.
+On logout, `authStore` also calls `clearCache()` (from `queryCache`) — both `logout()` and the `onSessionExpired` hook wipe the in-memory server-data cache so the next signed-in account never sees the previous user's cached bookings/offers/lists. Both also call `useNotificationStore.getState().reset()`, and `logout()` additionally unregisters the current device's FCM token server-side (best-effort, non-blocking) so a signed-out device stops receiving that account's push notifications.
 
 ### What's persisted
 
@@ -138,11 +139,43 @@ Only `mode` is persisted; `colors` is always re-derived from it via `paletteFor(
 
 ---
 
+## Notification Store
+
+Source: [`src/store/notificationStore.ts`](../src/store/notificationStore.ts)
+
+```ts
+interface NotificationState {
+  items: Notification[];
+  unreadCount: number;
+  loading: boolean;
+  page: number;
+  hasMore: boolean;
+  pushToken: string | null;    // last-registered FCM token — kept here (not persisted) so logout can unregister it
+  pushEnabled: boolean;        // derived: !!pushToken
+
+  fetchUnreadCount: () => Promise<void>;
+  fetchList: () => Promise<void>;
+  loadMore: () => Promise<void>;
+  markRead: (id: string) => Promise<void>;
+  markAllRead: () => Promise<void>;
+  setPushToken: (token: string | null) => void;
+  reset: () => void;
+}
+```
+
+Deliberately **not** `persist`-backed: `items`/`unreadCount` are always re-fetchable from the server, and `pushToken`/`pushEnabled` are re-derived on cold start by `syncPushStateOnLaunch()` (see [docs/architecture.md](architecture.md#push-notifications-notifee--react-native-firebasemessaging)) rather than trusted from disk — the OS-level permission grant, not a remembered flag, is the source of truth for whether push is actually enabled.
+
+`markRead`/`markAllRead` update `items`/`unreadCount` optimistically before the network call resolves; a failure is non-fatal and silently reconciled on the next `fetchList`/`fetchUnreadCount`, matching the pattern used by `bookingStore`'s hold/release calls.
+
+`MoviesScreen`'s Home tab bell reads `unreadCount` directly for its badge; `usePushNotifications()` (mounted once in `App.tsx`) is what keeps it fresh — see [docs/architecture.md](architecture.md#push-notifications-notifee--react-native-firebasemessaging).
+
+---
+
 ## Query Cache (server data)
 
 Source: [`src/services/queryCache.ts`](../src/services/queryCache.ts) — not a Zustand store.
 
-Server data intentionally lives outside the four stores. To avoid re-fetching (and re-skeletoning) data the app just fetched, the service layer keeps a tiny in-memory cache keyed by endpoint payload:
+Server data intentionally lives outside the five stores. To avoid re-fetching (and re-skeletoning) data the app just fetched, the service layer keeps a tiny in-memory cache keyed by endpoint payload:
 
 - Hooks seed their initial `useState` synchronously via `getCached(key, ttlMs)` (e.g. `useMovies` seeds Now Showing / Coming Soon from cache on mount), then kick off a `cachedFetch(key, fn, ttlMs)` — the fresh-enough cached value is set immediately and the `promise` revalidates in the background.
 - `dedupedFetch` collapses concurrent calls for the same key into one network request — e.g. `useTheatresForMovie` + `useShowsForMovie` both call the same showtimes endpoint for a date.
@@ -182,4 +215,4 @@ if (!result.success) setError(result.error?.message);
 | Async actions | Direct | Thunk/Saga | Manual |
 | Persistence | Built-in `persist` middleware | Needs redux-persist | Manual |
 
-Four small stores (auth, location, booking, theme) is still well within Zustand's comfort zone, and keeps the app on a single state-management story rather than mixing in Context for auth and Zustand for everything else.
+Five small stores (auth, location, booking, theme, notification) is still well within Zustand's comfort zone, and keeps the app on a single state-management story rather than mixing in Context for auth and Zustand for everything else.

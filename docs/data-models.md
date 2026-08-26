@@ -201,6 +201,29 @@ Populated from `GET /api/customer/me` via `authStore`, not a hardcoded placehold
 
 ---
 
+## Notification
+
+```ts
+interface Notification {
+  id: string;
+  event: string;              // e.g. 'booking_confirmed', 'refund_settled'
+  title: string;
+  body: string | null;
+  data: Record<string, unknown>;
+  bookingId: string | null;
+  showId: string | null;
+  refundId: string | null;
+  readAt: string | null;
+  createdAt: string;
+}
+```
+
+Backs both the in-app `NotificationsScreen` list (`GET /api/notifications`) and the unread badge on the Home tab (`GET /api/notifications/unread-count`). `NotificationPreferences` (`src/types/api.ts`) is a separate, un-mapped type — per-event channel toggles (`{ [event]: { email, sms, whatsapp, push } }`) round-tripped as-is through `GET`/`PATCH /api/notifications/preferences`, since there's no camelCase app model for it yet.
+
+Tapping a notification with a `bookingId` navigates to `TicketDetail`; one without (e.g. a general announcement) just marks itself read in place. See [docs/features.md](features.md#notifications) and [docs/state-management.md](state-management.md#notification-store).
+
+---
+
 ## Entity Relationships
 
 ```

@@ -246,7 +246,7 @@ The seat hold's countdown keeps running on this screen too (same `holdExpiresAt`
 
 ### ProfileScreen
 
-Guests see a "Sign In" prompt (Dark Mode still works without a session). Signed-in users get: avatar (real `avatarUrl` or gradient initials), inline name/phone editing (`PUT /api/customer/update`), a "Connected Login Methods" card (Email & Password status, Google Connect/Disconnect via `linkProvider`/`unlinkProvider`), and a menu routing to My Bookings, Offers, Change/Set Password, and a real Logout (`authStore.logout()`, resets to `MainTabs` — not `Login`).
+Guests see a "Sign In" prompt (Dark Mode still works without a session). Signed-in users get: avatar (real `avatarUrl` or gradient initials), inline name/phone editing (`PUT /api/customer/update`), a "Connected Login Methods" card (Email & Password status, Google Connect/Disconnect via `linkProvider`/`unlinkProvider`), a Push Notifications switch (`enablePush()`/`disablePush()` — see [docs/architecture.md](architecture.md#push-notifications-notifee--react-native-firebasemessaging)), and a menu routing to My Bookings, Offers, Notifications, Change/Set Password, and a real Logout (`authStore.logout()`, resets to `MainTabs` — not `Login`).
 
 ### MyBookingsScreen
 
@@ -268,6 +268,34 @@ No Cancel Booking button — there is no customer-facing cancellation endpoint i
 | `components/OfferCardSkeleton.tsx` | Skeleton offer cards while offers load |
 
 `GET /api/offers/active`, real clipboard copy (`@react-native-clipboard/clipboard`), `is_redeemed` offers render struck-through and non-copyable, expiring-within-3-days offers get an "ENDING SOON" badge, hall-scoped offers get a "HALL OFFER" badge. Offers are cached in `queryCache` (`CacheTTL.offers` = 30m) so `OffersScreen` and `CheckoutScreen` share a single fetch, with `OfferCardSkeleton` covering the cold start.
+
+---
+
+## notifications
+
+**Domain:** In-app notification list, unread badge, and push-notification delivery (FCM via `@react-native-firebase/messaging` + `@notifee/react-native`).
+
+| File | Purpose |
+|---|---|
+| `screens/NotificationsScreen.tsx` | Login-gated list — unread dot, "Mark all read", tap-to-open, infinite scroll |
+| `components/NotificationCardSkeleton.tsx` | `NotificationCardSkeleton` (single row) and `NotificationListSkeleton` (4-row group) for the cold-start load |
+
+Reachable from three places: the bell icon on `MoviesScreen`'s Home tab (badge = `notificationStore.unreadCount`, capped display `"9+"`), the "Notifications" row in the `ProfileScreen` menu, and any push-notification tap (handled outside the component tree — see below).
+
+### NotificationsScreen
+
+- Guests see the same "Sign In" prompt pattern as `MyBookingsScreen`/`ProfileScreen`.
+- `useFocusEffect` re-fetches the list and unread count every time the screen gains focus (not just on mount), so re-opening it after a new push arrives shows current data.
+- Tapping a row: `markRead(id)` (optimistic, see [docs/state-management.md](state-management.md#notification-store)), then navigates to `TicketDetail` if the notification carries a `bookingId` — otherwise it just marks read in place (e.g. a general announcement has nothing to drill into).
+- `FlatList` with `onEndReached`/`hasMore` pagination (`PAGE_SIZE = 20`), pull-to-refresh via `RefreshControl`.
+
+### Push notification pipeline
+
+The in-app list above is fed by the same backend events that also trigger a **push** notification to the device — the delivery pipeline is entirely separate from the screen and lives in `src/hooks/usePushNotifications.ts` (mounted once in `App.tsx`) and `src/services/pushService.ts`. Full detail — including the `index.js` background-message registration, the Notifee foreground banner, tap-to-navigate via a module-level `navigationRef`, and the Android 13+ runtime permission flow — is in [docs/architecture.md](architecture.md#push-notifications-notifee--react-native-firebasemessaging), since it's infrastructure rather than a screen. In short:
+
+- Enabling push is opt-in only, from the `ProfileScreen` toggle — never an unsolicited prompt on app load.
+- A foreground FCM message is rendered as a Notifee banner (FCM shows nothing itself while the app is open); background/killed-app delivery is automatic via Android's FCM SDK.
+- Tapping any push notification — foreground banner, backgrounded tap, or a killed-app launch — always lands on `Notifications`, not a specific booking (v1 scope; see the hook's header comment for the deep-linking note).
 
 ---
 

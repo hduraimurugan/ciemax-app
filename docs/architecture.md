@@ -40,6 +40,7 @@ src/
 │   ├── locationStore.ts           # Zustand + persist — district/state, 24h GPS cache
 │   ├── bookingStore.ts            # Zustand — in-progress seat selection (pre-hold; Checkout+ is route-param-driven)
 │   ├── themeStore.ts              # Zustand + persist — dark/light mode, active ColorTokens
+│   ├── notificationStore.ts       # Zustand, not persisted — in-app notification list/unread count + push token
 │   └── index.ts
 │
 ├── services/
@@ -56,6 +57,8 @@ src/
 │   ├── offersService.ts           # /api/offers/{active,validate}
 │   ├── settingsService.ts         # GET /api/settings — convenience_fee_per_ticket, gst_percentage
 │   ├── adsService.ts              # /api/ads/{active,click/:id}
+│   ├── notificationService.ts     # /api/notifications/{list,unread-count,:id/read,read-all,preferences,device-token}
+│   ├── pushService.ts             # FCM token lifecycle — enablePush/disablePush/syncPushStateOnLaunch
 │   ├── *.mock.ts                  # Original in-memory implementations, selected via Env.USE_MOCKS
 │   └── index.ts
 │
@@ -64,6 +67,7 @@ src/
 │   ├── useRequireAuth.ts          # Guards an action behind login; queues + resumes it after sign-in
 │   ├── useFavourites.ts           # AsyncStorage-backed favourite movies/theatres
 │   ├── useDebouncedValue.ts       # Used by SearchScreen
+│   ├── usePushNotifications.ts    # Mounted once in App.tsx — wires FCM/notifee listeners, tap-to-navigate, badge refresh
 │   ├── useTheme.ts, useCountdown.ts
 │   └── index.ts
 │
@@ -88,7 +92,8 @@ src/
     │   ├── components/PriceBreakdown.tsx
     │   └── utils/                 # pricing.ts (pure fee/GST calc), razorpayCheckoutHtml.ts
     ├── profile/                    # ProfileScreen, MyBookingsScreen, TicketDetailScreen, Change/SetPasswordScreen
-    └── offers/                     # OffersScreen
+    ├── offers/                     # OffersScreen
+    └── notifications/              # NotificationsScreen — in-app notification list
 ```
 
 ---
@@ -96,7 +101,7 @@ src/
 ## Layer Responsibilities
 
 ### `src/app/`
-Bootstrap and navigation wiring. Contains no business logic or UI primitives. `App.tsx` wraps the tree in `SafeAreaProvider` → `NavigationContainer`; the seat map owns its gesture detector configuration locally.
+Bootstrap and navigation wiring. Contains no business logic or UI primitives. `App.tsx` wraps the tree in `SafeAreaProvider` → `NavigationContainer`; the seat map owns its gesture detector configuration locally. `App.tsx` also calls `usePushNotifications()` once at the root, and passes `navigationRef` (`src/app/navigation/navigationRef.ts`) to `NavigationContainer` — a stable ref that lets code outside the component tree (a push-notification tap handler) navigate before/independent of any screen being focused.
 
 ### `src/constants/`
 Magic numbers, strings, and environment config. `theme.ts` exports `DarkColors`/`LightColors` — no component should hardcode a colour hex; it must come from `useTheme().colors`. `env.ts` is the only file that reads `react-native-config` directly. `indiaLocations.ts` is generated output (not hand-maintained) — see [docs/features.md](features.md#location) for how it's produced and why it's checked in instead of fetched at runtime.
@@ -107,7 +112,7 @@ Two distinct layers on purpose:
 - **`models.ts`** — camelCase, what every screen and component actually imports. Pre-dates the real API integration; extended (not replaced) to carry the extra fields the server provides (seat `label`/`isBlocked`, refund status, offer redemption, etc.) so existing screens kept compiling through the port.
 
 ### `src/store/`
-Global client state using Zustand. `authStore` and `locationStore` are `persist`-backed and own real session/GPS state. `bookingStore` only holds the *in-progress, pre-hold* seat selection — once seats are held server-side (`SeatSelectionScreen` → `POST /api/booking/hold`), `Checkout`/`Payment`/`BookingFailure` stop reading from the store and become **route-param-driven** (`CheckoutParams`, see `src/types/navigation.ts`), so a backgrounded app doesn't desync from the real 5-minute server hold. `themeStore` is unrelated to booking/auth — purely the persisted theme mode.
+Global client state using Zustand. `authStore` and `locationStore` are `persist`-backed and own real session/GPS state. `bookingStore` only holds the *in-progress, pre-hold* seat selection — once seats are held server-side (`SeatSelectionScreen` → `POST /api/booking/hold`), `Checkout`/`Payment`/`BookingFailure` stop reading from the store and become **route-param-driven** (`CheckoutParams`, see `src/types/navigation.ts`), so a backgrounded app doesn't desync from the real 5-minute server hold. `themeStore` is unrelated to booking/auth — purely the persisted theme mode. `notificationStore` is **not** `persist`-backed — its list/unread-count/push-token are all re-derivable from the server on next fetch, and `authStore.logout()`/`onSessionExpired` both call its `reset()` so one account never sees another's notifications or a stale badge.
 
 ### `src/services/`
 The data abstraction layer, real by default. Every file:
@@ -133,6 +138,8 @@ The single most load-bearing new file. Handles, in one place:
 - **Refresh-and-retry on both 401 *and* 403** — the API uses 401 for a *missing* token and 403 for an *expired/invalid* one. Refreshing only on 401 (the more common assumption) would silently break every session after the 24h access-token lifetime. Concurrent 401/403s share a single in-flight refresh call.
 - **`configureHttpClientAuth`** — `authStore.ts` wires itself in via this function at module load, rather than `httpClient.ts` importing the store directly (avoids a circular dependency: the store needs `httpClient` to call the API; `httpClient` needs the store's tokens).
 
+`httpClient` exposes `get`/`post`/`put`/`patch`/`del` — `patch` was added alongside `del` gaining an optional body (used by `notificationService.markRead`/`markAllRead` and `unregisterDeviceToken`, respectively).
+
 ### `src/services/mappers.ts`
 The only place a `ApiXxx` DTO becomes an `Xxx` app model. Notable non-obvious mappings documented inline: cinema-hall-api uses **two different field-name sets** for a "theatre" depending on the endpoint (`cinema_hall_id/_name/_location` vs `hall_id/hall_name/location`); seat pricing resolves `price_override` before falling back to the screen's base `pricing`; PostgreSQL numeric fields such as ratings and booking amounts may arrive as strings and are converted to numbers before entering app models or arithmetic.
 
@@ -149,7 +156,17 @@ A tiny in-memory cache + in-flight request dedup for GET-ish data — deliberate
 Services use it two ways. Read paths like `getNowShowingMovies`, `getActiveOffers`, and `getSettings` wrap their fetch in `cachedFetch` and return the fresh-enough cached value immediately while revalidating in the background; each also exposes a synchronous `getCachedX()` peek (`getCachedMovie`, `getCachedUserBookings`, `getCachedTheatresWithShows`, ...) so hooks and screens can seed their initial `useState` without awaiting. Mutation paths invalidate related entries: `bookingService.holdSeats`/`releaseSeats` call `invalidate('seat-layout:...')` so held seats show as unavailable immediately, and `paymentService.verifyPayment` calls `invalidate('bookings')` so a new booking appears in My Bookings without waiting out the TTL.
 
 ### `src/hooks/`
-Wraps service calls with `loading`, `error`, and `refresh`/`refetch` state, and are location-aware where the underlying endpoint requires `district`/`state` (`useMovies`, `useTheatresForMovie`, `useShowsForMovie`). `useRequireAuth()` is the auth-gating primitive — see [docs/state-management.md](state-management.md#auth-store).
+Wraps service calls with `loading`, `error`, and `refresh`/`refetch` state, and are location-aware where the underlying endpoint requires `district`/`state` (`useMovies`, `useTheatresForMovie`, `useShowsForMovie`). `useRequireAuth()` is the auth-gating primitive — see [docs/state-management.md](state-management.md#auth-store). `usePushNotifications()` is mounted once, at the root, and is the other stateful primitive in this folder — see below.
+
+### Push notifications (Notifee + `@react-native-firebase/messaging`)
+
+Three files split the concern:
+
+- **`index.js`** registers `setBackgroundMessageHandler` at module scope, before `AppRegistry.registerComponent` — required so FCM can wake the JS engine for a backgrounded/killed-app message (a headless JS task). The handler body is intentionally empty: no store/UI access is possible there (no component tree is mounted), and the system tray notification itself is rendered automatically by Android's FCM SDK from the push payload's `notification` block, independent of this handler.
+- **`src/hooks/usePushNotifications.ts`** is mounted once in `App.tsx` and wires everything that needs live listeners: foreground FCM messages → a `notifee.displayNotification` banner (FCM shows nothing on its own while the app is open); tap-to-open (backgrounded tap via `onNotificationOpenedApp`, killed-app launch via `getInitialNotification`, foreground banner tap via `notifee.onForegroundEvent`) → `navigateToNotifications()` (v1 always lands on the notification list, not a specific booking); FCM token rotation (`onTokenRefresh`) → silent re-registration; and an `AppState` listener that refreshes the unread badge on foreground — the RN equivalent of the web app's page-visibility polling, without a `setInterval`. It also calls `syncPushStateOnLaunch()` once auth resolves to `'authed'`.
+- **`src/services/pushService.ts`** owns the token lifecycle as plain async functions, not hook state: `enablePush()` (requests the Android 13+/API 33+ runtime `POST_NOTIFICATIONS` permission, then registers the FCM token — only ever called from an explicit user action, the Profile screen toggle, never an unsolicited prompt on app load), `disablePush()` (unregisters server-side + deletes the local FCM token; can't revoke the OS-level grant — there's no Android API for an app to do that to itself), and `syncPushStateOnLaunch()` (checks the *actual* OS permission grant on cold start rather than trusting a remembered flag, since `notificationStore.pushEnabled` isn't persisted and the user could have revoked the permission via system Settings between sessions).
+
+`src/app/navigation/navigationRef.ts` is what lets the tap handlers navigate — see `src/app/` above.
 
 ### `src/shared/`
 Framework-agnostic, domain-agnostic code — unchanged in shape by the API integration. Nothing in `shared/` imports from `features/` or `services/`.
