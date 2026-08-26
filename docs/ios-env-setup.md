@@ -4,7 +4,10 @@ This project is developed on Windows, so the iOS side of `react-native-config`
 and Google Sign-In cannot be wired up or verified from this environment —
 both require editing the `.xcodeproj` / running CocoaPods inside Xcode on a
 Mac. `Info.plist` has already been updated with the location and photo
-library usage strings. The remaining steps, to run once on a Mac:
+library usage strings, `CFBundleDisplayName` is set to **Cinemax App**, and
+the full `AppIcon.appiconset` is committed (commit `0e9de4b`) — so the app
+icon and home-screen label need no manual setup. The remaining steps, to run
+once on a Mac:
 
 ## 1. react-native-config
 

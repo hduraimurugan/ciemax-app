@@ -2,7 +2,7 @@
 
 ## Strategy
 
-CineHall uses **Zustand v5** for global client state, split into five narrowly-scoped stores. Server data (movie lists, seat layouts, booking history) stays in local component state via custom hooks — it's never cached in Zustand. A separate, deliberately minimal in-memory cache ([`src/services/queryCache.ts`](../src/services/queryCache.ts)) provides short-TTL caching and request dedup for that server data, so a screen renders already-fetched data instantly instead of flashing a skeleton on every mount.
+Cinemax App uses **Zustand v5** for global client state, split into five narrowly-scoped stores. Server data (movie lists, seat layouts, booking history) stays in local component state via custom hooks — it's never cached in Zustand. A separate, deliberately minimal in-memory cache ([`src/services/queryCache.ts`](../src/services/queryCache.ts)) provides short-TTL caching and request dedup for that server data, so a screen renders already-fetched data instantly instead of flashing a skeleton on every mount.
 
 | What | Where | Why |
 |---|---|---|

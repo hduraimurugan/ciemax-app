@@ -93,6 +93,18 @@ Both palettes share the same key names (`ColorTokens` interface) so call sites n
 | `accentDim` | `#C93940` | `#B32E34` | Pressed state of accent |
 | `accentLight` | `rgba(230,71,78,0.45)` | `rgba(217,60,67,0.25)` | Glow shadows, badge background |
 
+### Launcher branding (platform)
+
+The home-screen label and launcher icons are platform assets, independent of the in-app `ColorTokens`:
+
+| Asset | Value |
+|---|---|
+| Display name | **Cinemax App** — `app.json` `displayName`, Android `app_name` ([`android/app/src/main/res/values/strings.xml`](../android/app/src/main/res/values/strings.xml)), iOS `CFBundleDisplayName` ([`ios/MyApp/Info.plist`](../ios/MyApp/Info.plist)) |
+| Android adaptive icon | [`mipmap-anydpi-v26/ic_launcher.xml`](../android/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml) / `ic_launcher_round.xml` — background `#FAB90B` ([`values/colors.xml`](../android/app/src/main/res/values/colors.xml)) + foreground asset at every density (`mipmap-{m,h,x,xx,xxx}hdpi/ic_launcher_foreground.png`); legacy launcher PNGs replaced alongside |
+| iOS AppIcon | Full [`AppIcon.appiconset`](../ios/MyApp/Images.xcassets/AppIcon.appiconset) — 20/29/40/60 pt @2x/@3x + 1024×1024 marketing icon |
+
+Added in commit `0e9de4b` (rebrand to **Cinemax App** + launcher icons for both platforms).
+
 ### Glass Surfaces
 
 | Token | Dark | Light | Usage |
@@ -587,3 +599,5 @@ For reference, the raw tokens from `CineHall.dc.html`'s `getTheme(mode)` (mapped
 ---
 
 *Last updated after the CineHall redesign — replaced the single static dark `Colors` object with `DarkColors`/`LightColors` + `useTheme()`, added the Profile Dark Mode toggle, dropped the Inter body-font requirement in favor of the system sans, and switched the neon shadow to be computed per-theme via `makeNeonShadow`.*
+
+*Later: rebranded the launcher to **Cinemax App** — display name in `app.json` / Android strings / iOS `Info.plist`, Android adaptive launcher icons (`#FAB90B` background) and the full iOS `AppIcon` set (commit `0e9de4b`).*

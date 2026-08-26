@@ -2,7 +2,7 @@
 
 ## Overview
 
-CineHall uses a **feature-sliced architecture** — code is organised by domain (movies, seats, booking) rather than by technical layer (components, services, utils). This keeps each feature self-contained and prevents the "god folder" problem where a single `components/` or `screens/` directory grows unbounded.
+Cinemax App uses a **feature-sliced architecture** — code is organised by domain (movies, seats, booking) rather than by technical layer (components, services, utils). This keeps each feature self-contained and prevents the "god folder" problem where a single `components/` or `screens/` directory grows unbounded.
 
 The app talks to a real backend, [cinema-hall-api](../../cinema-hall/cinema-hall-api) (Express 5 + raw Postgres + Razorpay) — the same one behind [cinema-hall-users](../../cinema-hall/cinema-hall-users), the web app this was ported from. A dedicated **service + mapper layer** (below) is what keeps that server's exact shapes from leaking into every screen.
 
