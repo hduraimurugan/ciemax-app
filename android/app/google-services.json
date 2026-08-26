@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "212799048998",
+    "project_id": "cinemax-644cf",
+    "storage_bucket": "cinemax-644cf.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:212799048998:android:32f24fef19bc57ac89c5e7",
+        "android_client_info": {
+          "package_name": "com.myapp"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCl_ATf32prhj0_MXoyR_brePfWWbKgtBw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

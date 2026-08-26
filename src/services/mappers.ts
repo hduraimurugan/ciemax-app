@@ -11,6 +11,7 @@ import type {
   ApiPricing,
   ApiBooking,
   ApiOffer,
+  ApiNotification,
 } from '@ctypes/api';
 import type {
   User,
@@ -25,6 +26,7 @@ import type {
   Booking,
   Offer,
   CastMember,
+  Notification,
 } from '@ctypes/models';
 
 /** Deterministic initials fallback for when a cast photo isn't available. */
@@ -302,5 +304,20 @@ export function mapOffer(o: ApiOffer): Offer {
     isRedeemed: o.is_redeemed,
     hallScoped: o.scope === 'hall',
     hallName: o.cinema_hall_name,
+  };
+}
+
+export function mapNotification(n: ApiNotification): Notification {
+  return {
+    id: n.id,
+    event: n.event,
+    title: n.title,
+    body: n.body,
+    data: n.data,
+    bookingId: n.booking_id,
+    showId: n.show_id,
+    refundId: n.refund_id,
+    readAt: n.read_at,
+    createdAt: n.created_at,
   };
 }

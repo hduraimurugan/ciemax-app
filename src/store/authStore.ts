@@ -5,6 +5,8 @@ import { authService, SignupPayload } from '@services/authService';
 import { mapCustomer } from '@services/mappers';
 import { configureHttpClientAuth, isApiError } from '@services/httpClient';
 import { clearCache } from '@services/queryCache';
+import { notificationService } from '@services/notificationService';
+import { useNotificationStore } from './notificationStore';
 import type { User } from '@ctypes/models';
 import type { ApiError } from '@ctypes/api';
 
@@ -106,8 +108,13 @@ export const useAuthStore = create<AuthState>()(
 
       logout: async () => {
         const { refreshToken } = get();
+        const pushToken = useNotificationStore.getState().pushToken;
         set({ accessToken: null, refreshToken: null, customer: null, status: 'guest' });
         clearCache(); // don't let the next signed-in user see this user's cached bookings/offers
+        useNotificationStore.getState().reset();
+        if (pushToken) {
+          notificationService.unregisterDeviceToken(pushToken).catch(() => {});
+        }
         try {
           await authService.logout(refreshToken);
         } catch {
@@ -173,5 +180,6 @@ configureHttpClientAuth({
       status: 'guest',
     });
     clearCache();
+    useNotificationStore.getState().reset();
   },
 });

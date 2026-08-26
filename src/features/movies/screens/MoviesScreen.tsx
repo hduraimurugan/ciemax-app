@@ -24,6 +24,7 @@ import { Body, Heading2 } from '@shared/ui';
 import { formatRating } from '@shared/utils';
 import { useMovies } from '@hooks/useMovies';
 import { useLocationStore } from '@store/locationStore';
+import { useNotificationStore } from '@store/notificationStore';
 import { getActiveAds, recordAdClick } from '@services/adsService';
 import { LocationModal } from '@features/location';
 import { MovieCard } from '../components/MovieCard';
@@ -45,6 +46,7 @@ export function MoviesScreen({ navigation }: Props) {
 
   const district = useLocationStore(s => s.district);
   const detect = useLocationStore(s => s.detect);
+  const unreadCount = useNotificationStore(s => s.unreadCount);
   const [locationModalVisible, setLocationModalVisible] = useState(false);
   const [ads, setAds] = useState<{ id: string; image_url: string; click_url?: string | null }[]>([]);
 
@@ -110,7 +112,14 @@ export function MoviesScreen({ navigation }: Props) {
           <Pressable onPress={() => navigation.navigate('SearchTab')} hitSlop={8}>
             <Search size={20} color={colors.textPrimary} />
           </Pressable>
-          <Bell size={20} color={colors.textPrimary} />
+          <Pressable onPress={() => navigation.navigate('Notifications')} hitSlop={8} style={styles.bellWrap}>
+            <Bell size={20} color={colors.textPrimary} />
+            {unreadCount > 0 && (
+              <View style={styles.bellBadge}>
+                <Text style={styles.bellBadgeText}>{unreadCount > 9 ? '9+' : unreadCount}</Text>
+              </View>
+            )}
+          </Pressable>
         </View>
       </View>
 
@@ -234,6 +243,25 @@ const makeStyles = (Colors: ColorTokens) =>
       maxWidth: 160,
     },
     headerActions: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md },
+    bellWrap: { position: 'relative' },
+    bellBadge: {
+      position: 'absolute',
+      top: -4,
+      right: -6,
+      minWidth: 15,
+      height: 15,
+      borderRadius: 8,
+      paddingHorizontal: 3,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: Colors.accent,
+    },
+    bellBadgeText: {
+      color: Colors.textInverse,
+      fontSize: 9,
+      fontFamily: FontFamily.bold,
+      fontWeight: FontWeight.bold,
+    },
     hero: {
       marginHorizontal: Spacing.lg,
       marginBottom: Spacing.lg,

@@ -38,6 +38,19 @@ export function formatShowDate(isoDate: string): string {
   return date.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' });
 }
 
+/** "2 minutes ago" / "3 hours ago" / "5 days ago" style relative timestamp, for notifications. */
+export function formatRelativeTime(isoDate: string): string {
+  const seconds = Math.floor((Date.now() - new Date(isoDate).getTime()) / 1000);
+  if (seconds < 60) return 'just now';
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes} minute${minutes === 1 ? '' : 's'} ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours} hour${hours === 1 ? '' : 's'} ago`;
+  const days = Math.floor(hours / 24);
+  if (days < 7) return `${days} day${days === 1 ? '' : 's'} ago`;
+  return formatDate(isoDate);
+}
+
 /** Converts the API's "HH:MM:SS" show time into a display string like "10:30 AM". */
 export function formatShowTime(rawTime: string): string {
   const [hStr, mStr] = rawTime.split(':');

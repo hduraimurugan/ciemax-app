@@ -16,6 +16,7 @@ import {
   Ticket,
   Tag,
   Bell,
+  BellRing,
   HelpCircle,
   LogOut,
   LogIn,
@@ -35,8 +36,10 @@ import { Button, Card, Input } from '@shared/ui';
 import { Heading2, Heading3, Body, BodySmall, Caption } from '@shared/ui';
 import { useBookingStore } from '@store/bookingStore';
 import { useAuthStore } from '@store/authStore';
+import { useNotificationStore } from '@store/notificationStore';
 import { authService } from '@services/authService';
 import { errorMessage } from '@services/httpClient';
+import { enablePush, disablePush } from '@services/pushService';
 import { signInWithGoogle } from '@features/auth/utils/googleAuth';
 
 type Props = CompositeScreenProps<
@@ -65,12 +68,33 @@ export function ProfileScreen({ navigation }: Props) {
   const logout = useAuthStore(s => s.logout);
   const updateCustomer = useAuthStore(s => s.updateCustomer);
   const refreshCustomer = useAuthStore(s => s.refreshCustomer);
+  const pushEnabled = useNotificationStore(s => s.pushEnabled);
 
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(customer?.name ?? '');
   const [phone, setPhone] = useState(customer?.phone ?? '');
   const [saving, setSaving] = useState(false);
   const [googleBusy, setGoogleBusy] = useState(false);
+  const [pushBusy, setPushBusy] = useState(false);
+
+  async function handleTogglePush() {
+    setPushBusy(true);
+    try {
+      if (pushEnabled) {
+        await disablePush();
+      } else {
+        const granted = await enablePush();
+        if (!granted) {
+          Alert.alert(
+            'Notifications blocked',
+            'Enable notifications for CineHall in your phone Settings to receive push alerts.',
+          );
+        }
+      }
+    } finally {
+      setPushBusy(false);
+    }
+  }
 
   useEffect(() => {
     setName(customer?.name ?? '');
@@ -195,7 +219,7 @@ export function ProfileScreen({ navigation }: Props) {
       description: customer?.hasPassword ? 'Update your account password' : 'Add a password to sign in without Google',
       onPress: () => navigation.navigate(customer?.hasPassword ? 'ChangePassword' : 'SetPassword'),
     },
-    { icon: <Bell size={18} color={colors.textPrimary} />, label: 'Notifications', description: 'Manage alerts', onPress: () => Alert.alert('Coming soon', 'Notification preferences are on the way.') },
+    { icon: <Bell size={18} color={colors.textPrimary} />, label: 'Notifications', description: 'Manage alerts', onPress: () => navigation.navigate('Notifications') },
     { icon: <HelpCircle size={18} color={colors.textPrimary} />, label: 'Help & Support', description: 'FAQs and contact us', onPress: () => Alert.alert('Help & Support', 'Email support@cinehall.app for assistance.') },
     { icon: <LogOut size={18} color={colors.textPrimary} />, label: 'Logout', description: 'Sign out of your account', onPress: handleLogout },
   ];
@@ -277,6 +301,22 @@ export function ProfileScreen({ navigation }: Props) {
           <Switch
             value={mode === 'dark'}
             onValueChange={toggleTheme}
+            trackColor={{ false: colors.secondary, true: colors.accent }}
+            thumbColor="#fff"
+          />
+        </Pressable>
+
+        <Pressable style={styles.themeRow} onPress={handleTogglePush} disabled={pushBusy}>
+          <View style={styles.themeRowLeft}>
+            <View style={styles.menuIconWrapper}>
+              <BellRing size={18} color={colors.textPrimary} />
+            </View>
+            <BodySmall style={styles.themeLabel}>Push Notifications</BodySmall>
+          </View>
+          <Switch
+            value={pushEnabled}
+            onValueChange={handleTogglePush}
+            disabled={pushBusy}
             trackColor={{ false: colors.secondary, true: colors.accent }}
             thumbColor="#fff"
           />

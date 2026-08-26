@@ -1,6 +1,7 @@
 apply plugin: "com.android.application"
 apply plugin: "org.jetbrains.kotlin.android"
 apply plugin: "com.facebook.react"
+apply plugin: "com.google.gms.google-services"
 
 // react-native-config: pick the .env file for this build variant, then load
 // it into project.ext.env / BuildConfig.* / R.string.* — must run before the

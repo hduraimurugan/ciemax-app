@@ -10,3 +10,4 @@ export * from './paymentService';
 export * from './offersService';
 export * from './settingsService';
 export * from './adsService';
+export * from './notificationService';

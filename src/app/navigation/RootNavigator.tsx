@@ -20,6 +20,7 @@ import {
 } from '@features/booking';
 import { TicketDetailScreen, ChangePasswordScreen, SetPasswordScreen } from '@features/profile';
 import { OffersScreen } from '@features/offers';
+import { NotificationsScreen } from '@features/notifications';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -84,6 +85,7 @@ export function RootNavigator() {
       <Stack.Screen name="TicketDetail" component={TicketDetailScreen} />
       <Stack.Screen name="ChangePassword" component={ChangePasswordScreen} options={{ presentation: 'modal' }} />
       <Stack.Screen name="SetPassword" component={SetPasswordScreen} options={{ presentation: 'modal' }} />
+      <Stack.Screen name="Notifications" component={NotificationsScreen} />
     </Stack.Navigator>
   );
 }

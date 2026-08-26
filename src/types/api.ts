@@ -390,3 +390,34 @@ export interface ApiAd {
 export interface GetAdsResponse {
   ads: ApiAd[];
 }
+
+// ─── Notifications ───────────────────────────────────────────────────────────
+
+export interface ApiNotification {
+  id: string;
+  event: string;
+  title: string;
+  body: string | null;
+  data: Record<string, unknown>;
+  booking_id: string | null;
+  show_id: string | null;
+  refund_id: string | null;
+  read_at: string | null;
+  created_at: string;
+}
+
+export interface ListNotificationsResponse {
+  notifications: ApiNotification[];
+  page: number;
+  limit: number;
+}
+
+export interface UnreadCountResponse {
+  count: number;
+}
+
+/** Per-event channel toggles, e.g. { booking_confirmed: { email: true, sms: false, whatsapp: false, push: false }, ... } */
+export type NotificationPreferences = Record<
+  string,
+  { email: boolean; sms: boolean; whatsapp: boolean; push: boolean }
+>;

@@ -184,3 +184,18 @@ export interface User {
   hasPassword?: boolean;
   createdAt?: string;
 }
+
+// ─── Notifications ───────────────────────────────────────────────────────────
+
+export interface Notification {
+  id: string;
+  event: string;
+  title: string;
+  body: string | null;
+  data: Record<string, unknown>;
+  bookingId: string | null;
+  showId: string | null;
+  refundId: string | null;
+  readAt: string | null;
+  createdAt: string;
+}

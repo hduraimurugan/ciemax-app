@@ -64,6 +64,7 @@ export type RootStackParamList = {
   TicketDetail: { bookingId: string };
   ChangePassword: undefined;
   SetPassword: undefined;
+  Notifications: undefined;
 };
 
 export type TabParamList = {

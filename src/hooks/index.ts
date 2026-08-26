@@ -6,3 +6,4 @@ export * from './useCountdown';
 export * from './useDebouncedValue';
 export * from './useRequireAuth';
 export * from './useFavourites';
+export * from './usePushNotifications';
