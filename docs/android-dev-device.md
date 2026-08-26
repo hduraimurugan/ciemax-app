@@ -107,14 +107,14 @@ network.
 **Changing `.env` requires a full rebuild, not a JS reload.**
 `react-native-config` reads `.env` at *Gradle build* time and bakes the
 values into `BuildConfig` — see the `envConfigFiles` mapping at the top
-of [android/app/build.gradle](../android/app/build.gradle#L9). Pressing
+of [android/app/build.gradle](../android/app/build.gradle#L10). Pressing
 `r` in Metro will not pick up a new `API_BASE_URL`; you need
 `npm run android` again. (Option A avoids this entirely, since the value
 never changes.)
 
 **Cleartext HTTP must stay enabled for dev.** `ENABLE_CLEARTEXT=true` in
 `.env` feeds `android:usesCleartextTraffic` via a manifest placeholder
-([build.gradle:101](../android/app/build.gradle#L101)). It is `false` in
+([build.gradle:118](../android/app/build.gradle#L118)). It is `false` in
 `.env.production` on purpose — release builds must only ever talk HTTPS.
 Don't "fix" a dev connection problem by touching the production file.
 
@@ -124,6 +124,35 @@ Don't "fix" a dev connection problem by touching the production file.
 **`USE_MOCKS=true`** in `.env` bypasses the network entirely
 (`src/services/*.mock.ts`). Useful for UI work with no backend, and worth
 ruling out before debugging connectivity that isn't actually happening.
+
+**A release build can fail with a `ninja`/CMake "Filename longer than 260
+characters" error** if this repo sits deep in your user profile (e.g. under
+`Users\<name>\Git Cloned\My Projects\...`). Windows' classic MAX_PATH limit
+bites the native C++ codegen build (react-native-safe-area-context and
+friends) before it bites anything JS-side — `npm run android` (debug) can
+slip under the limit while `assembleRelease` doesn't, since release's CMake
+build-type folder name (`RelWithDebInfo`) is longer than debug's (`Debug`)
+and pushes some object-file paths over the edge.
+
+Fixed for good in [android/app/build.gradle](../android/app/build.gradle#L94):
+native builds stage to a short, fixed path (`C:/rn-cxx-build/MyApp`) instead
+of the default `android/app/.cxx`, via AGP's `externalNativeBuild.cmake.buildStagingDirectory`,
+guarded to Windows only. No project-relocation or drive-letter tricks needed
+— just build normally from wherever the repo lives.
+
+Don't reach for `subst`/junctions to shorten the path instead — it was tried
+and reverted. Windows resolves a `subst`'d drive back to its real path via
+`fs.realpathSync.native` (which Metro's file-map crawler and
+`babel-plugin-module-resolver` both use internally), but *not* via the plain
+`fs.realpathSync` that a naive `metro.config.js` fix would reach for first.
+The mismatch between "which drive letter Gradle happened to invoke Node
+from" and "which path Node's native realpath resolves files to" broke
+module resolution in two different, confusing ways (Metro's `"Failed to get
+the SHA-1"` error, then a mangled `@alias` import) before the real fix
+above made the drive-letter workaround unnecessary. `metro.config.js` still
+resolves its project root through `fs.realpathSync.native(__dirname)`
+defensively — harmless normally, but it's what would save you if this ever
+comes up again in some other form.
 
 ## Host cheatsheet
 
