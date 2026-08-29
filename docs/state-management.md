@@ -47,12 +47,14 @@ interface AuthState {
 configureHttpClientAuth({
   getAccessToken: () => useAuthStore.getState().accessToken,
   getRefreshToken: () => useAuthStore.getState().refreshToken,
-  refreshTokens: async () => { /* calls authService.refresh(), updates the store */ },
+  refreshTokens: async () => { /* calls authService.refresh(); returns null only on a confirmed 401/403, rethrows transient errors */ },
   onSessionExpired: () => { /* clears the store, sets status: 'guest' */ },
 });
 ```
 
 This is the *only* coupling between the store and the HTTP layer — `httpClient.ts` itself has no import of Zustand or `authStore`, which avoids a circular dependency (the store needs `httpClient` to call `/login`; `httpClient` needs the store's tokens).
+
+Refresh and session-expiry semantics (`d907acb`): when a request comes back `401`/`403`, `httpClient` calls `attemptRefresh()` (concurrent callers share one in-flight refresh). A `401`/`403` from the refresh endpoint is the only signal that the refresh token is truly invalid/expired — `refreshTokens` returns `null` and `onSessionExpired()` clears the tokens and forces `status: 'guest'`. Any other refresh failure (network error, timeout, 5xx) is treated as transient: `refreshTokens` rethrows, `httpClient` surfaces the original request's error without touching the session, and the next 401-triggered call retries the refresh. `bootstrap()` follows the same rule — a failed `me()` only forces `guest` when the access token was already cleared by `onSessionExpired`; a transient failure leaves `status: 'authed'` so a flaky network doesn't silently log the user out.
 
 On logout, `authStore` also calls `clearCache()` (from `queryCache`) — both `logout()` and the `onSessionExpired` hook wipe the in-memory server-data cache so the next signed-in account never sees the previous user's cached bookings/offers/lists. Both also call `useNotificationStore.getState().reset()`, and `logout()` additionally unregisters the current device's FCM token server-side (best-effort, non-blocking) so a signed-out device stops receiving that account's push notifications.
 

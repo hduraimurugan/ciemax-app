@@ -15,7 +15,7 @@ Loading placeholders are built from the shared `Skeleton` family in `@shared/ui`
 | `screens/SplashScreen.tsx` | Waits on `authStore.bootstrap()`, then routes to `Onboarding` (first run) or `MainTabs` |
 | `screens/OnboardingScreen.tsx` | 3-slide carousel with native SVG illustrations for discovery, seat selection, and QR tickets; "Skip"/"Get Started" both land in `MainTabs`, not `Login` |
 
-Splash no longer hard-codes a 2.2s timer into `Onboarding` — it holds for a minimum 1.4s dwell time *and* waits for the persisted auth token (if any) to finish being verified against `GET /me`, so a signed-in user's session isn't lost in a UI flash. First-run state is tracked via `AsyncStorage[StorageKeys.onboardingSeen]`, set once `Onboarding` is dismissed.
+Splash no longer hard-codes a 2.2s timer into `Onboarding` — it holds for a minimum 1.4s dwell time *and* waits for the persisted auth token (if any) to finish being verified against `GET /me`, so a signed-in user's session isn't lost in a UI flash. A transient `me()` failure (network/timeout/5xx) now keeps the session `authed` rather than forcing `guest` — only a refresh-confirmed invalid token logs the user out (`d907acb`). First-run state is tracked via `AsyncStorage[StorageKeys.onboardingSeen]`, set once `Onboarding` is dismissed.
 
 The illustrations are rendered locally with `react-native-svg` rather than loaded from image files or a network URL, so onboarding works offline and keeps its cinema marquee, seat-map, and e-ticket visuals theme-aware.
 
