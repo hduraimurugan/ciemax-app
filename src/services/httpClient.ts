@@ -92,12 +92,9 @@ let refreshInFlight: Promise<string | null> | null = null;
 async function attemptRefresh(): Promise<string | null> {
   if (!authHandlers) return null;
   if (!refreshInFlight) {
-    refreshInFlight = authHandlers
-      .refreshTokens()
-      .catch(() => null)
-      .finally(() => {
-        refreshInFlight = null;
-      });
+    refreshInFlight = authHandlers.refreshTokens().finally(() => {
+      refreshInFlight = null;
+    });
   }
   return refreshInFlight;
 }
@@ -151,11 +148,18 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
     !!authHandlers?.getRefreshToken();
 
   if (canRetry) {
-    const newToken = await attemptRefresh();
-    if (newToken) {
-      return request<T>(path, { ...options, _isRetry: true });
+    try {
+      const newToken = await attemptRefresh();
+      if (newToken) {
+        return request<T>(path, { ...options, _isRetry: true });
+      }
+      authHandlers?.onSessionExpired();
+    } catch {
+      // Transient failure while refreshing (network/timeout/5xx) — the
+      // refresh token itself was never confirmed invalid, so don't wipe
+      // the session. Just surface this request's own error below; a
+      // later call will retry the refresh.
     }
-    authHandlers?.onSessionExpired();
   }
 
   throw normalizeError(response.status, responseBody);

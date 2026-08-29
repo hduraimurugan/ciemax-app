@@ -59,8 +59,13 @@ export const useAuthStore = create<AuthState>()(
           const { customer } = await authService.me();
           set({ customer: mapCustomer(customer), status: 'authed' });
         } catch {
-          // Token invalid/expired and refresh (via httpClient) also failed.
-          set({ accessToken: null, refreshToken: null, customer: null, status: 'guest' });
+          // authService.me() already goes through httpClient's refresh-and-
+          // retry flow. By the time it throws, either the refresh confirmed
+          // the token invalid (onSessionExpired already cleared the tokens
+          // below), or this was a transient network/timeout failure with
+          // the session still intact — don't force a guest state then.
+          const stillHasSession = !!get().accessToken;
+          set({ status: stillHasSession ? 'authed' : 'guest' });
         }
       },
 
@@ -168,8 +173,15 @@ configureHttpClientAuth({
       const res = await authService.refresh(refreshToken);
       useAuthStore.setState({ accessToken: res.accessToken });
       return res.accessToken;
-    } catch {
-      return null;
+    } catch (err) {
+      // Only a confirmed 401/403 from the refresh endpoint means the
+      // refresh token is actually invalid/expired. Anything else (network
+      // error, timeout, 5xx) is transient — rethrow so httpClient doesn't
+      // wipe the session over it.
+      if (isApiError(err) && (err.status === 401 || err.status === 403)) {
+        return null;
+      }
+      throw err;
     }
   },
   onSessionExpired: () => {
