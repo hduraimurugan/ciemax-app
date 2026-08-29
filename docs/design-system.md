@@ -79,11 +79,13 @@ Both palettes share the same key names (`ColorTokens` interface) so call sites n
 
 | Token | Dark | Light | Usage |
 |---|---|---|---|
-| `background` | `#16171B` | `#F9FAFC` | Screen root background |
-| `surface` | `#1F2024` | `#F1F2F5` | Cards, tab bar, bottom sheets |
-| `surfaceElevated` | `#26282E` | `#E7E9EE` | Inputs, raised cards |
-| `surfaceHighlight` | `#303138` | `#DDE0E6` | Pressed / hover elevated state |
-| `secondary` | `#383A42` | `#DEE1EA` | Cool gray-blue secondary surface, booked seats |
+| `background` | `#0C0D11` | `#F9FAFC` | Screen root background |
+| `surface` | `#15171D` | `#F1F2F5` | Cards, tab bar, bottom sheets |
+| `surfaceElevated` | `#1E2128` | `#E7E9EE` | Inputs, raised cards |
+| `surfaceHighlight` | `#292D36` | `#DDE0E6` | Pressed / hover elevated state |
+| `secondary` | `#363B46` | `#DEE1EA` | Cool gray-blue secondary surface, booked seats |
+
+*Dark values were deepened in commit `9887938` for a richer, more cinematic contrast.*
 
 ### Brand
 
@@ -112,6 +114,17 @@ Added in commit `0e9de4b` (rebrand to **Cinemax App** + launcher icons for both 
 | `glassSurface` | `rgba(31,32,36,0.80)` | `rgba(241,242,245,0.85)` | Semi-transparent card overlay (auth screens) |
 | `glassBorder` | `rgba(255,255,255,0.08)` | `rgba(0,0,0,0.08)` | Glass border stroke |
 
+### Media (theme-invariant)
+
+Added in commit `9887938`. These tokens are **identical in both modes** — for content that always sits on top of photographic imagery (hero backdrops, banner "AD" labels) or a fixed white surface (QR-code frames) and must never adapt to light/dark mode:
+
+| Token | Value | Usage |
+|---|---|---|
+| `textOnMedia` | `#FFFFFF` | Text/icons on imagery (`#fff` → `textOnMedia`) |
+| `mediaScrim` | `rgba(10,11,14,0.55)` | Semi-transparent scrim behind hero action buttons / badges |
+| `mediaGlassSurface` | `rgba(255,255,255,0.18)` | Frosted pill/glass fill over imagery (hero play button, progress-dot track) |
+| `mediaGlassBorder` | `rgba(255,255,255,0.5)` | Border of those glass fills |
+
 ### Seat Sections
 
 | Token | Dark | Light | Usage |
@@ -137,6 +150,8 @@ Added in commit `0e9de4b` (rebrand to **Cinemax App** + launcher icons for both 
 | `error` | `#F2564A` | `#F2564A` | Errors, destructive, cancel actions |
 | `warning` | `#E3A75E` | `#E3A75E` | Fast-filling showtime |
 | `info` | `#6C9CEB` | `#6C9CEB` | Info text, format badges |
+
+Each semantic color has a matching **dim** background token (`successDim`, `errorDim`, `warningDim`, `infoDim`, plus `emeraldDim`/`violetDim`) for tinted pill/chip backgrounds. `warningDim` (`rgba(227,167,94,0.15)`) and `infoDim` (`rgba(108,156,235,0.15)`, both modes) replaced the hardcoded `rgba` values in `Badge`, `CountdownTimer`, and `ShowtimesScreen`'s fast-filling chip in commit `9887938`.
 
 ### UI Chrome
 
@@ -557,9 +572,9 @@ import { SafeAreaView } from 'react-native';
 ## Shadow Tokens
 
 ```ts
-Shadow.sm   // elevation: 2  — subtle (chips, labels), not theme-dependent
-Shadow.md   // elevation: 5  — default (elevated cards), not theme-dependent
-Shadow.lg   // elevation: 10 — strong (modals, sheets), not theme-dependent
+Shadow.sm   // elevation: 3  — subtle (chips, labels), not theme-dependent
+Shadow.md   // elevation: 6  — default (elevated cards), not theme-dependent
+Shadow.lg   // elevation: 12 — strong (modals, sheets), not theme-dependent
 ```
 
 `sm`/`md`/`lg` are plain black shadows and can be spread directly. The design's "neon glow" depends on the active `accent` color, so it's computed per-render instead of being a static export:
@@ -570,6 +585,8 @@ import { makeNeonShadow } from '@constants/theme';
 const { colors } = useTheme();
 <View style={[styles.confirmBtn, makeNeonShadow(colors)]}>
 ```
+
+Commit `9887938` deepened all three neutral shadows (larger offset/opacity/radius, `elevation` 2→3 / 5→6 / 10→12) and extended `makeNeonShadow` usage to `SeatItem`'s selected seat and `MovieDetailScreen`'s bottom CTA bar.
 
 ---
 
@@ -592,7 +609,7 @@ const { colors } = useTheme();
 
 For reference, the raw tokens from `CineHall.dc.html`'s `getTheme(mode)` (mapped onto `ColorTokens` above):
 
-**Dark:** `bg:#16171B, surface:#1F2024, surfaceAlt:#26282E, fg:#F8F9FB, muted:#A6A9B4, border:rgba(255,255,255,0.10), primary:#E6474E, primaryGlow:rgba(230,71,78,0.45), secondary:#383A42, destructive:#F2564A, success:#4FB878, warning:#E3A75E, info:#6C9CEB, offer:#A97EE0, gold:#D9A24A`
+**Dark:** `bg:#0C0D11, surface:#15171D, surfaceAlt:#1E2128, fg:#F8F9FB, muted:#A6A9B4, border:rgba(255,255,255,0.10), primary:#E6474E, primaryGlow:rgba(230,71,78,0.45), secondary:#363B46, destructive:#F2564A, success:#4FB878, warning:#E3A75E, info:#6C9CEB, offer:#A97EE0, gold:#D9A24A`
 
 **Light:** `bg:#F9FAFC, surface:#F1F2F5, surfaceAlt:#E7E9EE, fg:#1D1F23, muted:#6B6F7A, border:#CCCFD6, primary:#D93C43, primaryGlow:rgba(217,60,67,0.25), secondary:#DEE1EA, destructive:#F2564A, success:#4FB878, warning:#E3A75E, info:#6C9CEB, offer:#A97EE0, gold:#D9A24A`
 
@@ -601,3 +618,5 @@ For reference, the raw tokens from `CineHall.dc.html`'s `getTheme(mode)` (mapped
 *Last updated after the CineHall redesign — replaced the single static dark `Colors` object with `DarkColors`/`LightColors` + `useTheme()`, added the Profile Dark Mode toggle, dropped the Inter body-font requirement in favor of the system sans, and switched the neon shadow to be computed per-theme via `makeNeonShadow`.*
 
 *Later: rebranded the launcher to **Cinemax App** — display name in `app.json` / Android strings / iOS `Info.plist`, Android adaptive launcher icons (`#FAB90B` background) and the full iOS `AppIcon` set (commit `0e9de4b`).*
+
+*Later still: theme consistency pass (`9887938`) — deepened the dark backgrounds, added the `warningDim`/`infoDim` and media (`textOnMedia`/`mediaScrim`/`mediaGlassSurface`/`mediaGlassBorder`) tokens, swapped remaining hardcoded hex/`rgba` values for tokens across screens and `shared/ui` (movie/seat/profile/theatres/booking components), switched hero backdrops from a flat overlay to a `transparent → overlay` `LinearGradient`, and deepened the neutral shadows. `razorpayCheckoutHtml`'s WebView background is kept in sync with the dark `background`.*
