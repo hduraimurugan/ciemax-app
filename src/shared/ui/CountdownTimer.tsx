@@ -53,7 +53,7 @@ const makeStyles = (Colors: ColorTokens) =>
       borderRadius: Radius.full,
     },
     normal: {
-      backgroundColor: 'rgba(227, 167, 94, 0.15)',
+      backgroundColor: Colors.warningDim,
     },
     urgent: {
       backgroundColor: Colors.errorDim,

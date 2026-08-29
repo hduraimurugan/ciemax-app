@@ -11,6 +11,7 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import LinearGradient from 'react-native-linear-gradient';
 import { Search, ChevronDown, Bell, MapPin, Clapperboard } from 'lucide-react-native';
 import { CompositeScreenProps } from '@react-navigation/native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -143,7 +144,12 @@ export function MoviesScreen({ navigation }: Props) {
           {heroMovie && (
             <Pressable style={styles.hero} onPress={() => handleMoviePress(heroMovie)}>
               <Image source={{ uri: heroMovie.backdropUrl }} style={StyleSheet.absoluteFill} resizeMode="cover" />
-              <View style={[StyleSheet.absoluteFill, styles.heroOverlay]} />
+              <LinearGradient
+                colors={['transparent', colors.overlay]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 0, y: 1 }}
+                style={StyleSheet.absoluteFill}
+              />
               <View style={styles.heroDots}>
                 {heroMovies.map((_, i) => (
                   <View key={i} style={styles.heroDotTrack}>
@@ -269,7 +275,6 @@ const makeStyles = (Colors: ColorTokens) =>
       borderRadius: Radius.xl,
       overflow: 'hidden',
     },
-    heroOverlay: { backgroundColor: 'rgba(0,0,0,0.35)' },
     heroDots: {
       position: 'absolute',
       top: Spacing.sm + 4,
@@ -282,10 +287,10 @@ const makeStyles = (Colors: ColorTokens) =>
       flex: 1,
       height: 3,
       borderRadius: 2,
-      backgroundColor: 'rgba(255,255,255,0.3)',
+      backgroundColor: Colors.mediaGlassSurface,
       overflow: 'hidden',
     },
-    heroDotFill: { height: '100%', backgroundColor: '#fff' },
+    heroDotFill: { height: '100%', backgroundColor: Colors.textOnMedia },
     heroTextBlock: { position: 'absolute', left: Spacing.md, right: Spacing.md, bottom: Spacing.md },
     heroTag: {
       fontFamily: FontFamily.medium,
@@ -294,7 +299,7 @@ const makeStyles = (Colors: ColorTokens) =>
       fontWeight: FontWeight.semibold,
       marginBottom: 4,
     },
-    heroTitle: { fontSize: FontSize.lg, fontWeight: FontWeight.bold, color: '#fff' },
+    heroTitle: { fontSize: FontSize.lg, fontWeight: FontWeight.bold, color: Colors.textOnMedia },
     adBannerWrap: { marginHorizontal: Spacing.lg, marginBottom: Spacing.lg },
     section: { marginBottom: Spacing.lg },
     sectionTitle: { paddingHorizontal: Spacing.lg, marginBottom: Spacing.sm, fontSize: FontSize.md + 1 },
@@ -309,7 +314,7 @@ const makeStyles = (Colors: ColorTokens) =>
       backgroundColor: Colors.accent,
     },
     retryButtonText: {
-      color: '#fff',
+      color: Colors.textPrimary,
       fontFamily: FontFamily.medium,
       fontSize: FontSize.sm,
       fontWeight: FontWeight.semibold,

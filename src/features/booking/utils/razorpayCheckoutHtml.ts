@@ -27,13 +27,14 @@ export function razorpayCheckoutHtml(params: RazorpayWebViewParams): string {
     theme: { color: '#E6474E' },
   };
 
+  // Keep in sync with DarkColors in src/constants/theme.ts (background, textMuted).
   return `<!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
   <style>
-    html, body { margin: 0; padding: 0; height: 100%; background: #16171B; }
+    html, body { margin: 0; padding: 0; height: 100%; background: #0C0D11; }
     #status {
       display: flex; align-items: center; justify-content: center; height: 100%;
       font-family: -apple-system, sans-serif; color: #A6A9B4; font-size: 14px;

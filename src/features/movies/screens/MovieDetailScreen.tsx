@@ -11,11 +11,12 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import LinearGradient from 'react-native-linear-gradient';
 import { ArrowLeft, Heart, Share2, Play } from 'lucide-react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '@ctypes/navigation';
 import { Movie } from '@ctypes/models';
-import { ColorTokens, FontSize, FontWeight, Radius, Spacing } from '@constants/theme';
+import { ColorTokens, FontSize, FontWeight, Radius, Spacing, makeNeonShadow } from '@constants/theme';
 import { useTheme } from '@hooks/useTheme';
 import { useFavourites } from '@hooks/useFavourites';
 import { StorageKeys } from '@constants/config';
@@ -81,7 +82,12 @@ export function MovieDetailScreen({ navigation, route }: Props) {
           {movie ? (
             <>
               <Image source={{ uri: movie.backdropUrl }} style={StyleSheet.absoluteFill} resizeMode="cover" />
-              <View style={[StyleSheet.absoluteFill, styles.heroOverlay]} />
+              <LinearGradient
+                colors={['transparent', colors.overlay]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 0, y: 1 }}
+                style={StyleSheet.absoluteFill}
+              />
             </>
           ) : (
             <Skeleton width={SCREEN_WIDTH} height={340} radius={0} style={StyleSheet.absoluteFill} />
@@ -89,23 +95,23 @@ export function MovieDetailScreen({ navigation, route }: Props) {
 
           {/* Back button stays interactive from the very first frame, loading or not. */}
           <Pressable style={styles.iconButton} onPress={() => navigation.goBack()}>
-            <ArrowLeft size={18} color="#fff" />
+            <ArrowLeft size={18} color={colors.textOnMedia} />
           </Pressable>
 
           {movie && (
             <View style={styles.heroActions}>
               <Pressable style={styles.iconButton} onPress={() => toggle(movie.id)}>
-                <Heart size={17} color="#fff" fill={favourited ? '#fff' : 'none'} />
+                <Heart size={17} color={colors.textOnMedia} fill={favourited ? colors.textOnMedia : 'none'} />
               </Pressable>
               <Pressable style={styles.iconButton} onPress={handleShare}>
-                <Share2 size={16} color="#fff" />
+                <Share2 size={16} color={colors.textOnMedia} />
               </Pressable>
             </View>
           )}
 
           {trailerUrl ? (
             <Pressable style={styles.playButton} onPress={() => Linking.openURL(trailerUrl)}>
-              <Play size={20} color="#fff" fill="#fff" />
+              <Play size={20} color={colors.textOnMedia} fill={colors.textOnMedia} />
             </Pressable>
           ) : null}
         </View>
@@ -176,7 +182,6 @@ const makeStyles = (Colors: ColorTokens) =>
       overflow: 'hidden',
       backgroundColor: Colors.surfaceElevated,
     },
-    heroOverlay: { backgroundColor: 'rgba(0,0,0,0.25)' },
     iconButton: {
       position: 'absolute',
       top: Spacing.md,
@@ -184,7 +189,7 @@ const makeStyles = (Colors: ColorTokens) =>
       width: 36,
       height: 36,
       borderRadius: Radius.md,
-      backgroundColor: 'rgba(0,0,0,0.5)',
+      backgroundColor: Colors.mediaScrim,
       alignItems: 'center',
       justifyContent: 'center',
     },
@@ -204,9 +209,9 @@ const makeStyles = (Colors: ColorTokens) =>
       width: 56,
       height: 56,
       borderRadius: Radius.full,
-      backgroundColor: 'rgba(255,255,255,0.18)',
+      backgroundColor: Colors.mediaGlassSurface,
       borderWidth: 1.5,
-      borderColor: 'rgba(255,255,255,0.5)',
+      borderColor: Colors.mediaGlassBorder,
       alignItems: 'center',
       justifyContent: 'center',
     },
@@ -243,5 +248,6 @@ const makeStyles = (Colors: ColorTokens) =>
       backgroundColor: Colors.background,
       borderTopWidth: 1,
       borderTopColor: Colors.border,
+      ...makeNeonShadow(Colors),
     },
   });

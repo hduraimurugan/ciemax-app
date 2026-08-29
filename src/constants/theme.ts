@@ -55,14 +55,24 @@ export interface ColorTokens {
 
   navbarBorder: string;
   transparent: string;
+
+  warningDim: string;
+  infoDim: string;
+
+  // Theme-invariant: for content sitting on photographic imagery or a fixed
+  // white surface (QR codes) that never adapts to light/dark mode.
+  textOnMedia: string;
+  mediaScrim: string;
+  mediaGlassSurface: string;
+  mediaGlassBorder: string;
 }
 
 export const DarkColors: ColorTokens = {
-  background: '#16171B',
-  surface: '#1F2024',
-  surfaceElevated: '#26282E',
-  surfaceHighlight: '#303138',
-  secondary: '#383A42',
+  background: '#0C0D11',
+  surface: '#15171D',
+  surfaceElevated: '#1E2128',
+  surfaceHighlight: '#292D36',
+  secondary: '#363B46',
 
   accent: '#E6474E',
   accentDim: '#C93940',
@@ -111,6 +121,14 @@ export const DarkColors: ColorTokens = {
 
   navbarBorder: 'rgba(255, 255, 255, 0.06)',
   transparent: 'transparent',
+
+  warningDim: 'rgba(227, 167, 94, 0.15)',
+  infoDim: 'rgba(108, 156, 235, 0.15)',
+
+  textOnMedia: '#FFFFFF',
+  mediaScrim: 'rgba(10, 11, 14, 0.55)',
+  mediaGlassSurface: 'rgba(255, 255, 255, 0.18)',
+  mediaGlassBorder: 'rgba(255, 255, 255, 0.5)',
 };
 
 export const LightColors: ColorTokens = {
@@ -167,6 +185,14 @@ export const LightColors: ColorTokens = {
 
   navbarBorder: 'rgba(0, 0, 0, 0.06)',
   transparent: 'transparent',
+
+  warningDim: 'rgba(227, 167, 94, 0.15)',
+  infoDim: 'rgba(108, 156, 235, 0.15)',
+
+  textOnMedia: '#FFFFFF',
+  mediaScrim: 'rgba(10, 11, 14, 0.55)',
+  mediaGlassSurface: 'rgba(255, 255, 255, 0.18)',
+  mediaGlassBorder: 'rgba(255, 255, 255, 0.5)',
 };
 
 export const Spacing = {
@@ -213,24 +239,24 @@ export const FontWeight = {
 export const Shadow = {
   sm: {
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.3,
-    shadowRadius: 2,
-    elevation: 2,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.35,
+    shadowRadius: 4,
+    elevation: 3,
   },
   md: {
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.4,
-    shadowRadius: 6,
-    elevation: 5,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.45,
+    shadowRadius: 10,
+    elevation: 6,
   },
   lg: {
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.5,
-    shadowRadius: 12,
-    elevation: 10,
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.55,
+    shadowRadius: 18,
+    elevation: 12,
   },
 };
 

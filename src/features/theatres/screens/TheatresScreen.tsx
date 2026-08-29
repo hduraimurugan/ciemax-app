@@ -219,7 +219,7 @@ const makeStyles = (Colors: ColorTokens) =>
       paddingVertical: Spacing.sm + 2,
       borderRadius: Radius.md,
     },
-    setLocationBtnText: { color: '#fff', fontWeight: FontWeight.semibold },
+    setLocationBtnText: { color: Colors.textPrimary, fontWeight: FontWeight.semibold },
     // Explicit height on the horizontal ScrollView itself (not just its
     // contentContainerStyle) — without it, Yoga can't reliably measure an
     // unstyled horizontal ScrollView's cross-axis size, and the sibling
@@ -245,7 +245,7 @@ const makeStyles = (Colors: ColorTokens) =>
       color: Colors.textPrimary,
       marginTop: 2,
     },
-    dateTextActive: { color: '#fff' },
+    dateTextActive: { color: Colors.textPrimary },
     listScroll: { flex: 1 },
     list: { padding: Spacing.lg, paddingTop: 0, gap: Spacing.md, paddingBottom: Spacing.xl },
     empty: { textAlign: 'center', marginTop: Spacing.xl },

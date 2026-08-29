@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Seat, SeatStatus } from '@ctypes/models';
-import { ColorTokens, FontSize, FontWeight, Radius } from '@constants/theme';
+import { ColorTokens, FontSize, FontWeight, Radius, makeNeonShadow } from '@constants/theme';
 import { useTheme } from '@hooks/useTheme';
 
 const SEAT_SIZE = 28;
@@ -87,6 +87,7 @@ const makeStyles = (Colors: ColorTokens) =>
     selected: {
       backgroundColor: Colors.seatSelected,
       borderColor: Colors.seatSelected,
+      ...makeNeonShadow(Colors),
     },
     label: {
       fontSize: FontSize.xs - 1,
@@ -97,7 +98,7 @@ const makeStyles = (Colors: ColorTokens) =>
       color: Colors.gold,
     },
     labelSelected: {
-      color: '#fff',
+      color: Colors.textPrimary,
       fontWeight: FontWeight.bold,
     },
   });

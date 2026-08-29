@@ -71,7 +71,7 @@ const makeStyles = (Colors: ColorTokens) =>
       position: 'absolute',
       top: Spacing.xs,
       right: Spacing.xs,
-      backgroundColor: 'rgba(0,0,0,0.55)',
+      backgroundColor: Colors.mediaScrim,
       borderRadius: Radius.sm,
       paddingHorizontal: 6,
       paddingVertical: 2,
@@ -91,7 +91,7 @@ const makeStyles = (Colors: ColorTokens) =>
       paddingVertical: 2,
     },
     soonText: {
-      color: '#fff',
+      color: Colors.textPrimary,
       fontWeight: FontWeight.semibold,
       fontSize: FontSize.xs - 1,
     },

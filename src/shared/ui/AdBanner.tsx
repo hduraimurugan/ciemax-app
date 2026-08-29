@@ -109,7 +109,7 @@ const makeStyles = (Colors: ColorTokens, width: number, height: number) =>
       paddingHorizontal: 6,
       paddingVertical: 3,
       borderRadius: 4,
-      backgroundColor: 'rgba(0,0,0,0.55)',
+      backgroundColor: Colors.mediaScrim,
     },
     adLabelText: {
       color: Colors.textPrimary,
@@ -121,10 +121,12 @@ const makeStyles = (Colors: ColorTokens, width: number, height: number) =>
       width: 6,
       height: 6,
       borderRadius: 3,
-      backgroundColor: 'rgba(255,255,255,0.45)',
+      backgroundColor: Colors.textOnMedia,
+      opacity: 0.45,
     },
     dotActive: {
       width: 16,
       backgroundColor: Colors.textPrimary,
+      opacity: 1,
     },
   });

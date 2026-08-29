@@ -226,7 +226,7 @@ const makeStyles = (Colors: ColorTokens) =>
       paddingVertical: Spacing.sm + 2,
       borderRadius: Radius.md,
     },
-    setLocationBtnText: { color: '#fff', fontWeight: FontWeight.semibold },
+    setLocationBtnText: { color: Colors.textPrimary, fontWeight: FontWeight.semibold },
     // Explicit height on the horizontal ScrollView itself (not just its
     // contentContainerStyle) — without it, Yoga can't reliably measure an
     // unstyled horizontal ScrollView's cross-axis size, and the sibling
@@ -252,7 +252,7 @@ const makeStyles = (Colors: ColorTokens) =>
       color: Colors.textPrimary,
       marginTop: 2,
     },
-    dateTextActive: { color: '#fff' },
+    dateTextActive: { color: Colors.textPrimary },
     cinemaListScroll: { flex: 1 },
     cinemaList: { paddingHorizontal: Spacing.lg, paddingBottom: Spacing.xl, gap: Spacing.md },
     empty: { textAlign: 'center', marginTop: Spacing.xl },
@@ -276,8 +276,8 @@ const makeStyles = (Colors: ColorTokens) =>
       borderWidth: 1,
       alignItems: 'center',
     },
-    chipAvailable: { backgroundColor: 'rgba(79,184,120,0.12)', borderColor: Colors.success },
-    chipFast: { backgroundColor: 'rgba(227,167,94,0.15)', borderColor: Colors.warning },
+    chipAvailable: { backgroundColor: Colors.emeraldDim, borderColor: Colors.success },
+    chipFast: { backgroundColor: Colors.warningDim, borderColor: Colors.warning },
     chipSoldout: { backgroundColor: Colors.secondary, borderColor: Colors.secondary, opacity: 0.6 },
     chipTime: { fontFamily: FontFamily.semibold, fontWeight: FontWeight.semibold, fontSize: FontSize.sm - 1 },
     chipScreen: { fontSize: FontSize.xs - 1, color: Colors.textMuted, marginTop: 1 },

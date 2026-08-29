@@ -289,7 +289,7 @@ const makeStyles = (Colors: ColorTokens) =>
       gap: Spacing.xs,
     },
     ticketBrand: {
-      color: '#fff',
+      color: Colors.textPrimary,
       fontFamily: FontFamily.bold,
       fontWeight: FontWeight.bold,
       fontSize: FontSize.sm,
@@ -297,13 +297,14 @@ const makeStyles = (Colors: ColorTokens) =>
       opacity: 0.85,
     },
     ticketMovie: {
-      color: '#fff',
+      color: Colors.textPrimary,
       fontWeight: FontWeight.bold,
       fontFamily: FontFamily.bold,
       fontSize: FontSize.lg,
     },
     ticketShowInfo: {
-      color: 'rgba(255,255,255,0.7)',
+      color: Colors.textPrimary,
+      opacity: 0.7,
     },
 
     dashedRow: {
@@ -385,7 +386,7 @@ const makeStyles = (Colors: ColorTokens) =>
     },
     qrFrame: {
       padding: Spacing.sm + 4,
-      backgroundColor: '#fff',
+      backgroundColor: Colors.textOnMedia,
       borderRadius: Radius.lg,
     },
     qrHint: {

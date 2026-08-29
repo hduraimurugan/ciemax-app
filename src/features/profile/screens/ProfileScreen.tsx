@@ -192,7 +192,7 @@ export function ProfileScreen({ navigation }: Props) {
               value={mode === 'dark'}
               onValueChange={toggleTheme}
               trackColor={{ false: colors.secondary, true: colors.accent }}
-              thumbColor="#fff"
+              thumbColor={colors.textOnMedia}
             />
           </Pressable>
         </View>
@@ -302,7 +302,7 @@ export function ProfileScreen({ navigation }: Props) {
             value={mode === 'dark'}
             onValueChange={toggleTheme}
             trackColor={{ false: colors.secondary, true: colors.accent }}
-            thumbColor="#fff"
+            thumbColor={colors.textOnMedia}
           />
         </Pressable>
 
@@ -318,7 +318,7 @@ export function ProfileScreen({ navigation }: Props) {
             onValueChange={handleTogglePush}
             disabled={pushBusy}
             trackColor={{ false: colors.secondary, true: colors.accent }}
-            thumbColor="#fff"
+            thumbColor={colors.textOnMedia}
           />
         </Pressable>
 
@@ -385,7 +385,7 @@ const makeStyles = (Colors: ColorTokens) =>
       borderRadius: Radius.full,
     },
     avatarInitials: {
-      color: '#fff',
+      color: Colors.textPrimary,
       fontSize: FontSize.xl,
       fontFamily: FontFamily.bold,
       fontWeight: FontWeight.bold,
