@@ -321,7 +321,7 @@ The onboarding artwork is implemented as local `react-native-svg` scenes in `Onb
 
 ## UI Components
 
-All 12 components in `src/shared/ui/` follow the `useTheme()` + `makeStyles(colors)` pattern described above. Props/API are unchanged from before theming — only the color source changed.
+All 14 components in `src/shared/ui/` follow the `useTheme()` + `makeStyles(colors)` pattern described above. The last two — `ScreenHeader` and `EmptyState` — were added in commit `382310a` to replace hand-rolled per-screen chrome.
 
 ### Button
 
@@ -347,6 +347,8 @@ import { Button } from '@shared/ui';
 | `loading` | `boolean` | `false` | Shows ActivityIndicator |
 | `fullWidth` | `boolean` | `false` | Stretches to container width |
 | `leftIcon` | `ReactNode` | — | Icon rendered before label |
+
+Enriched in commit `382310a`: `primary` renders a diagonal `LinearGradient` (`colors.accent` → `colors.accentDim`) behind its label (clipped to the border radius), and the `primary`/`danger`/`emerald` variants get a neutral shadow (`Shadow.sm` for `size="sm"`, `Shadow.md` for `md`/`lg`). `secondary`/`ghost` stay flat, and shadows are skipped while `disabled`/`loading` so they don't look muddy at low opacity.
 
 ---
 
@@ -375,6 +377,8 @@ import { Card } from '@shared/ui';
 - `glass` — uses `colors.glassSurface` background and `colors.glassBorder` border
 - `neon` — applies `makeNeonShadow(colors)` (glow color follows the active `accent`, not hardcoded red)
 
+Since commit `382310a` every `Card` gets a baseline `Shadow.sm` (no longer opt-in); `elevated` overrides it with `Shadow.md`, and `neon` uses `makeNeonShadow`. Because a shadow and `overflow:'hidden'` (needed to clip content to the rounded corners) can't coexist on the same iOS view — `overflow:'hidden'` clips the shadow away — `Card` now renders the shadow on an **outer wrapper** view while background/border/padding/clipping live on an **inner content** view.
+
 ---
 
 ### Badge
@@ -392,6 +396,8 @@ import { Badge } from '@shared/ui';
 ```
 
 **Variants:** `default`, `accent`, `success`, `warning`, `error`, `gold`, `silver`, `premium`, `violet`, `zinc`, `info`
+
+Enriched in commit `382310a`: every variant now has a `1px` border in its **solid** token color (`success`→`Colors.success`, `warning`→`Colors.warning`, `gold`→`Colors.gold`, …) while the background stays on the existing dim token. A new optional `glow?: boolean` prop adds a soft shadow in the variant's own color — deliberately reserved for a single standout badge (used by `OffersScreen`'s gold "HALL OFFER" badge), not every instance.
 
 ---
 
@@ -411,9 +417,62 @@ import { Input } from '@shared/ui';
 ```
 
 - Shows a red border + error text when `error` prop is set
-- Accent border on focus (`colors.borderFocus`)
+- Accent border on focus (`colors.borderFocus`) — **border-only, intentionally no glow**
 - Supports `leftIcon` and `rightIcon` nodes
 - Background: `colors.surfaceElevated`
+
+A focus glow was considered but deliberately dropped in `382310a`: on Fabric (new architecture) toggling any shadow prop on a `TextInput`'s direct parent promotes it to a new native layer at the moment it gains focus, which remounts the field mid-focus and kicks focus to the next input (reproduced on-device; see the comment in `src/shared/ui/Input.tsx`). Errors also stay border-only — errors shouldn't glow.
+
+---
+
+### ScreenHeader
+
+Shared screen chrome that replaces the hand-rolled back-button headers (added in `382310a`; adopted by `TheatresScreen`, `ShowtimesScreen`, `CheckoutScreen`, `PaymentScreen`, `TicketDetailScreen`, `OffersScreen`, `ChangePasswordScreen`, `SetPasswordScreen`, and `NotificationsScreen`).
+
+```tsx
+import { ScreenHeader } from '@shared/ui';
+
+<ScreenHeader title="My Bookings" onBack={() => navigation.goBack()} />
+<ScreenHeader title="Notifications" rightLabel="Mark all read" onRightPress={markAllRead} />
+```
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `title` | `string` | required | Heading text — `Heading2`, or `Heading3` when `subtitle` is given |
+| `subtitle` | `string` | — | Optional second line under the title |
+| `onBack` | `() => void` | — | Renders the 34×34 back button (`surfaceElevated` bg + `Shadow.sm`) |
+| `backLoading` | `boolean` | `false` | Renders an `ActivityIndicator` instead of the back arrow (used by `CheckoutScreen` while releasing seats) |
+| `rightIcon` / `rightLabel` / `onRightPress` | | — | Optional right-aligned action |
+| `rightSlot` | `ReactNode` | — | Arbitrary right content (e.g. `CheckoutScreen`'s countdown) — takes precedence over `rightIcon`/`rightLabel` |
+| `variant` | `'default' \| 'onMedia'` | `'default'` | `onMedia` swaps to `mediaGlassSurface`/`mediaGlassBorder`/`textOnMedia` for headers over photos |
+
+`MovieDetailScreen` keeps its bespoke hero header (extra heart/share/play controls), and `OtpScreen`/`ForgotPasswordScreen` use `AuthCard` instead of this component.
+
+---
+
+### EmptyState
+
+Standardized empty/error states (added in `382310a`; adopted by `MyBookingsScreen`, `NotificationsScreen`, `OffersScreen`, `TheatresScreen`, `ShowtimesScreen`, and `SearchScreen`).
+
+```tsx
+import { EmptyState } from '@shared/ui';
+
+<EmptyState
+  icon={<Ticket size={48} color={colors.textMuted} />}
+  title="No bookings yet"
+  message="Bookings you make will appear here"
+  actionLabel="Find shows"
+  onAction={browse}
+/>
+```
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `icon` | `ReactNode` | required | Icon — standardized to 48px across the migrated screens |
+| `title` | `string` | — | Optional `Heading3` heading |
+| `message` | `string` | required | `Body` copy |
+| `actionLabel` / `onAction` / `actionIcon` | | — | Optional `Button` (inherits the enriched gradient/shadow automatically) |
+| `fill` | `boolean` | `true` | `flex:1` centered full-screen state; `false` for an inline state (e.g. `SearchScreen`'s no-results, which sits below the search bar) |
 
 ---
 
@@ -620,3 +679,5 @@ For reference, the raw tokens from `CineHall.dc.html`'s `getTheme(mode)` (mapped
 *Later: rebranded the launcher to **Cinemax App** — display name in `app.json` / Android strings / iOS `Info.plist`, Android adaptive launcher icons (`#FAB90B` background) and the full iOS `AppIcon` set (commit `0e9de4b`).*
 
 *Later still: theme consistency pass (`9887938`) — deepened the dark backgrounds, added the `warningDim`/`infoDim` and media (`textOnMedia`/`mediaScrim`/`mediaGlassSurface`/`mediaGlassBorder`) tokens, swapped remaining hardcoded hex/`rgba` values for tokens across screens and `shared/ui` (movie/seat/profile/theatres/booking components), switched hero backdrops from a flat overlay to a `transparent → overlay` `LinearGradient`, and deepened the neutral shadows. `razorpayCheckoutHtml`'s WebView background is kept in sync with the dark `background`.*
+
+*Then: the shared-UI refactor (`382310a`) — new `ScreenHeader` and `EmptyState` primitives plus feature-local `AuthCard` (Login/Register/OTP/ForgotPassword) and `TheatreCard` (Theatres/Showtimes); `Button` gained a `primary` gradient + shadows on `primary`/`danger`/`emerald`; every `Card` now carries a baseline `Shadow.sm` (restructured into outer-shadow/inner-content views to fix the iOS `overflow:'hidden'` conflict); `Badge` variants got `1px` solid borders and an opt-in `glow` prop; `Input` focus was deliberately kept border-only (Fabric remount-on-focus bug, documented in `Input.tsx`).*
