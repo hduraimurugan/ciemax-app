@@ -1,7 +1,7 @@
 import React, { useMemo, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ArrowLeft, CheckCircle2, KeyRound } from 'lucide-react-native';
+import { ArrowLeft, CheckCircle2, KeyRound, Mail } from 'lucide-react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '@ctypes/navigation';
 import { ColorTokens, FontFamily, FontSize, FontWeight, Radius, Spacing } from '@constants/theme';
@@ -10,6 +10,7 @@ import { useCountdown } from '@hooks/useCountdown';
 import { Button, Heading2, Body, Input, Caption } from '@shared/ui';
 import { authService } from '@services/authService';
 import { errorMessage } from '@services/httpClient';
+import { AuthCard } from '../components/AuthCard';
 import { evaluatePassword, isPasswordValid } from '../utils/passwordPolicy';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'ForgotPassword'>;
@@ -112,12 +113,11 @@ export function ForgotPasswordScreen({ navigation }: Props) {
         </Pressable>
 
         {step === 'email' && (
-          <>
-            <Heading2 style={styles.title}>Reset your password</Heading2>
-            <Body style={styles.subtitle}>
-              Enter the email on your account and we&apos;ll send a code to reset your password.
-            </Body>
-            {error ? <Text style={styles.errorText}>{error}</Text> : null}
+          <AuthCard
+            icon={<KeyRound size={24} color={colors.accent} />}
+            title="Reset your password"
+            subtitle="Enter the email on your account and we'll send a code to reset your password."
+            error={error}>
             <Input
               label="EMAIL ADDRESS"
               value={email}
@@ -125,7 +125,6 @@ export function ForgotPasswordScreen({ navigation }: Props) {
               placeholder="you@example.com"
               keyboardType="email-address"
               autoCapitalize="none"
-              containerStyle={styles.inputGap}
             />
             <Button
               label={submitting ? 'Sending…' : 'Send Reset Code'}
@@ -135,15 +134,15 @@ export function ForgotPasswordScreen({ navigation }: Props) {
               fullWidth
               size="lg"
             />
-          </>
+          </AuthCard>
         )}
 
         {step === 'reset' && (
-          <>
-            <Heading2 style={styles.title}>Enter code & new password</Heading2>
-            <Body style={styles.subtitle}>We sent a 6-digit code to {email}</Body>
-            {error ? <Text style={styles.errorText}>{error}</Text> : null}
-
+          <AuthCard
+            icon={<Mail size={24} color={colors.accent} />}
+            title="Enter code & new password"
+            subtitle={`We sent a 6-digit code to ${email}`}
+            error={error}>
             <View style={styles.otpRow}>
               {otp.map((digit, i) => (
                 <TextInput
@@ -178,7 +177,6 @@ export function ForgotPasswordScreen({ navigation }: Props) {
               placeholder="Create a new password"
               secureTextEntry
               autoCapitalize="none"
-              containerStyle={styles.inputGap}
             />
             {newPassword.length > 0 && (
               <View style={styles.checklist}>
@@ -196,7 +194,6 @@ export function ForgotPasswordScreen({ navigation }: Props) {
               placeholder="Re-enter your new password"
               secureTextEntry
               autoCapitalize="none"
-              containerStyle={styles.inputGap}
               error={confirmPassword.length > 0 && !passwordsMatch ? 'Passwords do not match' : undefined}
             />
 
@@ -208,7 +205,7 @@ export function ForgotPasswordScreen({ navigation }: Props) {
               fullWidth
               size="lg"
             />
-          </>
+          </AuthCard>
         )}
 
         {step === 'done' && (
@@ -254,9 +251,7 @@ const makeStyles = (Colors: ColorTokens) =>
       lineHeight: FontSize.sm * 1.5,
       marginBottom: Spacing.xl,
     },
-    errorText: { fontSize: FontSize.sm, color: Colors.error, marginBottom: Spacing.md },
-    inputGap: { marginBottom: Spacing.md },
-    otpRow: { flexDirection: 'row', gap: Spacing.sm, marginBottom: Spacing.md },
+    otpRow: { flexDirection: 'row', gap: Spacing.sm },
     otpBox: {
       flex: 1,
       height: 52,

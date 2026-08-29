@@ -11,12 +11,12 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ArrowLeft, Tag } from 'lucide-react-native';
+import { Tag } from 'lucide-react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '@ctypes/navigation';
 import { ColorTokens, FontFamily, FontSize, FontWeight, Radius, Spacing } from '@constants/theme';
 import { useTheme } from '@hooks/useTheme';
-import { Badge, Button, CountdownTimer, Heading3 } from '@shared/ui';
+import { Badge, Button, CountdownTimer, Heading3, ScreenHeader } from '@shared/ui';
 import { Body, BodySmall, Caption } from '@shared/ui';
 import { formatShowDate, formatShowTime, formatPrice } from '@shared/utils';
 import { getSettings, getCachedSettings } from '@services/settingsService';
@@ -160,15 +160,12 @@ export function CheckoutScreen({ navigation, route }: Props) {
 
   return (
     <SafeAreaView style={styles.screen}>
-      <View style={styles.header}>
-        <Pressable style={styles.backBtn} onPress={handleBack} disabled={releasing}>
-          {releasing ? <ActivityIndicator size="small" color={colors.textPrimary} /> : <ArrowLeft size={18} color={colors.textPrimary} />}
-        </Pressable>
-        <Heading3>Booking Summary</Heading3>
-        <View style={styles.timerSlot}>
-          <CountdownTimer initialSeconds={initialSeconds} onExpire={handleSessionExpire} />
-        </View>
-      </View>
+      <ScreenHeader
+        title="Booking Summary"
+        onBack={handleBack}
+        backLoading={releasing}
+        rightSlot={<CountdownTimer initialSeconds={initialSeconds} onExpire={handleSessionExpire} />}
+      />
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
         <View style={styles.summaryCard}>
@@ -264,23 +261,6 @@ export function CheckoutScreen({ navigation, route }: Props) {
 const makeStyles = (Colors: ColorTokens) =>
   StyleSheet.create({
     screen: { flex: 1, backgroundColor: Colors.background },
-    header: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: Spacing.md,
-      paddingHorizontal: Spacing.lg,
-      paddingTop: Spacing.md,
-      paddingBottom: Spacing.sm + 2,
-    },
-    backBtn: {
-      width: 34,
-      height: 34,
-      borderRadius: Radius.md,
-      backgroundColor: Colors.surfaceElevated,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    timerSlot: { marginLeft: 'auto' },
     content: { paddingHorizontal: Spacing.lg, paddingBottom: 120, gap: Spacing.md },
     summaryCard: {
       flexDirection: 'row',

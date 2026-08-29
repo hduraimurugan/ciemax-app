@@ -1,12 +1,12 @@
 import React, { useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ArrowLeft, Check, X } from 'lucide-react-native';
+import { Check, X } from 'lucide-react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '@ctypes/navigation';
-import { ColorTokens, FontSize, Radius, Spacing } from '@constants/theme';
+import { ColorTokens, FontSize, Spacing } from '@constants/theme';
 import { useTheme } from '@hooks/useTheme';
-import { Button, Heading2, Body, Input, Caption } from '@shared/ui';
+import { Button, Body, Input, Caption, ScreenHeader } from '@shared/ui';
 import { authService } from '@services/authService';
 import { errorMessage } from '@services/httpClient';
 import { evaluatePassword, isPasswordValid } from '@features/auth/utils/passwordPolicy';
@@ -50,12 +50,7 @@ export function SetPasswordScreen({ navigation }: Props) {
 
   return (
     <SafeAreaView style={styles.screen}>
-      <View style={styles.header}>
-        <Pressable style={styles.backBtn} onPress={() => navigation.goBack()} hitSlop={8}>
-          <ArrowLeft size={18} color={colors.textPrimary} />
-        </Pressable>
-        <Heading2>Set Password</Heading2>
-      </View>
+      <ScreenHeader title="Set Password" onBack={() => navigation.goBack()} />
 
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         <Body style={styles.subtitle}>
@@ -96,15 +91,6 @@ export function SetPasswordScreen({ navigation }: Props) {
 const makeStyles = (Colors: ColorTokens) =>
   StyleSheet.create({
     screen: { flex: 1, backgroundColor: Colors.background },
-    header: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, padding: Spacing.lg },
-    backBtn: {
-      width: 34,
-      height: 34,
-      borderRadius: Radius.md,
-      backgroundColor: Colors.surfaceElevated,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
     content: { paddingHorizontal: Spacing.lg, paddingBottom: Spacing.xl, gap: Spacing.sm },
     subtitle: { color: Colors.textMuted, marginBottom: Spacing.md },
     errorText: { color: Colors.error, fontSize: FontSize.sm, marginBottom: Spacing.sm },

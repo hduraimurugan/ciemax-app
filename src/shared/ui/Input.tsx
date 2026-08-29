@@ -74,6 +74,14 @@ const makeStyles = (Colors: ColorTokens) =>
       borderColor: Colors.border,
       paddingHorizontal: Spacing.md,
     },
+    // Border-only on purpose — no shadow/elevation here. This app runs on
+    // Fabric (newArchEnabled), where Android *does* render shadowColor/
+    // shadowOpacity/shadowRadius (unlike the old architecture, which ignored
+    // them without `elevation`). Toggling any shadow prop on the direct
+    // parent of a TextInput promotes it to a new native layer right as it
+    // gains focus, which remounts the TextInput mid-focus and kicks focus to
+    // the next field — reproduced on-device: IME session mismatch + an
+    // immediate programmatic hide right after the show. Confirmed via adb.
     inputFocused: {
       borderColor: Colors.accent,
     },

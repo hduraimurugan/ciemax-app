@@ -1,17 +1,18 @@
 import React, { useMemo, useRef, useState } from 'react';
 import { Alert, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ArrowLeft } from 'lucide-react-native';
+import { ArrowLeft, Mail } from 'lucide-react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '@ctypes/navigation';
 import { ColorTokens, FontFamily, FontSize, FontWeight, Radius, Spacing } from '@constants/theme';
 import { useTheme } from '@hooks/useTheme';
 import { useCountdown } from '@hooks/useCountdown';
 import { flushPendingAuthCallbacks } from '@hooks/useRequireAuth';
-import { Button, Heading2 } from '@shared/ui';
+import { Button } from '@shared/ui';
 import { authService } from '@services/authService';
 import { errorMessage } from '@services/httpClient';
 import { useAuthStore } from '@store/authStore';
+import { AuthCard } from '../components/AuthCard';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Otp'>;
 
@@ -98,46 +99,47 @@ export function OtpScreen({ navigation, route }: Props) {
           <ArrowLeft size={18} color={colors.textPrimary} />
         </Pressable>
 
-        <Heading2 style={styles.title}>Verify your email</Heading2>
-        <Text style={styles.subtitle}>We sent a 6-digit code to{'\n'}{maskedEmail}</Text>
+        <AuthCard
+          icon={<Mail size={24} color={colors.accent} />}
+          title="Verify your email"
+          subtitle={`We sent a 6-digit code to\n${maskedEmail}`}
+          error={error}>
+          <View style={styles.otpRow}>
+            {otp.map((digit, i) => (
+              <TextInput
+                key={i}
+                ref={ref => {
+                  inputs.current[i] = ref;
+                }}
+                value={digit}
+                onChangeText={v => updateDigit(i, v)}
+                onKeyPress={e => onKeyPress(i, e.nativeEvent.key)}
+                maxLength={1}
+                keyboardType="number-pad"
+                style={[styles.otpBox, digit ? styles.otpBoxFilled : undefined]}
+              />
+            ))}
+          </View>
 
-        {error ? <Text style={styles.errorText}>{error}</Text> : null}
+          <View style={styles.resendRow}>
+            {resendLabel ? (
+              <Text style={styles.resendMuted}>{resendLabel}</Text>
+            ) : (
+              <Pressable onPress={resend}>
+                <Text style={styles.resendLink}>Resend Code</Text>
+              </Pressable>
+            )}
+          </View>
 
-        <View style={styles.otpRow}>
-          {otp.map((digit, i) => (
-            <TextInput
-              key={i}
-              ref={ref => {
-                inputs.current[i] = ref;
-              }}
-              value={digit}
-              onChangeText={v => updateDigit(i, v)}
-              onKeyPress={e => onKeyPress(i, e.nativeEvent.key)}
-              maxLength={1}
-              keyboardType="number-pad"
-              style={[styles.otpBox, digit ? styles.otpBoxFilled : undefined]}
-            />
-          ))}
-        </View>
-
-        <View style={styles.resendRow}>
-          {resendLabel ? (
-            <Text style={styles.resendMuted}>{resendLabel}</Text>
-          ) : (
-            <Pressable onPress={resend}>
-              <Text style={styles.resendLink}>Resend Code</Text>
-            </Pressable>
-          )}
-        </View>
-
-        <Button
-          label={submitting ? 'Verifying…' : 'Verify & Continue'}
-          onPress={verify}
-          disabled={submitting}
-          loading={submitting}
-          fullWidth
-          size="lg"
-        />
+          <Button
+            label={submitting ? 'Verifying…' : 'Verify & Continue'}
+            onPress={verify}
+            disabled={submitting}
+            loading={submitting}
+            fullWidth
+            size="lg"
+          />
+        </AuthCard>
       </View>
     </SafeAreaView>
   );
@@ -156,22 +158,9 @@ const makeStyles = (Colors: ColorTokens) =>
       justifyContent: 'center',
       marginBottom: Spacing.xl,
     },
-    title: { marginBottom: Spacing.sm },
-    subtitle: {
-      fontSize: FontSize.sm,
-      color: Colors.textMuted,
-      lineHeight: FontSize.sm * 1.5,
-      marginBottom: Spacing.xl,
-    },
-    errorText: {
-      fontSize: FontSize.sm,
-      color: Colors.error,
-      marginBottom: Spacing.md,
-    },
     otpRow: {
       flexDirection: 'row',
       gap: Spacing.sm,
-      marginBottom: Spacing.lg,
     },
     otpBox: {
       flex: 1,

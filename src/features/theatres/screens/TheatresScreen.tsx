@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ArrowLeft, Heart, MapPin, Navigation } from 'lucide-react-native';
+import { MapPin } from 'lucide-react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '@ctypes/navigation';
 import { Theatre } from '@ctypes/models';
@@ -12,9 +12,10 @@ import { StorageKeys } from '@constants/config';
 import { useLocationStore } from '@store/locationStore';
 import { getTheatresWithShows, getCachedTheatresWithShows } from '@services/theatresService';
 import { mapShowSummary, mapTheatreListingMovie, mapTheatreHall } from '@services/mappers';
-import { Body, Heading2, Heading3 } from '@shared/ui';
+import { Body, EmptyState, ScreenHeader } from '@shared/ui';
 import { useBookingStore } from '@store/bookingStore';
 import { LocationModal } from '@features/location';
+import { TheatreCard } from '../components/TheatreCard';
 import { TheatreListSkeleton } from '../components/TheatreCardSkeleton';
 import type { ApiTheatreHall } from '@ctypes/api';
 
@@ -101,21 +102,15 @@ export function TheatresScreen({ navigation }: Props) {
 
   return (
     <SafeAreaView style={styles.screen}>
-      <View style={styles.header}>
-        <Pressable style={styles.backBtn} onPress={() => navigation.goBack()}>
-          <ArrowLeft size={17} color={colors.textPrimary} />
-        </Pressable>
-        <Heading2>Theatres</Heading2>
-      </View>
+      <ScreenHeader title="Theatres" onBack={() => navigation.goBack()} />
 
       {!district || !state ? (
-        <View style={styles.noLocation}>
-          <MapPin size={32} color={colors.textMuted} />
-          <Body style={styles.noLocationText}>Set your location to see theatres near you.</Body>
-          <Pressable style={styles.setLocationBtn} onPress={() => setLocationModalVisible(true)}>
-            <Text style={styles.setLocationBtnText}>Set Location</Text>
-          </Pressable>
-        </View>
+        <EmptyState
+          icon={<MapPin size={48} color={colors.textMuted} />}
+          message="Set your location to see theatres near you."
+          actionLabel="Set Location"
+          onAction={() => setLocationModalVisible(true)}
+        />
       ) : (
         <>
           <ScrollView
@@ -145,20 +140,13 @@ export function TheatresScreen({ navigation }: Props) {
                 const theatre = mapTheatreHall(hall);
                 const favourited = isFavourite(hall.hall_id);
                 return (
-                  <View key={hall.hall_id} style={styles.hallCard}>
-                    <View style={styles.hallHeaderRow}>
-                      <View style={styles.hallInfo}>
-                        <Heading3 style={styles.hallName}>{hall.hall_name}</Heading3>
-                        <Text style={styles.hallLocation}>{hall.location}</Text>
-                      </View>
-                      <Pressable onPress={() => toggle(hall.hall_id)} hitSlop={8}>
-                        <Heart size={17} color={favourited ? colors.accent : colors.textMuted} fill={favourited ? colors.accent : 'none'} />
-                      </Pressable>
-                      <Pressable onPress={() => openDirections(theatre)} hitSlop={8} style={styles.directionsBtn}>
-                        <Navigation size={15} color={colors.accent} />
-                      </Pressable>
-                    </View>
-
+                  <TheatreCard
+                    key={hall.hall_id}
+                    name={hall.hall_name}
+                    location={hall.location}
+                    favourited={favourited}
+                    onToggleFavourite={() => toggle(hall.hall_id)}
+                    onDirections={() => openDirections(theatre)}>
                     {hall.movies.map(movie => (
                       <View key={movie.movie_id} style={styles.movieBlock}>
                         <Pressable onPress={() => navigation.navigate('MovieDetail', { movieId: movie.movie_id })}>
@@ -179,7 +167,7 @@ export function TheatresScreen({ navigation }: Props) {
                         </View>
                       </View>
                     ))}
-                  </View>
+                  </TheatreCard>
                 );
               })}
             </ScrollView>
@@ -195,31 +183,6 @@ export function TheatresScreen({ navigation }: Props) {
 const makeStyles = (Colors: ColorTokens) =>
   StyleSheet.create({
     screen: { flex: 1, backgroundColor: Colors.background },
-    header: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: Spacing.md,
-      paddingHorizontal: Spacing.lg,
-      paddingTop: Spacing.md,
-      paddingBottom: Spacing.sm + 2,
-    },
-    backBtn: {
-      width: 34,
-      height: 34,
-      borderRadius: Radius.md,
-      backgroundColor: Colors.surfaceElevated,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    noLocation: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: Spacing.md, padding: Spacing.xl },
-    noLocationText: { textAlign: 'center', color: Colors.textMuted },
-    setLocationBtn: {
-      backgroundColor: Colors.accent,
-      paddingHorizontal: Spacing.lg,
-      paddingVertical: Spacing.sm + 2,
-      borderRadius: Radius.md,
-    },
-    setLocationBtnText: { color: Colors.textPrimary, fontWeight: FontWeight.semibold },
     // Explicit height on the horizontal ScrollView itself (not just its
     // contentContainerStyle) — without it, Yoga can't reliably measure an
     // unstyled horizontal ScrollView's cross-axis size, and the sibling
@@ -249,19 +212,6 @@ const makeStyles = (Colors: ColorTokens) =>
     listScroll: { flex: 1 },
     list: { padding: Spacing.lg, paddingTop: 0, gap: Spacing.md, paddingBottom: Spacing.xl },
     empty: { textAlign: 'center', marginTop: Spacing.xl },
-    hallCard: {
-      backgroundColor: Colors.surface,
-      borderWidth: 1,
-      borderColor: Colors.border,
-      borderRadius: Radius.xl,
-      padding: Spacing.md,
-      gap: Spacing.md,
-    },
-    hallHeaderRow: { flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.sm },
-    hallInfo: { flex: 1 },
-    directionsBtn: { paddingLeft: 2 },
-    hallName: { marginBottom: 2 },
-    hallLocation: { fontSize: FontSize.xs + 1, color: Colors.textMuted },
     movieBlock: {
       borderTopWidth: 1,
       borderTopColor: Colors.divider,

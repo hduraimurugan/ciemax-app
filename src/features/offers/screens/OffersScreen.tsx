@@ -8,14 +8,14 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ArrowLeft, LogIn, Tag } from 'lucide-react-native';
+import { LogIn, Tag } from 'lucide-react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '@ctypes/navigation';
 import { Offer } from '@ctypes/models';
 import { ColorTokens, FontFamily, FontSize, FontWeight, Radius, Spacing } from '@constants/theme';
 import { useTheme } from '@hooks/useTheme';
-import { Badge, Body, Button } from '@shared/ui';
-import { Heading2, BodySmall, Caption } from '@shared/ui';
+import { Badge, EmptyState, ScreenHeader } from '@shared/ui';
+import { BodySmall, Caption } from '@shared/ui';
 import { getOffers, getCachedOffers } from '@services/offersService';
 import { formatDate } from '@shared/utils';
 import { useAuthStore } from '@store/authStore';
@@ -62,29 +62,23 @@ export function OffersScreen({ navigation }: Props) {
 
   return (
     <SafeAreaView style={styles.screen}>
-      <View style={styles.pageHeader}>
-        <Pressable style={styles.backBtn} onPress={() => navigation.goBack()} hitSlop={8}>
-          <ArrowLeft size={18} color={colors.textPrimary} />
-        </Pressable>
-        <View>
-          <Heading2>Offers &amp; Coupons</Heading2>
-          <BodySmall style={styles.headerSub}>Save on your next booking</BodySmall>
-        </View>
-      </View>
+      <ScreenHeader title="Offers & Coupons" subtitle="Save on your next booking" onBack={() => navigation.goBack()} />
 
       {status !== 'authed' ? (
-        <View style={styles.signedOut}>
-          <Tag size={40} color={colors.textMuted} />
-          <Body style={styles.signedOutText}>Please log in to view offers.</Body>
-          <Button label="Sign In" onPress={() => navigation.navigate('Login', {})} leftIcon={<LogIn size={16} color={colors.textInverse} />} />
-        </View>
+        <EmptyState
+          icon={<Tag size={48} color={colors.textMuted} />}
+          message="Please log in to view offers."
+          actionLabel="Sign In"
+          actionIcon={<LogIn size={16} color={colors.textInverse} />}
+          onAction={() => navigation.navigate('Login', {})}
+        />
       ) : loading ? (
         <OfferGridSkeleton />
       ) : offers.length === 0 ? (
-        <View style={styles.signedOut}>
-          <Tag size={40} color={colors.textMuted} />
-          <Body style={styles.signedOutText}>No offers available right now — check back soon.</Body>
-        </View>
+        <EmptyState
+          icon={<Tag size={48} color={colors.textMuted} />}
+          message="No offers available right now — check back soon."
+        />
       ) : (
         <FlatList
           data={offers}
@@ -140,7 +134,7 @@ function OfferCard({
           {isRedeemed ? (
             <Badge label="ALREADY USED" variant="zinc" />
           ) : offer.hallScoped ? (
-            <Badge label="HALL OFFER" variant="gold" />
+            <Badge label="HALL OFFER" variant="gold" glow />
           ) : endingSoon ? (
             <Badge label="ENDING SOON" variant="error" />
           ) : (
@@ -167,27 +161,6 @@ function OfferCard({
 const makeStyles = (Colors: ColorTokens) =>
   StyleSheet.create({
     screen: { flex: 1, backgroundColor: Colors.background },
-    pageHeader: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: Spacing.md,
-      paddingHorizontal: Spacing.md,
-      paddingTop: Spacing.md,
-      paddingBottom: Spacing.sm,
-      borderBottomWidth: 1,
-      borderBottomColor: Colors.border,
-    },
-    backBtn: {
-      width: 34,
-      height: 34,
-      borderRadius: Radius.md,
-      backgroundColor: Colors.surfaceElevated,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    headerSub: { color: Colors.textMuted },
-    signedOut: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: Spacing.md, padding: Spacing.xl },
-    signedOutText: { textAlign: 'center', color: Colors.textSecondary },
     list: {
       padding: Spacing.md,
       paddingBottom: Spacing.xxl,

@@ -19,8 +19,8 @@ import { RootStackParamList, TabParamList } from '@ctypes/navigation';
 import { Booking } from '@ctypes/models';
 import { ColorTokens, FontFamily, FontSize, FontWeight, Radius, Spacing } from '@constants/theme';
 import { useTheme } from '@hooks/useTheme';
-import { Badge, Button } from '@shared/ui';
-import { Heading2, Heading3, Body, BodySmall, Caption, Label } from '@shared/ui';
+import { Badge, EmptyState } from '@shared/ui';
+import { Heading2, Heading3, BodySmall, Caption, Label } from '@shared/ui';
 import { getUserBookings, getCachedUserBookings } from '@services/bookingService';
 import { formatPrice, formatShowDate } from '@shared/utils';
 import { useAuthStore } from '@store/authStore';
@@ -80,15 +80,13 @@ export function MyBookingsScreen({ navigation }: Props) {
   if (status !== 'authed') {
     return (
       <SafeAreaView style={styles.screen}>
-        <View style={styles.signedOut}>
-          <Ticket size={48} color={colors.textMuted} />
-          <Body style={styles.emptyText}>Sign in to view your bookings.</Body>
-          <Button
-            label="Sign In"
-            onPress={() => navigation.navigate('Login', {})}
-            leftIcon={<LogIn size={16} color={colors.textInverse} />}
-          />
-        </View>
+        <EmptyState
+          icon={<Ticket size={48} color={colors.textMuted} />}
+          message="Sign in to view your bookings."
+          actionLabel="Sign In"
+          actionIcon={<LogIn size={16} color={colors.textInverse} />}
+          onAction={() => navigation.navigate('Login', {})}
+        />
       </SafeAreaView>
     );
   }
@@ -119,12 +117,10 @@ export function MyBookingsScreen({ navigation }: Props) {
       {loading ? (
         <BookingListSkeleton />
       ) : displayed.length === 0 ? (
-        <View style={styles.empty}>
-          <Ticket size={48} color={colors.textMuted} />
-          <Body style={styles.emptyText}>
-            {activeTab === 'upcoming' ? 'No upcoming bookings' : 'No past bookings'}
-          </Body>
-        </View>
+        <EmptyState
+          icon={<Ticket size={48} color={colors.textMuted} />}
+          message={activeTab === 'upcoming' ? 'No upcoming bookings' : 'No past bookings'}
+        />
       ) : (
         <FlatList
           data={displayed}
@@ -225,7 +221,6 @@ const BookingCard = React.memo(function BookingCard({ booking, onPress, colors }
 const makeStyles = (Colors: ColorTokens) =>
   StyleSheet.create({
     screen: { flex: 1, backgroundColor: Colors.background },
-    signedOut: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: Spacing.md, padding: Spacing.xl },
     pageHeader: {
       paddingHorizontal: Spacing.md,
       paddingTop: Spacing.md,
@@ -357,11 +352,4 @@ const makeStyles = (Colors: ColorTokens) =>
       color: Colors.textSecondary,
       fontSize: FontSize.xs,
     },
-    empty: {
-      flex: 1,
-      alignItems: 'center',
-      justifyContent: 'center',
-      gap: Spacing.md,
-    },
-    emptyText: { color: Colors.textSecondary },
   });

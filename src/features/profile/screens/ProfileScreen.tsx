@@ -30,7 +30,7 @@ import { CompositeScreenProps } from '@react-navigation/native';
 import { NativeStackNavigationProp, NativeStackScreenProps } from '@react-navigation/native-stack';
 import { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import { RootStackParamList, TabParamList } from '@ctypes/navigation';
-import { ColorTokens, FontFamily, FontSize, FontWeight, Radius, Spacing } from '@constants/theme';
+import { ColorTokens, FontFamily, FontSize, FontWeight, Radius, Spacing, makeNeonShadow } from '@constants/theme';
 import { useTheme } from '@hooks/useTheme';
 import { Button, Card, Input } from '@shared/ui';
 import { Heading2, Heading3, Body, BodySmall, Caption } from '@shared/ui';
@@ -52,6 +52,7 @@ interface ProfileMenuItem {
   label: string;
   description: string;
   onPress: () => void;
+  isDestructive?: boolean;
 }
 
 function initialsFor(name: string): string {
@@ -221,7 +222,7 @@ export function ProfileScreen({ navigation }: Props) {
     },
     { icon: <Bell size={18} color={colors.textPrimary} />, label: 'Notifications', description: 'Manage alerts', onPress: () => navigation.navigate('Notifications') },
     { icon: <HelpCircle size={18} color={colors.textPrimary} />, label: 'Help & Support', description: 'FAQs and contact us', onPress: () => Alert.alert('Help & Support', 'Email support@cinehall.app for assistance.') },
-    { icon: <LogOut size={18} color={colors.textPrimary} />, label: 'Logout', description: 'Sign out of your account', onPress: handleLogout },
+    { icon: <LogOut size={18} color={colors.error} />, label: 'Logout', description: 'Sign out of your account', onPress: handleLogout, isDestructive: true },
   ];
 
   return (
@@ -326,11 +327,11 @@ export function ProfileScreen({ navigation }: Props) {
           {menuItems.map(item => (
             <Card key={item.label} onPress={item.onPress} padding="md">
               <View style={styles.menuRow}>
-                <View style={styles.menuIconWrapper}>
+                <View style={[styles.menuIconWrapper, item.isDestructive && styles.menuIconWrapperDanger]}>
                   {item.icon}
                 </View>
                 <View style={styles.menuText}>
-                  <Heading3 style={styles.menuLabel}>{item.label}</Heading3>
+                  <Heading3 style={[styles.menuLabel, item.isDestructive && styles.menuLabelDanger]}>{item.label}</Heading3>
                   <BodySmall>{item.description}</BodySmall>
                 </View>
                 <ChevronRight size={18} color={colors.textMuted} />
@@ -378,11 +379,13 @@ const makeStyles = (Colors: ColorTokens) =>
       borderRadius: Radius.full,
       alignItems: 'center',
       justifyContent: 'center',
+      ...makeNeonShadow(Colors),
     },
     avatarImage: {
       width: 80,
       height: 80,
       borderRadius: Radius.full,
+      ...makeNeonShadow(Colors),
     },
     avatarInitials: {
       color: Colors.textPrimary,
@@ -448,6 +451,8 @@ const makeStyles = (Colors: ColorTokens) =>
       alignItems: 'center',
       justifyContent: 'center',
     },
+    menuIconWrapperDanger: { backgroundColor: Colors.errorDim },
     menuText: { flex: 1, gap: 2 },
     menuLabel: { color: Colors.textPrimary },
+    menuLabelDanger: { color: Colors.error },
   });

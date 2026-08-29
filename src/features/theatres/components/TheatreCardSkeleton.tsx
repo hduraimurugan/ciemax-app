@@ -1,16 +1,17 @@
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
-import { ColorTokens, Radius, Spacing } from '@constants/theme';
+import { ColorTokens, Radius, Shadow, Spacing } from '@constants/theme';
 import { useTheme } from '@hooks/useTheme';
 import { Skeleton, SkeletonGroup } from '@shared/ui';
 
-/** Mirrors the cinemaCard/hallCard layout shared by ShowtimesScreen and TheatresScreen. */
+/** Mirrors TheatreCard's layout (icon-badge + name/location + chips), shared by ShowtimesScreen and TheatresScreen. */
 export function TheatreCardSkeleton() {
   const { colors } = useTheme();
   const styles = makeStyles(colors);
   return (
     <View style={styles.card}>
       <View style={styles.headerRow}>
+        <Skeleton width={32} height={32} radius={Radius.sm} />
         <View style={styles.info}>
           <Skeleton width="65%" height={16} radius={4} style={styles.name} />
           <Skeleton width="45%" height={12} radius={4} />
@@ -47,10 +48,12 @@ const makeStyles = (Colors: ColorTokens) => ({
     backgroundColor: Colors.surface,
     borderWidth: 1,
     borderColor: Colors.border,
-    borderRadius: Radius.xl,
+    borderRadius: Radius.lg,
     padding: Spacing.md,
+    gap: Spacing.md,
+    ...Shadow.sm,
   } as const,
-  headerRow: { flexDirection: 'row' as const, alignItems: 'flex-start' as const, gap: Spacing.sm, marginBottom: Spacing.md },
+  headerRow: { flexDirection: 'row' as const, alignItems: 'center' as const, gap: Spacing.sm },
   info: { flex: 1, gap: Spacing.xs },
   name: { marginBottom: 2 },
   chipsRow: { flexDirection: 'row' as const, flexWrap: 'wrap' as const, gap: Spacing.sm },

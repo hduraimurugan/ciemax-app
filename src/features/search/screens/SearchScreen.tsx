@@ -14,11 +14,11 @@ import { CompositeScreenProps } from '@react-navigation/native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import { RootStackParamList, TabParamList } from '@ctypes/navigation';
-import { ColorTokens, FontSize, FontWeight, Radius, Spacing } from '@constants/theme';
+import { ColorTokens, FontSize, FontWeight, Radius, Shadow, Spacing } from '@constants/theme';
 import { useTheme } from '@hooks/useTheme';
 import { useDebouncedValue } from '@hooks/useDebouncedValue';
 import { StorageKeys } from '@constants/config';
-import { BodySmall, Caption, Label } from '@shared/ui';
+import { BodySmall, Caption, EmptyState, Label } from '@shared/ui';
 import { Movie } from '@ctypes/models';
 import { searchMovies } from '@services/moviesService';
 import { SearchResultsSkeleton } from '../components/SearchResultsSkeleton';
@@ -117,8 +117,11 @@ export function SearchScreen({ navigation }: Props) {
                 </Pressable>
               </View>
               <View style={styles.recentList}>
-                {recent.map(q => (
-                  <Pressable key={q} style={styles.recentRow} onPress={() => setQuery(q)}>
+                {recent.map((q, i) => (
+                  <Pressable
+                    key={q}
+                    style={[styles.recentRow, i === recent.length - 1 && styles.recentRowLast]}
+                    onPress={() => setQuery(q)}>
                     <SearchIcon size={14} color={colors.textMuted} />
                     <BodySmall style={styles.recentText}>{q}</BodySmall>
                   </Pressable>
@@ -139,9 +142,11 @@ export function SearchScreen({ navigation }: Props) {
       ) : searching ? (
         <SearchResultsSkeleton />
       ) : noResults ? (
-        <View style={styles.noResults}>
-          <Caption>No results for &quot;{query}&quot;</Caption>
-        </View>
+        <EmptyState
+          fill={false}
+          icon={<SearchIcon size={40} color={colors.textMuted} />}
+          message={`No results for "${query}"`}
+        />
       ) : (
         <FlatList
           data={results}
@@ -190,13 +195,25 @@ const makeStyles = (Colors: ColorTokens) =>
     sectionHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
     sectionLabel: { marginBottom: Spacing.sm },
     clearText: { color: Colors.accent },
-    recentList: { gap: 2, marginBottom: Spacing.lg },
+    recentList: {
+      backgroundColor: Colors.surface,
+      borderWidth: 1,
+      borderColor: Colors.border,
+      borderRadius: Radius.lg,
+      overflow: 'hidden',
+      marginBottom: Spacing.lg,
+      ...Shadow.sm,
+    },
     recentRow: {
       flexDirection: 'row',
       alignItems: 'center',
       gap: Spacing.sm + 2,
-      paddingVertical: Spacing.sm + 2,
+      paddingVertical: Spacing.sm + 4,
+      paddingHorizontal: Spacing.md,
+      borderBottomWidth: 1,
+      borderBottomColor: Colors.divider,
     },
+    recentRowLast: { borderBottomWidth: 0 },
     recentText: { color: Colors.textPrimary },
     chipsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm },
     chip: {
@@ -209,7 +226,6 @@ const makeStyles = (Colors: ColorTokens) =>
     },
     chipText: { color: Colors.textPrimary },
     loader: { marginTop: Spacing.xxl },
-    noResults: { alignItems: 'center', paddingTop: Spacing.xxl },
     gridContent: { paddingHorizontal: Spacing.lg, paddingBottom: Spacing.xl },
     gridRow: { gap: Spacing.md, marginBottom: Spacing.md },
     gridItem: { flex: 1 },

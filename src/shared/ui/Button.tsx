@@ -6,7 +6,8 @@ import {
   Text,
   ViewStyle,
 } from 'react-native';
-import { ColorTokens, FontSize, FontWeight, Radius, Spacing } from '@constants/theme';
+import LinearGradient from 'react-native-linear-gradient';
+import { ColorTokens, FontSize, FontWeight, Radius, Shadow, Spacing } from '@constants/theme';
 import { useTheme } from '@hooks/useTheme';
 
 type Variant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'emerald';
@@ -38,6 +39,9 @@ export function Button({
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
   const isDisabled = disabled || loading;
+  const isShadowed = variant === 'primary' || variant === 'danger' || variant === 'emerald';
+  const shadowStyle = isShadowed ? (size === 'sm' ? styles.shadow_sm : styles.shadow_md) : undefined;
+  const gradientRadius = size === 'sm' ? Radius.sm : size === 'lg' ? Radius.lg : Radius.md;
 
   return (
     <Pressable
@@ -45,6 +49,7 @@ export function Button({
       disabled={isDisabled}
       style={({ pressed }) => [
         styles.base,
+        !isDisabled && shadowStyle,
         styles[variant],
         styles[`size_${size}`],
         fullWidth && styles.fullWidth,
@@ -52,6 +57,14 @@ export function Button({
         isDisabled && styles.disabled,
         style,
       ]}>
+      {variant === 'primary' && !isDisabled && (
+        <LinearGradient
+          colors={[colors.accent, colors.accentDim]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={[StyleSheet.absoluteFillObject, { borderRadius: gradientRadius, overflow: 'hidden' }]}
+        />
+      )}
       {loading ? (
         <ActivityIndicator
           size="small"
@@ -85,6 +98,8 @@ const makeStyles = (Colors: ColorTokens) =>
       borderWidth: 1,
       borderColor: Colors.transparent,
     },
+    shadow_sm: { ...Shadow.sm },
+    shadow_md: { ...Shadow.md },
     fullWidth: {
       width: '100%',
     },

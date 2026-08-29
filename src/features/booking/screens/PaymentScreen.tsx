@@ -1,12 +1,12 @@
 import React, { useMemo, useRef, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ArrowLeft, CreditCard, Landmark, ShieldCheck, Smartphone, Wallet } from 'lucide-react-native';
+import { CreditCard, Landmark, ShieldCheck, Smartphone, Wallet } from 'lucide-react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '@ctypes/navigation';
-import { ColorTokens, FontFamily, FontSize, FontWeight, Radius, Spacing } from '@constants/theme';
+import { ColorTokens, FontFamily, FontSize, FontWeight, Spacing } from '@constants/theme';
 import { useTheme } from '@hooks/useTheme';
-import { Button, Heading3 } from '@shared/ui';
+import { Button, Card, Caption, ScreenHeader } from '@shared/ui';
 import { formatPrice } from '@shared/utils';
 import { useAuthStore } from '@store/authStore';
 import { createOrder } from '@services/paymentService';
@@ -61,12 +61,7 @@ export function PaymentScreen({ navigation, route }: Props) {
 
   return (
     <SafeAreaView style={styles.screen}>
-      <View style={styles.header}>
-        <Pressable style={styles.backBtn} onPress={() => navigation.goBack()}>
-          <ArrowLeft size={18} color={colors.textPrimary} />
-        </Pressable>
-        <Heading3>Payment</Heading3>
-      </View>
+      <ScreenHeader title="Payment" onBack={() => navigation.goBack()} />
 
       <View style={styles.content}>
         <View style={styles.amountBlock}>
@@ -82,12 +77,13 @@ export function PaymentScreen({ navigation, route }: Props) {
 
         <View style={styles.methodsGrid}>
           {METHODS.map(m => (
-            <View key={m.key} style={styles.methodTile}>
+            <Card key={m.key} padding="sm" style={styles.methodTile}>
               <m.icon size={20} color={colors.textSecondary} />
               <Text style={styles.methodLabel}>{m.label}</Text>
-            </View>
+            </Card>
           ))}
         </View>
+        <Caption style={styles.methodsCaption}>You&apos;ll choose how to pay in the next step</Caption>
 
         {error ? <Text style={styles.errorText}>{error}</Text> : null}
       </View>
@@ -109,22 +105,6 @@ export function PaymentScreen({ navigation, route }: Props) {
 const makeStyles = (Colors: ColorTokens) =>
   StyleSheet.create({
     screen: { flex: 1, backgroundColor: Colors.background },
-    header: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: Spacing.md,
-      paddingHorizontal: Spacing.lg,
-      paddingTop: Spacing.md,
-      paddingBottom: Spacing.sm + 2,
-    },
-    backBtn: {
-      width: 34,
-      height: 34,
-      borderRadius: Radius.md,
-      backgroundColor: Colors.surfaceElevated,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
     content: { flex: 1, paddingHorizontal: Spacing.lg, gap: Spacing.lg },
     amountBlock: { alignItems: 'center', marginTop: Spacing.xl },
     amountLabel: { fontSize: FontSize.xs, color: Colors.textMuted, letterSpacing: 1.5, marginBottom: 4 },
@@ -151,15 +131,12 @@ const makeStyles = (Colors: ColorTokens) =>
     methodTile: {
       width: 78,
       height: 64,
-      borderRadius: Radius.md,
-      backgroundColor: Colors.surface,
-      borderWidth: 1,
-      borderColor: Colors.border,
       alignItems: 'center',
       justifyContent: 'center',
       gap: 6,
     },
     methodLabel: { fontSize: FontSize.xs - 1, color: Colors.textMuted },
+    methodsCaption: { textAlign: 'center', marginTop: -Spacing.xs },
     errorText: { textAlign: 'center', color: Colors.error, fontSize: FontSize.sm },
     cta: {
       padding: Spacing.lg,

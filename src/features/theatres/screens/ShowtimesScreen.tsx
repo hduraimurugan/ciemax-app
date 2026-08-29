@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ArrowLeft, Heart, MapPin, Navigation } from 'lucide-react-native';
+import { MapPin } from 'lucide-react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '@ctypes/navigation';
 import { Movie, Show, Theatre } from '@ctypes/models';
@@ -11,9 +11,10 @@ import { useTheatresForMovie, useShowsForMovie } from '@hooks/useTheatres';
 import { useFavourites } from '@hooks/useFavourites';
 import { StorageKeys } from '@constants/config';
 import { getMovieById, getCachedMovie } from '@services/moviesService';
-import { Body, Heading3 } from '@shared/ui';
+import { Body, EmptyState, ScreenHeader } from '@shared/ui';
 import { useBookingStore } from '@store/bookingStore';
 import { LocationModal } from '@features/location';
+import { TheatreCard } from '../components/TheatreCard';
 import { TheatreListSkeleton } from '../components/TheatreCardSkeleton';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Showtimes'>;
@@ -85,21 +86,13 @@ export function ShowtimesScreen({ navigation, route }: Props) {
   if (!hasLocation) {
     return (
       <SafeAreaView style={styles.screen}>
-        <View style={styles.header}>
-          <Pressable style={styles.backBtn} onPress={() => navigation.goBack()}>
-            <ArrowLeft size={17} color={colors.textPrimary} />
-          </Pressable>
-          <Heading3 numberOfLines={1}>{movie?.title ?? 'Select Showtime'}</Heading3>
-        </View>
-        <View style={styles.noLocation}>
-          <MapPin size={32} color={colors.textMuted} />
-          <Body style={styles.noLocationText}>
-            Set your location to see theatres and showtimes playing near you.
-          </Body>
-          <Pressable style={styles.setLocationBtn} onPress={() => setLocationModalVisible(true)}>
-            <Text style={styles.setLocationBtnText}>Set Location</Text>
-          </Pressable>
-        </View>
+        <ScreenHeader title={movie?.title ?? 'Select Showtime'} onBack={() => navigation.goBack()} />
+        <EmptyState
+          icon={<MapPin size={48} color={colors.textMuted} />}
+          message="Set your location to see theatres and showtimes playing near you."
+          actionLabel="Set Location"
+          onAction={() => setLocationModalVisible(true)}
+        />
         <LocationModal visible={locationModalVisible} onClose={() => setLocationModalVisible(false)} />
       </SafeAreaView>
     );
@@ -109,15 +102,11 @@ export function ShowtimesScreen({ navigation, route }: Props) {
 
   return (
     <SafeAreaView style={styles.screen}>
-      <View style={styles.header}>
-        <Pressable style={styles.backBtn} onPress={() => navigation.goBack()}>
-          <ArrowLeft size={17} color={colors.textPrimary} />
-        </Pressable>
-        <View>
-          <Heading3 numberOfLines={1}>{movie?.title ?? 'Select Showtime'}</Heading3>
-          <Text style={styles.subtitle}>Select date & showtime</Text>
-        </View>
-      </View>
+      <ScreenHeader
+        title={movie?.title ?? 'Select Showtime'}
+        subtitle="Select date & showtime"
+        onBack={() => navigation.goBack()}
+      />
 
       <ScrollView
         horizontal
@@ -147,19 +136,13 @@ export function ShowtimesScreen({ navigation, route }: Props) {
           if (cinemaShows.length === 0) return null;
           const favourited = isFavourite(theatre.id);
           return (
-            <View key={theatre.id} style={styles.cinemaCard}>
-              <View style={styles.cinemaHeaderRow}>
-                <View style={styles.cinemaInfo}>
-                  <Heading3 style={styles.cinemaName}>{theatre.name}</Heading3>
-                  <Text style={styles.cinemaScreen}>{theatre.address}</Text>
-                </View>
-                <Pressable onPress={() => toggle(theatre.id)} hitSlop={8}>
-                  <Heart size={17} color={favourited ? colors.accent : colors.textMuted} fill={favourited ? colors.accent : 'none'} />
-                </Pressable>
-                <Pressable onPress={() => openDirections(theatre)} hitSlop={8} style={styles.directionsBtn}>
-                  <Navigation size={15} color={colors.accent} />
-                </Pressable>
-              </View>
+            <TheatreCard
+              key={theatre.id}
+              name={theatre.name}
+              location={theatre.address}
+              favourited={favourited}
+              onToggleFavourite={() => toggle(theatre.id)}
+              onDirections={() => openDirections(theatre)}>
               <View style={styles.chipsRow}>
                 {cinemaShows.map(show => {
                   const status = statusOf(show);
@@ -189,7 +172,7 @@ export function ShowtimesScreen({ navigation, route }: Props) {
                   );
                 })}
               </View>
-            </View>
+            </TheatreCard>
           );
         })}
       </ScrollView>
@@ -201,32 +184,6 @@ export function ShowtimesScreen({ navigation, route }: Props) {
 const makeStyles = (Colors: ColorTokens) =>
   StyleSheet.create({
     screen: { flex: 1, backgroundColor: Colors.background },
-    header: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: Spacing.md,
-      paddingHorizontal: Spacing.lg,
-      paddingTop: Spacing.md,
-      paddingBottom: Spacing.sm + 2,
-    },
-    backBtn: {
-      width: 34,
-      height: 34,
-      borderRadius: Radius.md,
-      backgroundColor: Colors.surfaceElevated,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    subtitle: { fontSize: FontSize.xs + 1, color: Colors.textMuted, marginTop: 2 },
-    noLocation: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: Spacing.md, padding: Spacing.xl },
-    noLocationText: { textAlign: 'center', color: Colors.textMuted },
-    setLocationBtn: {
-      backgroundColor: Colors.accent,
-      paddingHorizontal: Spacing.lg,
-      paddingVertical: Spacing.sm + 2,
-      borderRadius: Radius.md,
-    },
-    setLocationBtnText: { color: Colors.textPrimary, fontWeight: FontWeight.semibold },
     // Explicit height on the horizontal ScrollView itself (not just its
     // contentContainerStyle) — without it, Yoga can't reliably measure an
     // unstyled horizontal ScrollView's cross-axis size, and the sibling
@@ -256,18 +213,6 @@ const makeStyles = (Colors: ColorTokens) =>
     cinemaListScroll: { flex: 1 },
     cinemaList: { paddingHorizontal: Spacing.lg, paddingBottom: Spacing.xl, gap: Spacing.md },
     empty: { textAlign: 'center', marginTop: Spacing.xl },
-    cinemaCard: {
-      backgroundColor: Colors.surface,
-      borderWidth: 1,
-      borderColor: Colors.border,
-      borderRadius: Radius.xl,
-      padding: Spacing.md,
-    },
-    cinemaHeaderRow: { flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.sm, marginBottom: Spacing.md },
-    cinemaInfo: { flex: 1 },
-    directionsBtn: { paddingLeft: 2 },
-    cinemaName: { marginBottom: 2 },
-    cinemaScreen: { fontSize: FontSize.xs + 1, color: Colors.textMuted },
     chipsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm },
     chip: {
       paddingHorizontal: Spacing.sm + 4,

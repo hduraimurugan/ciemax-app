@@ -10,7 +10,7 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Eye, EyeOff, X } from 'lucide-react-native';
+import { Eye, EyeOff, LogIn, X } from 'lucide-react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '@ctypes/navigation';
 import { ColorTokens, FontFamily, FontSize, FontWeight, Spacing } from '@constants/theme';
@@ -19,6 +19,7 @@ import { flushPendingAuthCallbacks, clearPendingAuthCallbacks } from '@hooks/use
 import { Button, Input } from '@shared/ui';
 import { useAuthStore } from '@store/authStore';
 import { authService } from '@services/authService';
+import { AuthCard } from '../components/AuthCard';
 import { signInWithGoogle } from '../utils/googleAuth';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Login'>;
@@ -119,81 +120,75 @@ export function LoginScreen({ navigation }: Props) {
             </Pressable>
           )}
 
-          <Text style={styles.wordmark}>CineHall</Text>
-          <Text style={styles.subtitle}>Sign in to book your next show</Text>
-
-          {error ? (
-            <View style={styles.errorBanner}>
-              <Text style={styles.errorBannerText}>{error}</Text>
-            </View>
-          ) : null}
-          {hint ? <Text style={styles.hintText}>{hint}</Text> : null}
-
-          <Input
-            label="EMAIL ADDRESS"
-            value={email}
-            onChangeText={setEmail}
-            placeholder="you@example.com"
-            keyboardType="email-address"
-            autoCapitalize="none"
-            autoComplete="email"
-            containerStyle={styles.inputGap}
-          />
-
-          <Input
-            label="PASSWORD"
-            value={password}
-            onChangeText={setPassword}
-            placeholder="Your password"
-            secureTextEntry={!showPassword}
-            autoCapitalize="none"
-            containerStyle={styles.inputGap}
-            rightIcon={
-              <Pressable onPress={() => setShowPassword(s => !s)} hitSlop={8}>
-                {showPassword ? (
-                  <EyeOff size={18} color={colors.textMuted} />
-                ) : (
-                  <Eye size={18} color={colors.textMuted} />
-                )}
-              </Pressable>
-            }
-          />
-
-          <Pressable onPress={() => navigation.navigate('ForgotPassword')} style={styles.forgotLink}>
-            <Text style={styles.forgotText}>Forgot password?</Text>
-          </Pressable>
-
-          <Button
-            label={submitting ? 'Signing in…' : 'Continue with Email'}
-            onPress={submit}
-            disabled={submitting}
-            loading={submitting}
-            fullWidth
-            size="lg"
-            style={styles.continueBtn}
-          />
-
-          <View style={styles.dividerRow}>
-            <View style={styles.dividerLine} />
-            <Text style={styles.dividerText}>OR</Text>
-            <View style={styles.dividerLine} />
+          <View style={styles.brandRow}>
+            <Text style={styles.logo}>CINEHALL</Text>
           </View>
 
-          <Button
-            label={googleSubmitting ? 'Connecting…' : 'Continue with Google'}
-            onPress={continueWithGoogle}
-            disabled={googleSubmitting}
-            fullWidth
-            size="lg"
-            variant="secondary"
-          />
-          {googleSubmitting && <ActivityIndicator style={styles.googleSpinner} color={colors.accent} />}
+          <AuthCard
+            icon={<LogIn size={24} color={colors.accent} />}
+            title="Welcome Back"
+            subtitle="Sign in to book your next show"
+            tabs={{ activeLabel: 'Login', inactiveLabel: 'Sign Up', onInactivePress: () => navigation.navigate('Register') }}
+            error={error}>
+            {hint ? <Text style={styles.hintText}>{hint}</Text> : null}
 
-          <Pressable onPress={() => navigation.navigate('Register')} style={styles.signupRow}>
-            <Text style={styles.signupText}>
-              Don&apos;t have an account? <Text style={styles.signupLink}>Sign Up</Text>
-            </Text>
-          </Pressable>
+            <Input
+              label="EMAIL ADDRESS"
+              value={email}
+              onChangeText={setEmail}
+              placeholder="you@example.com"
+              keyboardType="email-address"
+              autoCapitalize="none"
+              autoComplete="email"
+            />
+
+            <Input
+              label="PASSWORD"
+              value={password}
+              onChangeText={setPassword}
+              placeholder="Your password"
+              secureTextEntry={!showPassword}
+              autoCapitalize="none"
+              rightIcon={
+                <Pressable onPress={() => setShowPassword(s => !s)} hitSlop={8}>
+                  {showPassword ? (
+                    <EyeOff size={18} color={colors.textMuted} />
+                  ) : (
+                    <Eye size={18} color={colors.textMuted} />
+                  )}
+                </Pressable>
+              }
+            />
+
+            <Pressable onPress={() => navigation.navigate('ForgotPassword')} style={styles.forgotLink}>
+              <Text style={styles.forgotText}>Forgot password?</Text>
+            </Pressable>
+
+            <Button
+              label={submitting ? 'Signing in…' : 'Continue with Email'}
+              onPress={submit}
+              disabled={submitting}
+              loading={submitting}
+              fullWidth
+              size="lg"
+            />
+
+            <View style={styles.dividerRow}>
+              <View style={styles.dividerLine} />
+              <Text style={styles.dividerText}>OR</Text>
+              <View style={styles.dividerLine} />
+            </View>
+
+            <Button
+              label={googleSubmitting ? 'Connecting…' : 'Continue with Google'}
+              onPress={continueWithGoogle}
+              disabled={googleSubmitting}
+              fullWidth
+              size="lg"
+              variant="secondary"
+            />
+            {googleSubmitting && <ActivityIndicator style={styles.googleSpinner} color={colors.accent} />}
+          </AuthCard>
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -219,40 +214,23 @@ const makeStyles = (Colors: ColorTokens) =>
       justifyContent: 'center',
       marginBottom: Spacing.md,
     },
-    wordmark: {
+    brandRow: { alignItems: 'center', marginBottom: Spacing.lg },
+    logo: {
+      color: Colors.accent,
+      fontSize: FontSize.xxl,
       fontFamily: FontFamily.bold,
       fontWeight: FontWeight.bold,
-      fontSize: FontSize.xl,
-      color: Colors.textPrimary,
-      marginBottom: Spacing.xs,
+      letterSpacing: 2,
     },
-    subtitle: {
-      fontSize: FontSize.sm,
-      color: Colors.textMuted,
-      marginBottom: Spacing.xl,
-    },
-    errorBanner: {
-      backgroundColor: Colors.errorDim,
-      borderRadius: 10,
-      padding: Spacing.md,
-      marginBottom: Spacing.md,
-    },
-    errorBannerText: { color: Colors.error, fontSize: FontSize.sm },
-    hintText: { color: Colors.warning, fontSize: FontSize.xs, marginBottom: Spacing.md },
-    inputGap: { marginBottom: Spacing.md },
-    forgotLink: { alignSelf: 'flex-end', marginBottom: Spacing.lg },
+    hintText: { color: Colors.warning, fontSize: FontSize.xs },
+    forgotLink: { alignSelf: 'flex-end' },
     forgotText: { color: Colors.accent, fontSize: FontSize.xs, fontWeight: FontWeight.semibold },
-    continueBtn: { marginBottom: Spacing.md },
     dividerRow: {
       flexDirection: 'row',
       alignItems: 'center',
       gap: Spacing.sm + 2,
-      marginVertical: Spacing.sm,
     },
     dividerLine: { flex: 1, height: 1, backgroundColor: Colors.border },
     dividerText: { fontSize: FontSize.xs, color: Colors.textMuted },
     googleSpinner: { marginTop: Spacing.sm },
-    signupRow: { alignItems: 'center', marginTop: Spacing.xl },
-    signupText: { fontSize: FontSize.sm, color: Colors.textMuted },
-    signupLink: { color: Colors.accent, fontWeight: FontWeight.semibold },
   });

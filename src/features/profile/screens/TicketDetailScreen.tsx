@@ -1,13 +1,13 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ArrowLeft, MapPin, Mail } from 'lucide-react-native';
+import { MapPin, Mail } from 'lucide-react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '@ctypes/navigation';
 import { Booking } from '@ctypes/models';
 import { ColorTokens, FontFamily, FontSize, FontWeight, Radius, Spacing } from '@constants/theme';
 import { useTheme } from '@hooks/useTheme';
-import { Heading3, QRCode } from '@shared/ui';
+import { QRCode, ScreenHeader } from '@shared/ui';
 import { Body, Caption } from '@shared/ui';
 import { getBookingById, getCachedBooking } from '@services/bookingService';
 import { formatPrice, formatSeatList, formatShowDate } from '@shared/utils';
@@ -64,12 +64,7 @@ export function TicketDetailScreen({ navigation, route }: Props) {
 
   return (
     <SafeAreaView style={styles.screen}>
-      <View style={styles.header}>
-        <Pressable style={styles.backBtn} onPress={() => navigation.goBack()}>
-          <ArrowLeft size={18} color={colors.textPrimary} />
-        </Pressable>
-        <Heading3>E-Ticket</Heading3>
-      </View>
+      <ScreenHeader title="E-Ticket" onBack={() => navigation.goBack()} />
 
       {loading ? (
         <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
@@ -192,22 +187,6 @@ const makeStyles = (Colors: ColorTokens) =>
   StyleSheet.create({
     screen: { flex: 1, backgroundColor: Colors.background },
     notFound: { textAlign: 'center', marginTop: Spacing.xl },
-    header: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: Spacing.md,
-      paddingHorizontal: Spacing.lg,
-      paddingTop: Spacing.md,
-      paddingBottom: Spacing.sm + 2,
-    },
-    backBtn: {
-      width: 34,
-      height: 34,
-      borderRadius: Radius.md,
-      backgroundColor: Colors.surfaceElevated,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
     content: { padding: Spacing.lg, gap: Spacing.md, paddingBottom: Spacing.xxl },
     ticketCard: {
       backgroundColor: Colors.surface,
