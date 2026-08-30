@@ -80,7 +80,7 @@ Both palettes share the same key names (`ColorTokens` interface) so call sites n
 | Token | Dark | Light | Usage |
 |---|---|---|---|
 | `background` | `#0C0D11` | `#F9FAFC` | Screen root background |
-| `surface` | `#15171D` | `#F1F2F5` | Cards, tab bar, bottom sheets |
+| `surface` | `#15171D` | `#F1F2F5` | Cards, bottom sheets (the tab bar was transparent since `cca6591`) |
 | `surfaceElevated` | `#1E2128` | `#E7E9EE` | Inputs, raised cards |
 | `surfaceHighlight` | `#292D36` | `#DDE0E6` | Pressed / hover elevated state |
 | `secondary` | `#363B46` | `#DEE1EA` | Cool gray-blue secondary surface, booked seats |
@@ -200,7 +200,7 @@ Spacing.tabBarHeight = 64   // Bottom tab bar's own content height — the rende
 
 Not theme-dependent — imported directly from `@constants/theme` as before.
 
-`TabNavigator`'s `tabBarStyle.height`/`paddingBottom` add `useSafeAreaInsets().bottom` on top of `Spacing.tabBarHeight`/`Spacing.xs`, so the bar clears the OS gesture indicator instead of sitting under it. A fixed `tabBarStyle.height` opts the bar out of React Navigation's own safe-area handling, which is why this has to be done manually rather than left to the default. Any screen that pads its own scroll content to clear the tab bar (none currently do) should add the same `insets.bottom`, not just `Spacing.tabBarHeight`.
+`TabNavigator`'s `tabBarStyle.height`/`paddingBottom` add `useSafeAreaInsets().bottom` on top of `Spacing.tabBarHeight`/`Spacing.xs`, so the bar clears the OS gesture indicator instead of sitting under it. A fixed `tabBarStyle.height` opts the bar out of React Navigation's own safe-area handling, which is why this has to be done manually rather than left to the default. Since `cca6591` the tab bar uses `backgroundColor: 'transparent'` with `elevation: 0` / `shadowOpacity: 0` / `shadowColor: 'transparent'` — no elevated surface or drop shadow, so the bar visually recedes behind the screen content. Any screen that pads its own scroll content to clear the tab bar (none currently do) should add the same `insets.bottom`, not just `Spacing.tabBarHeight`.
 
 ---
 
@@ -625,6 +625,8 @@ import { SafeAreaView } from 'react-native';
 ```
 
 `App.tsx` wraps the entire app in `<SafeAreaProvider>` from `react-native-safe-area-context`, which is required for `SafeAreaView` to work.
+
+The four tab screens — `MoviesScreen`, `SearchScreen`, `MyBookingsScreen`, and `ProfileScreen` — pass `edges={['top', 'left', 'right']}` (`cca6591`): they exclude the **bottom** edge because `TabNavigator`'s tab bar already owns the bottom inset (`useSafeAreaInsets().bottom`). This clears the status bar/notch without double-padding above the tab bar.
 
 ---
 
