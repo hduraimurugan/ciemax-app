@@ -154,7 +154,7 @@ MyApp/
 ├── android/app/build.gradle       # react-native-config wired to per-variant .env files
 ├── docs/
 │   ├── ios-env-setup.md           # Manual Xcode steps for react-native-config + Google Sign-In (Mac-only)
-│   └── android-dev-device.md      # Local API access from a physical Android device (adb reverse / LAN IP)
+│   └── android-dev-device.md      # Local API access from a physical Android device (adb reverse / LAN IP) + Google Sign-In debug-keystore SHA-1 setup
 └── __mocks__/                     # Jest manual mocks for every native module the app touches
 ```
 
@@ -217,7 +217,7 @@ Toggle it from **Profile → Dark Mode** (persisted via AsyncStorage). See [docs
 | [State Management](docs/state-management.md) | Zustand stores — auth, location, booking, theme |
 | [Features](docs/features.md) | Feature module breakdown, real endpoints used per screen |
 | [iOS env setup](docs/ios-env-setup.md) | Manual Xcode steps (react-native-config, Google Sign-In) — done once, on a Mac |
-| [Android dev device](docs/android-dev-device.md) | Reaching a local API from a physical phone — `adb reverse` vs. LAN IP, firewall, rebuild gotchas |
+| [Android dev device](docs/android-dev-device.md) | Reaching a local API from a physical phone — `adb reverse` vs. LAN IP, firewall, rebuild gotchas; Google Sign-In DEVELOPER_ERROR / debug-keystore SHA-1 setup |
 
 ---
 

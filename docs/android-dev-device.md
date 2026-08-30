@@ -154,6 +154,80 @@ resolves its project root through `fs.realpathSync.native(__dirname)`
 defensively — harmless normally, but it's what would save you if this ever
 comes up again in some other form.
 
+## Google Sign-In: "Google sign-in failed" / DEVELOPER_ERROR
+
+The account picker opens fine, but sign-in fails right after you pick an
+account — no useful error, just `googleAuth.ts`'s generic catch-all
+("Google sign-in failed. Please try again."). This is Android's own
+`DEVELOPER_ERROR`, and it isn't one of the specific `statusCodes`
+`googleAuth.ts` checks for, so it never surfaces as anything more
+specific.
+
+**Why it happens:** `@react-native-google-signin` validates the app via an
+**Android-type OAuth client** — package name + the SHA-1 of whatever
+keystore signed the APK — registered under the *same Google Cloud
+project* as `GOOGLE_WEB_CLIENT_ID`. That project is **not necessarily**
+the Firebase project `android/app/google-services.json` belongs to — this
+repo has two separate Google projects in play, and `google-services.json`
+is only for Firebase Cloud Messaging. Check which project actually owns
+`GOOGLE_WEB_CLIENT_ID` by its numeric prefix (`759538186360-...` →
+project number `759538186360`) before registering anything.
+
+Get the shared debug keystore's SHA-1:
+
+```sh
+keytool -list -v -keystore android/app/debug.keystore \
+  -alias androiddebugkey -storepass android -keypass android
+```
+
+Register it: [Google Cloud Console](https://console.cloud.google.com/apis/credentials)
+→ pick the project matching `GOOGLE_WEB_CLIENT_ID`'s project number →
+**Create Credentials → OAuth client ID → Android** → package `com.myapp`
++ that SHA-1.
+
+**"The Android package name and fingerprint are already in use"** — this
+specific package+SHA-1 pair is already registered under some *other*
+Google Cloud project (can happen if `debug.keystore` was inherited from a
+boilerplate/template that shipped its own pre-registered keystore). You
+can't reuse someone else's registration. Fix: generate a fresh
+`debug.keystore` instead of fighting over the old one —
+
+```sh
+cd android/app
+rm debug.keystore
+keytool -genkeypair -v -keystore debug.keystore -storepass android \
+  -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 \
+  -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
+```
+
+(matches the alias/passwords `signingConfigs.debug` in
+[android/app/build.gradle](../android/app/build.gradle#L120) already
+expects — no gradle changes needed) — then register *that* SHA-1 instead.
+
+`debug.keystore` is committed (shared across the team on purpose, so
+everyone hits the same registered fingerprint instead of each needing
+their own). Regenerating it is a real, team-wide change:
+
+- **Full rebuild required, not a JS reload** — same rule as the
+  `API_BASE_URL` gotcha above: a new signing cert only takes effect on a
+  fresh `npm run android`, and if you also changed `GOOGLE_WEB_CLIENT_ID`
+  in `.env`, that needs the rebuild too (`react-native-config` bakes it in
+  at Gradle build time).
+- **Uninstall the app from every device first.** Android refuses to
+  install an "update" signed with a different key over an existing
+  install (`INSTALL_FAILED_UPDATE_INCOMPATIBLE`). `adb uninstall
+  com.myapp`, then rebuild.
+- **Every other developer** needs to pull the new `debug.keystore`,
+  uninstall their local build, and rebuild too — their old install won't
+  update in place either.
+
+**Release builds currently sign with this same debug keystore** — see the
+`Caution!` comment on `signingConfigs.debug` reused under `buildTypes.release`
+in [android/app/build.gradle](../android/app/build.gradle#L135). Before
+ever shipping a real release, generate a proper release keystore and
+register **its** SHA-1 as a *separate* Android OAuth client the same way,
+or Google Sign-In will fail in production with the exact same symptom.
+
 ## Host cheatsheet
 
 | Target | `API_BASE_URL` |
