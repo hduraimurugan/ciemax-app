@@ -277,7 +277,7 @@ No Cancel Booking button — there is no customer-facing cancellation endpoint i
 
 | File | Purpose |
 |---|---|
-| `screens/NotificationsScreen.tsx` | Login-gated list — unread dot, "Mark all read", tap-to-open, infinite scroll |
+| `screens/NotificationsScreen.tsx` | Login-gated list — date-grouped sections (Today/Yesterday/This Week/Earlier), event-icon badges, "Mark all read", tap-to-open, infinite scroll |
 | `components/NotificationCardSkeleton.tsx` | `NotificationCardSkeleton` (single row) and `NotificationListSkeleton` (4-row group) for the cold-start load |
 
 Reachable from three places: the bell icon on `MoviesScreen`'s Home tab (badge = `notificationStore.unreadCount`, capped display `"9+"`), the "Notifications" row in the `ProfileScreen` menu, and any push-notification tap (handled outside the component tree — see below).
@@ -287,7 +287,9 @@ Reachable from three places: the bell icon on `MoviesScreen`'s Home tab (badge =
 - Guests see the same "Sign In" prompt pattern as `MyBookingsScreen`/`ProfileScreen`.
 - `useFocusEffect` re-fetches the list and unread count every time the screen gains focus (not just on mount), so re-opening it after a new push arrives shows current data.
 - Tapping a row: `markRead(id)` (optimistic, see [docs/state-management.md](state-management.md#notification-store)), then navigates to `TicketDetail` if the notification carries a `bookingId` — otherwise it just marks read in place (e.g. a general announcement has nothing to drill into).
-- `FlatList` with `onEndReached`/`hasMore` pagination (`PAGE_SIZE = 20`), pull-to-refresh via `RefreshControl`.
+- `SectionList` date-grouped by `groupByDate()` into **Today / Yesterday / This Week / Earlier** (`stickySectionHeadersEnabled={false}`, uppercase section titles) with `onEndReached`/`hasMore` pagination (`PAGE_SIZE = 20`, threshold 0.4) and pull-to-refresh via `RefreshControl` (`a046519`).
+- Header (`a046519`): `ScreenHeader titleIcon` renders a Bell in a 34×34 badge with an accent unread dot, and `subtitle` shows `"{n} unread"` when `unreadCount > 0`; "Mark all read" stays as the right action.
+- Notification rows (`a046519`): event-colored 42×42 icon badge from `getNotificationVisual(event)` — `refund_settled` → `Wallet` (emerald), other `refund` → `RotateCcw` (warning), `booking` → `CalendarCheck` (success), `reminder`/`starts`/`show` → `Clock3` (info), fallback `Bell` (accent). Unread rows get an accent left border, elevated surface + `Shadow.md`, and a dot on the badge; body clamps to 2 lines; a `ChevronRight` shows for rows with a `bookingId`.
 
 ### Push notification pipeline
 

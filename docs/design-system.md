@@ -444,6 +444,7 @@ import { ScreenHeader } from '@shared/ui';
 | `backLoading` | `boolean` | `false` | Renders an `ActivityIndicator` instead of the back arrow (used by `CheckoutScreen` while releasing seats) |
 | `rightIcon` / `rightLabel` / `onRightPress` | | — | Optional right-aligned action |
 | `rightSlot` | `ReactNode` | — | Arbitrary right content (e.g. `CheckoutScreen`'s countdown) — takes precedence over `rightIcon`/`rightLabel` |
+| `titleIcon` | `ReactNode` | — | Small icon rendered in a 34×34 `surfaceElevated` badge (`Radius.md` + `Shadow.sm`) to the left of the title; `onMedia` swaps it to `mediaGlassSurface`/`mediaGlassBorder` (added `a046519`, used by `NotificationsScreen`'s Bell) |
 | `variant` | `'default' \| 'onMedia'` | `'default'` | `onMedia` swaps to `mediaGlassSurface`/`mediaGlassBorder`/`textOnMedia` for headers over photos |
 
 `MovieDetailScreen` keeps its bespoke hero header (extra heart/share/play controls), and `OtpScreen`/`ForgotPasswordScreen` use `AuthCard` instead of this component.
