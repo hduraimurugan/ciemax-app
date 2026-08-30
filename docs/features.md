@@ -296,7 +296,7 @@ Reachable from three places: the bell icon on `MoviesScreen`'s Home tab (badge =
 The in-app list above is fed by the same backend events that also trigger a **push** notification to the device — the delivery pipeline is entirely separate from the screen and lives in `src/hooks/usePushNotifications.ts` (mounted once in `App.tsx`) and `src/services/pushService.ts`. Full detail — including the `index.js` background-message registration, the Notifee foreground banner, tap-to-navigate via a module-level `navigationRef`, and the Android 13+ runtime permission flow — is in [docs/architecture.md](architecture.md#push-notifications-notifee--react-native-firebasemessaging), since it's infrastructure rather than a screen. In short:
 
 - Enabling push is opt-in only, from the `ProfileScreen` toggle — never an unsolicited prompt on app load.
-- A foreground FCM message is rendered as a Notifee banner (FCM shows nothing itself while the app is open); background/killed-app delivery is automatic via Android's FCM SDK.
+- A foreground FCM message is rendered as a Notifee banner (FCM shows nothing itself while the app is open) — a payload with an image (`notification.android.imageUrl`, used for ad/offer announcements) renders as a big-picture banner (`AndroidStyle.BIGPICTURE`) instead of a plain one; background/killed-app delivery is automatic via Android's FCM SDK.
 - Tapping any push notification — foreground banner, backgrounded tap, or a killed-app launch — always lands on `Notifications`, not a specific booking (v1 scope; see the hook's header comment for the deep-linking note).
 
 ---
