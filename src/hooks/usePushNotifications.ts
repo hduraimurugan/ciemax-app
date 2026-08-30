@@ -8,7 +8,7 @@ import {
   getInitialNotification,
   onTokenRefresh,
 } from '@react-native-firebase/messaging';
-import notifee, { AndroidImportance, EventType } from '@notifee/react-native';
+import notifee, { AndroidImportance, AndroidStyle, EventType } from '@notifee/react-native';
 import { navigateToNotifications } from '@app/navigation';
 import { useNotificationStore } from '@store/notificationStore';
 import { useAuthStore } from '@store/authStore';
@@ -36,11 +36,21 @@ export function usePushNotifications(): void {
     notifee.createChannel({ id: CHANNEL_ID, name: 'General', importance: AndroidImportance.HIGH });
 
     const unsubOnMessage = onMessage(messaging, async remoteMessage => {
+      // FCM puts the image under notification.android.imageUrl (not a
+      // top-level field — that one's web-only, see @react-native-firebase/
+      // messaging's Notification type) — same field the backend's
+      // sendEachForMulticast() sets for ad/offer announcement banners.
+      const imageUrl = remoteMessage.notification?.android?.imageUrl;
       await notifee.displayNotification({
         title: remoteMessage.notification?.title,
         body: remoteMessage.notification?.body,
         data: remoteMessage.data,
-        android: { channelId: CHANNEL_ID, smallIcon: 'ic_notification', pressAction: { id: 'default' } },
+        android: {
+          channelId: CHANNEL_ID,
+          smallIcon: 'ic_notification',
+          pressAction: { id: 'default' },
+          ...(imageUrl ? { style: { type: AndroidStyle.BIGPICTURE, picture: imageUrl } } : {}),
+        },
       });
       useNotificationStore.getState().fetchUnreadCount();
     });
