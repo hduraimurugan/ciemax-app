@@ -10,19 +10,31 @@ import { useAuthStore } from './authStore';
 // re-requesting GPS/reverse-geocoding on every cold start.
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 
+export type DetectFailureReason =
+  | 'denied'
+  | 'blocked'
+  | 'services-off'
+  | 'timeout'
+  | 'geocode-failed'
+  | 'error';
+
+export type DetectResult = { ok: true } | { ok: false; reason: DetectFailureReason };
+
 interface LocationState {
   district: string | null;
   state: string | null;
   loading: boolean;
   lastUpdatedAt: number | null;
 
-  /** Detects via GPS + reverse geocoding, respecting the 24h cache. Returns whether a location is now set. */
-  detect: () => Promise<boolean>;
+  /** Detects via GPS + reverse geocoding, respecting the 24h cache. Reports success or why it failed. */
+  detect: () => Promise<DetectResult>;
   setManually: (district: string, state: string) => Promise<void>;
   clear: () => void;
 }
 
-async function requestPermission(): Promise<boolean> {
+type PermissionResult = 'granted' | 'denied' | 'blocked';
+
+async function requestPermission(): Promise<PermissionResult> {
   if (Platform.OS === 'android') {
     const granted = await PermissionsAndroid.request(
       PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
@@ -34,12 +46,14 @@ async function requestPermission(): Promise<boolean> {
         buttonNeutral: 'Ask later',
       },
     );
-    return granted === PermissionsAndroid.RESULTS.GRANTED;
+    if (granted === PermissionsAndroid.RESULTS.GRANTED) return 'granted';
+    if (granted === PermissionsAndroid.RESULTS.NEVER_ASK_AGAIN) return 'blocked';
+    return 'denied';
   }
   return new Promise(resolve => {
     Geolocation.requestAuthorization(
-      () => resolve(true),
-      () => resolve(false),
+      () => resolve('granted'),
+      () => resolve('denied'),
     );
   });
 }
@@ -90,21 +104,25 @@ export const useLocationStore = create<LocationState>()(
           cached.lastUpdatedAt &&
           Date.now() - cached.lastUpdatedAt < CACHE_TTL_MS
         ) {
-          return true;
+          return { ok: true };
         }
 
         set({ loading: true });
         try {
-          const allowed = await requestPermission();
-          if (!allowed) {
+          const permission = await requestPermission();
+          if (permission !== 'granted') {
             set({ loading: false });
-            return false;
+            return { ok: false, reason: permission === 'blocked' ? 'blocked' : 'denied' };
           }
-          const coords = await getCurrentCoords();
+          const coords = await getCurrentCoords().catch(err => {
+            // Geolocation error codes: 1 = PERMISSION_DENIED, 2 = POSITION_UNAVAILABLE
+            // (typically means device location/GPS services are off), 3 = TIMEOUT.
+            throw err?.code === 2 ? 'services-off' : err?.code === 3 ? 'timeout' : 'error';
+          });
           const geo = await reverseGeocode(coords.latitude, coords.longitude);
           if (!geo) {
             set({ loading: false });
-            return false;
+            return { ok: false, reason: 'geocode-failed' };
           }
           set({ district: geo.district, state: geo.state, lastUpdatedAt: Date.now(), loading: false });
           // Keep the server-side profile in sync for logged-in customers,
@@ -112,10 +130,13 @@ export const useLocationStore = create<LocationState>()(
           if (useAuthStore.getState().accessToken) {
             authService.update({ district: geo.district, state: geo.state }).catch(() => {});
           }
-          return true;
-        } catch {
+          return { ok: true };
+        } catch (err) {
           set({ loading: false });
-          return false;
+          const reason: DetectFailureReason =
+            err === 'services-off' || err === 'timeout' ? err : 'error';
+          if (reason === 'error') console.warn('[locationStore] detect() failed', err);
+          return { ok: false, reason };
         }
       },
 

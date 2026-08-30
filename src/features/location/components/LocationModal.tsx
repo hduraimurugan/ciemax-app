@@ -1,5 +1,7 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, FlatList, Pressable, StyleSheet, View } from 'react-native';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { ActivityIndicator, Alert, Linking, NativeScrollEvent, NativeSyntheticEvent, Pressable, StyleSheet, View } from 'react-native';
+import { FlatList } from 'react-native-gesture-handler';
+import { useSharedValue } from 'react-native-reanimated';
 import { ChevronLeft, MapPin, Navigation, Search, X } from 'lucide-react-native';
 import { ColorTokens, FontSize, FontWeight, Radius, Spacing } from '@constants/theme';
 import { useTheme } from '@hooks/useTheme';
@@ -26,6 +28,11 @@ export function LocationModal({ visible, onClose }: LocationModalProps) {
   const [step, setStep] = useState<Step>('state');
   const [selectedState, setSelectedState] = useState<string | null>(null);
   const [search, setSearch] = useState('');
+  const listRef = useRef<FlatList<string>>(null);
+  const scrollOffset = useSharedValue(0);
+  const onListScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+    scrollOffset.value = e.nativeEvent.contentOffset.y;
+  };
 
   useEffect(() => {
     if (!visible) {
@@ -34,6 +41,12 @@ export function LocationModal({ visible, onClose }: LocationModalProps) {
       setSearch('');
     }
   }, [visible]);
+
+  // Each step renders its own FlatList instance — reset the tracked offset so
+  // the drag-to-close gesture doesn't see a stale scroll position from the last one.
+  useEffect(() => {
+    scrollOffset.value = 0;
+  }, [step, scrollOffset]);
 
   const districts = useMemo(
     () => INDIA_LOCATIONS.find(s => s.name === selectedState)?.districts ?? [],
@@ -53,8 +66,36 @@ export function LocationModal({ visible, onClose }: LocationModalProps) {
   };
 
   const useCurrentLocation = async () => {
-    const ok = await detect();
-    if (ok) onClose();
+    const result = await detect();
+    if (result.ok) {
+      onClose();
+      return;
+    }
+    switch (result.reason) {
+      case 'denied':
+        Alert.alert(
+          'Location access needed',
+          'Allow location access so we can find movies and showtimes near you.',
+          [{ text: 'Cancel', style: 'cancel' }, { text: 'Try Again', onPress: useCurrentLocation }],
+        );
+        break;
+      case 'blocked':
+        Alert.alert(
+          'Location access blocked',
+          'You previously denied location access. Enable it for CineHall in Settings to use this.',
+          [{ text: 'Cancel', style: 'cancel' }, { text: 'Open Settings', onPress: () => Linking.openSettings() }],
+        );
+        break;
+      case 'services-off':
+        Alert.alert(
+          'Turn on location services',
+          'Your device location (GPS) is off. Turn it on to detect your location automatically.',
+          [{ text: 'Cancel', style: 'cancel' }, { text: 'Open Settings', onPress: () => Linking.openSettings() }],
+        );
+        break;
+      default:
+        Alert.alert('Couldn\'t detect your location', 'Please try again, or pick your state manually below.');
+    }
   };
 
   const clearLocation = () => {
@@ -68,7 +109,12 @@ export function LocationModal({ visible, onClose }: LocationModalProps) {
   const filteredDistricts = districts.filter(d => d.toLowerCase().includes(search.trim().toLowerCase()));
 
   return (
-    <BottomSheet visible={visible} onClose={onClose} snapHeight={480}>
+    <BottomSheet
+      visible={visible}
+      onClose={onClose}
+      snapHeight={480}
+      scrollRef={listRef}
+      scrollOffset={scrollOffset}>
       <View style={styles.header}>
         {step === 'district' && (
           <Pressable onPress={() => setStep('state')} hitSlop={8} style={styles.backBtn}>
@@ -118,6 +164,7 @@ export function LocationModal({ visible, onClose }: LocationModalProps) {
           <Caption style={styles.empty}>No states match "{search}".</Caption>
         ) : (
           <FlatList
+            ref={listRef}
             data={filteredStates}
             keyExtractor={s => s}
             renderItem={({ item }) => (
@@ -126,6 +173,8 @@ export function LocationModal({ visible, onClose }: LocationModalProps) {
                 <Body style={styles.rowText}>{item}</Body>
               </Pressable>
             )}
+            onScroll={onListScroll}
+            scrollEventThrottle={16}
             showsVerticalScrollIndicator={false}
           />
         )
@@ -133,6 +182,7 @@ export function LocationModal({ visible, onClose }: LocationModalProps) {
         <Caption style={styles.empty}>No districts match "{search}".</Caption>
       ) : (
         <FlatList
+          ref={listRef}
           data={filteredDistricts}
           keyExtractor={d => d}
           renderItem={({ item }) => (
@@ -141,6 +191,8 @@ export function LocationModal({ visible, onClose }: LocationModalProps) {
               <Body style={styles.rowText}>{item}</Body>
             </Pressable>
           )}
+          onScroll={onListScroll}
+          scrollEventThrottle={16}
           showsVerticalScrollIndicator={false}
         />
       )}

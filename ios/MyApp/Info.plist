@@ -36,6 +36,8 @@
 	</dict>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>CineHall uses your location to show movies and showtimes playing near you.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>CineHall uses your location to show movies and showtimes playing near you.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
 	<string>CineHall saves a copy of your booking ticket to your photo library when you tap Download.</string>
 	<key>UILaunchStoryboardName</key>
