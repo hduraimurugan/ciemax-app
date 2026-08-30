@@ -99,7 +99,7 @@ export function MoviesScreen({ navigation }: Props) {
   const showError = !showSkeleton && error && nowShowing.length === 0;
 
   return (
-    <SafeAreaView style={styles.screen}>
+    <SafeAreaView style={styles.screen} edges={['top', 'left', 'right']}>
       <View style={styles.header}>
         <Pressable style={styles.locationRow} onPress={() => setLocationModalVisible(true)} hitSlop={6}>
           <MapPin size={14} color={colors.textPrimary} />

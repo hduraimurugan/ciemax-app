@@ -88,7 +88,7 @@ export function SearchScreen({ navigation }: Props) {
   const noResults = !showEmpty && !searching && results.length === 0 && debouncedQuery.trim() === query.trim();
 
   return (
-    <SafeAreaView style={styles.screen}>
+    <SafeAreaView style={styles.screen} edges={['top', 'left', 'right']}>
       <View style={styles.searchBar}>
         <SearchIcon size={16} color={colors.textMuted} />
         <TextInput

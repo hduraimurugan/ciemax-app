@@ -60,12 +60,15 @@ export function TabNavigator() {
 const makeStyles = (Colors: ColorTokens, bottomInset: number) =>
   StyleSheet.create({
     tabBar: {
-      backgroundColor: Colors.surface,
+      backgroundColor: 'transparent',
       borderTopColor: Colors.border,
       borderTopWidth: 1,
       paddingTop: Spacing.xs,
       paddingBottom: Spacing.xs + bottomInset,
       height: Spacing.tabBarHeight + bottomInset,
+      elevation: 0,
+      shadowOpacity: 0,
+      shadowColor: 'transparent',
     },
     tabLabel: {
       fontSize: FontSize.xs,

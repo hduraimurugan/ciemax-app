@@ -168,7 +168,7 @@ export function ProfileScreen({ navigation }: Props) {
 
   if (status !== 'authed') {
     return (
-      <SafeAreaView style={styles.screen}>
+      <SafeAreaView style={styles.screen} edges={['top', 'left', 'right']}>
         <View style={styles.signedOutBody}>
           <View style={styles.guestAvatar}>
             <Text style={styles.guestAvatarText}>?</Text>
@@ -226,7 +226,7 @@ export function ProfileScreen({ navigation }: Props) {
   ];
 
   return (
-    <SafeAreaView style={styles.screen}>
+    <SafeAreaView style={styles.screen} edges={['top', 'left', 'right']}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
         <View style={styles.avatarSection}>
           {customer?.avatarUrl ? (

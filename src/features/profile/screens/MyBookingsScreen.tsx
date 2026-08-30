@@ -79,7 +79,7 @@ export function MyBookingsScreen({ navigation }: Props) {
 
   if (status !== 'authed') {
     return (
-      <SafeAreaView style={styles.screen}>
+      <SafeAreaView style={styles.screen} edges={['top', 'left', 'right']}>
         <EmptyState
           icon={<Ticket size={48} color={colors.textMuted} />}
           message="Sign in to view your bookings."
@@ -92,7 +92,7 @@ export function MyBookingsScreen({ navigation }: Props) {
   }
 
   return (
-    <SafeAreaView style={styles.screen}>
+    <SafeAreaView style={styles.screen} edges={['top', 'left', 'right']}>
       <View style={styles.pageHeader}>
         <Heading2 style={styles.title}>My Bookings</Heading2>
       </View>
