@@ -570,9 +570,11 @@ import { BottomSheet } from '@shared/ui';
 </BottomSheet>
 ```
 
-- Spring-animated slide-up using the `Animated` API
+- Reanimated-driven slide-up (`useSharedValue` translateY + `withTiming` `Easing.out(cubic)`), open 260ms / close 220ms — rewritten from the RN `Animated` API in `3c8078f`
 - Default snap height: 55% of screen
-- Drag handle rendered automatically
+- Top bar renders an always-draggable drag handle (`handlePan` gesture) plus a close (`X`) button
+- Drag-to-close over the rest of the body (`contentPan` gesture with `activeOffsetY(10)` / `failOffsetX([-15,15])`); settling closes when pulled past `snapHeight/5` or flung downward >600 px/s
+- Optional `scrollRef` (a `react-native-gesture-handler` ScrollView/FlatList inside `children`) + `scrollOffset` (its Reanimated `SharedValue`): when provided, the body gesture is `simultaneousWithExternalGesture(scrollRef)` and only takes over once that list is scrolled to the top — used by `LocationModal`'s state/district lists (`3c8078f`)
 
 ---
 

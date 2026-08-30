@@ -60,6 +60,8 @@ Backed by `locationStore` (see [docs/state-management.md](state-management.md#lo
 
 A "Clear" link appears in the modal header once a location is already set, calling `locationStore.clear()` so the user can start picking fresh instead of only being able to overwrite the existing selection.
 
+**Detailed error reporting (`3c8078f`):** `useCurrentLocation` now inspects the `DetectResult` from `locationStore.detect()` and shows a targeted `Alert` per reason — `denied` → "Location access needed" with a **Try Again** action; `blocked` (user tapped "never ask again") → "Location access blocked" with **Open Settings** (`Linking.openSettings()`); `services-off` (GPS off) → "Turn on location services" with **Open Settings**; any other failure → generic "Couldn't detect your location". The modal's lists (state/district steps) are `react-native-gesture-handler` `FlatList`s wired into `BottomSheet` via `scrollRef` + a Reanimated `scrollOffset` shared value, so the sheet's drag-to-close gesture only takes over the body once the list is scrolled to the top; the offset resets when switching steps (`3c8078f`).
+
 ---
 
 ## movies

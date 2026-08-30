@@ -74,13 +74,15 @@ interface LocationState {
   state: string | null;
   loading: boolean;
   lastUpdatedAt: number | null;
-  detect: () => Promise<boolean>;       // GPS -> reverse geocode, respects a 24h cache
+  detect: () => Promise<DetectResult>; // GPS -> reverse geocode, respects a 24h cache; reports failure reason
   setManually: (district, state) => Promise<void>;
   clear: () => void;
 }
 ```
 
 Mirrors the web app's `localStorage['user_location']` 24h cache — `detect()` skips the GPS/permission round-trip entirely if a location was set within the last day. When a customer is logged in, both `detect()` and `setManually()` best-effort `PUT /api/customer/update` to keep the server-side profile in sync (matching the web app's `updateProfileWithLocation()`).
+
+Since `3c8078f`, `detect()` returns a `DetectResult` — `{ ok: true }` or `{ ok: false, reason }` where `reason` is `'denied' | 'blocked' | 'services-off' | 'timeout' | 'geocode-failed' | 'error'`. `requestPermission()` returns `'blocked'` when the user previously chose `NEVER_ASK_AGAIN` on Android; geolocation errors map `code 2` (`POSITION_UNAVAILABLE` — device GPS/location services off) → `'services-off'` and `code 3` (`TIMEOUT`) → `'timeout'`. `LocationModal` turns each reason into a distinct `Alert`.
 
 Almost every browse endpoint (`getNowShowingMovies`, `getTheatresForMovie`, `getShowsForMovie`, ...) takes `district`/`state` as optional trailing parameters and falls back to a non-location-filtered global list when they're `null` — so the app is still browsable before a location is ever set.
 

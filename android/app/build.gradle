@@ -99,10 +99,11 @@ android {
     // native builds to a short, fixed path outside the repo sidesteps it
     // without needing a subst'd drive (which broke Metro/Babel's module
     // resolution by mixing drive-letter and realpath'd absolute paths).
+    // Kept on D: (not C:) since the project's D drive has more free space.
     if (org.gradle.internal.os.OperatingSystem.current().isWindows()) {
         externalNativeBuild {
             cmake {
-                buildStagingDirectory "C:/rn-cxx-build/MyApp"
+                buildStagingDirectory "D:/rn-cxx-build/MyApp"
             }
         }
     }
