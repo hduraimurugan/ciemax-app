@@ -8,6 +8,8 @@ import { Heading2, Heading3 } from './Typography';
 interface ScreenHeaderProps {
   title: string;
   subtitle?: string;
+  /** Small icon shown in a badge to the left of the title (e.g. a Bell for Notifications). */
+  titleIcon?: React.ReactNode;
   onBack?: () => void;
   backLoading?: boolean;
   rightIcon?: React.ReactNode;
@@ -22,6 +24,7 @@ interface ScreenHeaderProps {
 export function ScreenHeader({
   title,
   subtitle,
+  titleIcon,
   onBack,
   backLoading,
   rightIcon,
@@ -50,6 +53,10 @@ export function ScreenHeader({
             <ArrowLeft size={18} color={iconColor} />
           )}
         </Pressable>
+      ) : null}
+
+      {titleIcon ? (
+        <View style={[styles.titleIconWrap, onMedia && styles.titleIconWrapOnMedia]}>{titleIcon}</View>
       ) : null}
 
       <View style={styles.titleBlock}>
@@ -103,6 +110,20 @@ const makeStyles = (Colors: ColorTokens) =>
       ...Shadow.sm,
     },
     backBtnOnMedia: {
+      backgroundColor: Colors.mediaGlassSurface,
+      borderWidth: 1,
+      borderColor: Colors.mediaGlassBorder,
+    },
+    titleIconWrap: {
+      width: 34,
+      height: 34,
+      borderRadius: Radius.md,
+      backgroundColor: Colors.surfaceElevated,
+      alignItems: 'center',
+      justifyContent: 'center',
+      ...Shadow.sm,
+    },
+    titleIconWrapOnMedia: {
       backgroundColor: Colors.mediaGlassSurface,
       borderWidth: 1,
       borderColor: Colors.mediaGlassBorder,
