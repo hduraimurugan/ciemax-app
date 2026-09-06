@@ -9,6 +9,7 @@
 [![Platform](https://img.shields.io/badge/platform-Android%20%7C%20iOS-informational)](#quick-start)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](#contributing)
+[![Download APK](https://img.shields.io/badge/Download-APK-3DDC84?logo=android&logoColor=white)](app-release.apk)
 
 Feature-sliced architecture · dual dark/light theme · real backend integration
 
@@ -50,8 +51,22 @@ CineHall is a full end-to-end mobile port of a cinema ticket booking web app, bu
 
 ## Screenshots
 
+*The full booking flow, screen by screen — from first launch to QR ticket in hand:*
+
 <div align="center">
 <table>
+<tr>
+<td><img src="screensnip/splash.png" width="200" alt="Splash screen"/></td>
+<td><img src="screensnip/onboarding.png" width="200" alt="Onboarding"/></td>
+<td><img src="screensnip/login.png" width="200" alt="Login"/></td>
+<td><img src="screensnip/signup.png" width="200" alt="Sign up"/></td>
+</tr>
+<tr>
+<td align="center">Splash</td>
+<td align="center">Onboarding</td>
+<td align="center">Login</td>
+<td align="center">Sign Up</td>
+</tr>
 <tr>
 <td><img src="screensnip/home.png" width="200" alt="Home screen"/></td>
 <td><img src="screensnip/movie_info.png" width="200" alt="Movie details"/></td>
@@ -65,16 +80,34 @@ CineHall is a full end-to-end mobile port of a cinema ticket booking web app, bu
 <td align="center">Seat Selection</td>
 </tr>
 <tr>
-<td><img src="screensnip/bookings.png" width="200" alt="Bookings"/></td>
-<td><img src="screensnip/offers.png" width="200" alt="Offers"/></td>
-<td><img src="screensnip/profile.png" width="200" alt="Profile"/></td>
-<td><img src="screensnip/theatre_shows_list.png" width="200" alt="Theatres"/></td>
+<td><img src="screensnip/checkout.png" width="200" alt="Checkout"/></td>
+<td><img src="screensnip/payment_method.png" width="200" alt="Payment method"/></td>
+<td><img src="screensnip/razorpay_payment.png" width="200" alt="Razorpay checkout"/></td>
+<td><img src="screensnip/payment_success.png" width="200" alt="Payment successful"/></td>
 </tr>
 <tr>
+<td align="center">Checkout</td>
+<td align="center">Payment Method</td>
+<td align="center">Razorpay Checkout</td>
+<td align="center">Payment Successful</td>
+</tr>
+<tr>
+<td><img src="screensnip/booking_confirmed.png" width="200" alt="Booking confirmed"/></td>
+<td><img src="screensnip/ticket.png" width="200" alt="QR ticket"/></td>
+<td><img src="screensnip/notifications.png" width="200" alt="Notifications"/></td>
+<td><img src="screensnip/bookings.png" width="200" alt="My bookings"/></td>
+</tr>
+<tr>
+<td align="center">Booking Confirmed</td>
+<td align="center">QR Ticket</td>
+<td align="center">Notifications</td>
 <td align="center">My Bookings</td>
-<td align="center">Offers</td>
+</tr>
+<tr>
+<td><img src="screensnip/profile.png" width="200" alt="Profile"/></td>
+</tr>
+<tr>
 <td align="center">Profile</td>
-<td align="center">Theatres</td>
 </tr>
 </table>
 </div>
