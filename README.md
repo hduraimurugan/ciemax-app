@@ -1,10 +1,83 @@
-# CineHall — Cinema Ticket Booking App
+<div align="center">
 
-A production-grade **React Native** mobile application for cinema ticket booking. Built with a feature-sliced architecture, a dark/light dual-theme design system, and a real backend integration against [cinema-hall-api](../../cinema-hall/cinema-hall-api) (the same Express/Postgres/Razorpay backend that powers [cinema-hall-users](../../cinema-hall/cinema-hall-users), the web app this port is functionally equivalent to).
+# 🎬 CineHall
 
-> UI and content originate from the **CineHall** design (`CineHall.dc.html`, a claude.ai/design prototype) — a 15-screen mobile UI kit covering onboarding, auth, discovery, booking, and account flows, with an in-app dark/light theme toggle. Functionality was subsequently ported 1:1 from `cinema-hall-users`.
+**A production-grade React Native cinema ticket booking app**
+
+[![React Native](https://img.shields.io/badge/React%20Native-0.84.1-61DAFB?logo=react&logoColor=white)](https://reactnative.dev)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.8-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org)
+[![Platform](https://img.shields.io/badge/platform-Android%20%7C%20iOS-informational)](#quick-start)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](#contributing)
+
+Feature-sliced architecture · dual dark/light theme · real backend integration
+
+</div>
 
 ---
+
+CineHall is a full end-to-end mobile port of a cinema ticket booking web app, built with **React Native (New Architecture)** and **TypeScript**. It integrates against a real Express/Postgres/Razorpay backend ([`cinema-hall-api`](../../cinema-hall/cinema-hall-api)) and is functionally equivalent to the web client ([`cinema-hall-users`](../../cinema-hall/cinema-hall-users)) it was ported from.
+
+> UI and content originate from the **CineHall** design (`CineHall.dc.html`, a claude.ai/design prototype) — a 15-screen mobile UI kit covering onboarding, auth, discovery, booking, and account flows, with an in-app dark/light theme toggle.
+
+## Table of Contents
+
+- [Features](#features)
+- [Screenshots](#screenshots)
+- [Tech Stack](#tech-stack)
+- [App Flow](#app-flow)
+- [Quick Start](#quick-start)
+- [Project Structure](#project-structure)
+- [Environment Configuration](#environment-configuration)
+- [Path Aliases](#path-aliases)
+- [Design System](#design-system)
+- [Documentation](#documentation)
+- [Scripts](#scripts)
+- [Key Design Decisions](#key-design-decisions)
+- [Contributing](#contributing)
+- [License](#license)
+
+## Features
+
+- 🎟️ **End-to-end booking flow** — browse, pick a showtime, select seats on a real per-theatre layout, pay, and get a QR-coded ticket
+- 🌗 **Dark/light theme** — every screen is theme-aware, toggled from Profile and persisted across launches
+- 🔓 **Auth-optional browsing** — sign-in is only requested when it matters (checkout, bookings, profile), mirroring the web app's UX
+- 💳 **Real Razorpay checkout** — hosted in a WebView, bridged back to the app via `postMessage`, with server-authoritative seat holds
+- 📍 **Location-aware discovery** — GPS or manual district/state selection, cached for 24h
+- 🔍 **Debounced search** with persisted recent queries
+- 🎫 **Saveable tickets** — QR ticket screenshot saved to the camera roll
+- 🧪 **Mock-first development** — every service has an in-memory mock fallback (`Env.USE_MOCKS`), so UI work never blocks on a running backend
+
+## Screenshots
+
+<div align="center">
+<table>
+<tr>
+<td><img src="screensnip/home.png" width="200" alt="Home screen"/></td>
+<td><img src="screensnip/movie_info.png" width="200" alt="Movie details"/></td>
+<td><img src="screensnip/theatre_shows.png" width="200" alt="Showtimes"/></td>
+<td><img src="screensnip/seat_selection.png" width="200" alt="Seat selection"/></td>
+</tr>
+<tr>
+<td align="center">Home</td>
+<td align="center">Movie Details</td>
+<td align="center">Showtimes</td>
+<td align="center">Seat Selection</td>
+</tr>
+<tr>
+<td><img src="screensnip/bookings.png" width="200" alt="Bookings"/></td>
+<td><img src="screensnip/offers.png" width="200" alt="Offers"/></td>
+<td><img src="screensnip/profile.png" width="200" alt="Profile"/></td>
+<td><img src="screensnip/theatre_shows_list.png" width="200" alt="Theatres"/></td>
+</tr>
+<tr>
+<td align="center">My Bookings</td>
+<td align="center">Offers</td>
+<td align="center">Profile</td>
+<td align="center">Theatres</td>
+</tr>
+</table>
+</div>
 
 ## Tech Stack
 
@@ -29,8 +102,6 @@ A production-grade **React Native** mobile application for cinema ticket booking
 | Clipboard | `@react-native-clipboard/clipboard` (offer code copy) |
 | Runtime | Hermes JS Engine |
 
----
-
 ## App Flow
 
 ```
@@ -53,8 +124,6 @@ Home → Movie Details → Showtimes → Seat Selection → Checkout → Payment
 
 Login is not the app's entry point — the web app's model of "browse freely, sign in only when it matters" is mirrored via `useRequireAuth()`, which pushes `Login` as a modal only when Proceed-to-pay, My Bookings, or Profile actions need a session.
 
----
-
 ## Quick Start
 
 ### Prerequisites
@@ -67,13 +136,17 @@ Login is not the app's entry point — the web app's model of "browse freely, si
 ### Installation
 
 ```bash
-# 1. Install JS dependencies
+# 1. Clone the repo
+git clone https://github.com/hduraimurugan/ciemax-app.git
+cd ciemax-app
+
+# 2. Install JS dependencies
 npm install
 
-# 2. iOS only — install native pods
+# 3. iOS only — install native pods
 cd ios && pod install && cd ..
 
-# 3. Configure environment
+# 4. Configure environment
 cp .env.example .env
 # edit .env — at minimum set API_BASE_URL (see the file's comments for the
 # emulator/device/simulator host cheatsheet) and GOOGLE_WEB_CLIENT_ID
@@ -104,8 +177,6 @@ npm start -- --reset-cache
 ```
 
 > `lucide-react-native` requires `metro.config.js` to set `resolver.unstable_enablePackageExports: false`. Without this, Metro picks up the ESM build which Hermes cannot process. See [`metro.config.js`](metro.config.js) and [`docs/design-system.md`](docs/design-system.md#icons) for details.
-
----
 
 ## Project Structure
 
@@ -158,15 +229,11 @@ MyApp/
 └── __mocks__/                     # Jest manual mocks for every native module the app touches
 ```
 
----
-
-## Environment configuration
+## Environment Configuration
 
 Every API host, feature flag, and OAuth client ID is read from `Env` (`src/constants/env.ts`), backed by `react-native-config`. See [`.env.example`](.env.example) for the full documented key list. Nothing in `.env*` is secret by the time it ships — it's baked into the compiled app the same way the APK/IPA itself is public. Server secrets (JWT signing keys, Razorpay `key_secret`, DB credentials) live only in `cinema-hall-api`'s own `.env` and never appear here.
 
 `Env.USE_MOCKS=true` switches every service back to its original in-memory mock implementation (`src/services/*.mock.ts`) — useful for UI work with no backend running.
-
----
 
 ## Path Aliases
 
@@ -183,8 +250,6 @@ Configured in both `tsconfig.json` and `babel.config.js` via `babel-plugin-modul
 | `@constants/*` | `src/constants/*` |
 | `@ctypes/*` | `src/types/*` |
 | `@assets/*` | `src/assets/*` |
-
----
 
 ## Design System
 
@@ -204,8 +269,6 @@ Dual dark/light theme, both derived from the CineHall design. All tokens live in
 
 Toggle it from **Profile → Dark Mode** (persisted via AsyncStorage). See [docs/design-system.md](docs/design-system.md) for the full token table and theming architecture.
 
----
-
 ## Documentation
 
 | Document | Description |
@@ -219,8 +282,6 @@ Toggle it from **Profile → Dark Mode** (persisted via AsyncStorage). See [docs
 | [iOS env setup](docs/ios-env-setup.md) | Manual Xcode steps (react-native-config, Google Sign-In) — done once, on a Mac |
 | [Android dev device](docs/android-dev-device.md) | Reaching a local API from a physical phone — `adb reverse` vs. LAN IP, firewall, rebuild gotchas; Google Sign-In DEVELOPER_ERROR / debug-keystore SHA-1 setup |
 
----
-
 ## Scripts
 
 ```bash
@@ -231,8 +292,6 @@ npm run lint           # ESLint
 npm test               # Jest
 npx tsc --noEmit       # TypeScript type check (0 errors)
 ```
-
----
 
 ## Key Design Decisions
 
@@ -245,3 +304,18 @@ npx tsc --noEmit       # TypeScript type check (0 errors)
 - **Razorpay runs in a WebView**, not a native SDK — `checkout.js` loaded via an inline HTML page, bridged back to React Native with `postMessage`. Chosen over `react-native-razorpay` for guaranteed New-Architecture compatibility.
 - **Dumb seat grid, real gestures** — `SeatGrid` is still a pure renderer (no seat-selection logic inside it), now driven by the actual per-show layout (aisles, passage seats, `screenPosition`) and pinch/pan zoom via `react-native-gesture-handler` + Reanimated.
 - **`@ctypes` alias** — the types path alias uses `@ctypes` (not `@types`) to avoid conflict with TypeScript's reserved `@types` namespace for `node_modules/@types/`.
+
+## Contributing
+
+Contributions are welcome. To propose a change:
+
+1. Fork the repo and create a branch from `main` (`git checkout -b feature/my-change`)
+2. Make your changes, following the existing feature-sliced structure and theming conventions
+3. Run `npm run lint`, `npx tsc --noEmit`, and `npm test` before pushing
+4. Open a pull request describing what changed and why
+
+For larger changes, please open an issue first to discuss the approach.
+
+## License
+
+Distributed under the [MIT License](LICENSE).
