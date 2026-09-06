@@ -1,6 +1,6 @@
 <div align="center">
 
-# 🎬 CineHall
+# 🎬 CineMax
 
 **A production-grade React Native cinema ticket booking app**
 
@@ -17,9 +17,9 @@ Feature-sliced architecture · dual dark/light theme · real backend integration
 
 ---
 
-CineHall is a full end-to-end mobile port of a cinema ticket booking web app, built with **React Native (New Architecture)** and **TypeScript**. It integrates against a real Express/Postgres/Razorpay backend ([`cinema-hall-api`](../../cinema-hall/cinema-hall-api)) and is functionally equivalent to the web client ([`cinema-hall-users`](../../cinema-hall/cinema-hall-users)) it was ported from.
+CineMax is a full end-to-end mobile port of a cinema ticket booking web app, built with **React Native (New Architecture)** and **TypeScript**. It integrates against a real Express/Postgres/Razorpay backend ([`cinema-hall-api`](../../cinema-hall/cinema-hall-api)) and is functionally equivalent to the web client ([`cinema-hall-users`](../../cinema-hall/cinema-hall-users)) it was ported from.
 
-> UI and content originate from the **CineHall** design (`CineHall.dc.html`, a claude.ai/design prototype) — a 15-screen mobile UI kit covering onboarding, auth, discovery, booking, and account flows, with an in-app dark/light theme toggle.
+> UI and content originate from the **CineMax** design (`CineMax.dc.html`, a claude.ai/design prototype) — a 15-screen mobile UI kit covering onboarding, auth, discovery, booking, and account flows, with an in-app dark/light theme toggle.
 
 ## Table of Contents
 
@@ -286,7 +286,7 @@ Configured in both `tsconfig.json` and `babel.config.js` via `babel-plugin-modul
 
 ## Design System
 
-Dual dark/light theme, both derived from the CineHall design. All tokens live in `src/constants/theme.ts` as `DarkColors`/`LightColors`; the active palette is read via `useTheme()`, never imported statically.
+Dual dark/light theme, both derived from the CineMax design. All tokens live in `src/constants/theme.ts` as `DarkColors`/`LightColors`; the active palette is read via `useTheme()`, never imported statically.
 
 | Token | Dark | Light | Usage |
 |---|---|---|---|
